@@ -28,7 +28,7 @@ class NotionWorkflowServer {
   constructor() {
     this.server = new Server(
       {
-        name: 'notion-dev-agent',
+        name: 'notion-vibe-coding',
         version: '1.0.0',
       },
       {
@@ -517,7 +517,7 @@ ${description}
   async run(): Promise<void> {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error('Notion Dev Agent MCP server running on stdio');
+    console.error('Notion Vibe Coding MCP server running on stdio');
   }
 }
 

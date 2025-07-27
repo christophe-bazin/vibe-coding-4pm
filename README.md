@@ -1,4 +1,4 @@
-# notion-dev-agent
+# notion-vibe-coding
 
 A Model Context Protocol (MCP) server that provides AI-guided development workflows for Notion tasks. This server uses configuration-driven workflows to help AI assistants create, update, and execute development tasks with proper status management.
 
@@ -25,8 +25,8 @@ This MCP server provides a simplified, configuration-based approach to Notion wo
 
 1. Clone this repository:
 ```bash
-git clone <repository-url>
-cd notion-dev-agent
+git clone https://github.com/christophe-bazin/notion-vibe-coding.git
+cd notion-vibe-coding
 ```
 
 2. Copy configuration files:
@@ -401,7 +401,7 @@ The AI follows these rules defined in `config.json`:
 ### Project Structure
 
 ```
-notion-dev-agent/
+notion-vibe-coding/
 ├── config.json                 # Board configuration
 ├── workflows/                  # Workflow guidance files
 │   ├── task-creation.md
