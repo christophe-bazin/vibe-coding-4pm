@@ -1,6 +1,6 @@
 # notion-vibe-coding
 
-A Model Context Protocol (MCP) server that provides AI-guided development workflows for Notion tasks. This server uses configuration-driven workflows to help AI assistants create, update, and execute development tasks with proper status management.
+A Model Context Protocol (MCP) server that provides AI-guided development workflows for Notion tasks. This MCP server provides AI-guided development workflows that integrate seamlessly into your daily coding routine, making Claude Code an intelligent project manager for your development tasks.
 
 ## Features
 
@@ -11,6 +11,8 @@ A Model Context Protocol (MCP) server that provides AI-guided development workfl
 - **Test Preparation**: AI generates summary and test plans before moving to testing
 - **Human Validation**: AI cannot close tasks directly - requires human validation
 - **English Workflows**: All guidance and templates in English
+- **Developer-Friendly Integration**: Works across any project with simple configuration
+- **Multi-Project Support**: Use same installation for different codebases and databases
 
 ## Architecture
 
@@ -109,6 +111,158 @@ npm start
 ```
 
 The server runs on stdio and is designed to be used with MCP-compatible clients.
+
+## Development Workflow Integration
+
+### For Developers: Using in Real Projects
+
+This MCP transforms Claude Code into a project manager that tracks your development tasks automatically. Here's how to integrate it into your daily workflow.
+
+#### Global Installation (Recommended)
+
+Install once, use across all your projects:
+
+```bash
+# Install globally
+cd ~/tools  # or any global location
+git clone https://github.com/christophe-bazin/notion-vibe-coding.git
+cd notion-vibe-coding
+npm install && npm run build
+```
+
+#### Configure Claude Code
+
+Create MCP configuration in each project:
+
+```json
+// your-project/.claude/mcp-config.json
+{
+  "mcpServers": {
+    "notion-workflow": {
+      "command": "node",
+      "args": ["/path/to/notion-vibe-coding/dist/server.js"],
+      "env": {
+        "NOTION_API_KEY": "secret_your_notion_integration_token_here"
+      }
+    }
+  }
+}
+```
+
+#### Project Instructions Template
+
+Add to your project for AI guidance:
+
+```markdown
+<!-- your-project/.claude/instructions.md -->
+# Development Workflow
+
+## Notion Database
+Database ID: `your-database-id-here`
+
+## Task Management Rules
+- Always create tasks before implementing features
+- Use workflow types: Feature/Bug/Refactoring  
+- Follow progression: Not Started → In Progress → Test → Done
+- Only humans can mark tasks as "Done"
+
+## Development Flow
+1. Ask Claude to create a task for new features
+2. Provide the Notion URL to start implementation
+3. Claude will manage status progression automatically
+4. Review and validate when task reaches "Test" status
+```
+
+### Real Development Examples
+
+#### Feature Implementation Conversation
+
+```
+You: "I need to add user authentication with JWT to this React app"
+
+Claude: 
+→ Uses create_task() 
+→ "Task created: https://notion.so/implement-jwt-auth-abc123"
+
+You: "Perfect, implement this feature"
+
+Claude:
+→ Uses initialize_workflow() with the URL
+→ Sets status to "In Progress"  
+→ Implements authentication step by step
+→ Updates task with progress notes
+→ Moves to "Test" with summary and test plan
+
+You: Review, test, and manually mark as "Done"
+```
+
+#### Bug Fix Workflow
+
+```
+You: "Fix this login issue: https://notion.so/fix-login-bug-xyz789"
+
+Claude:
+→ initialize_workflow({ workflowType: "bug" })
+→ Analyzes existing task content
+→ Implements fix with detailed notes
+→ Moves to "Test" for validation
+```
+
+#### Quick Task Updates
+
+```
+You: "Update the auth task to include OAuth2 support"
+
+Claude:
+→ Uses update_task_content()
+→ Preserves current status
+→ Adds new requirements to description
+```
+
+### Multi-Project Setup
+
+Use the same MCP installation across different projects:
+
+```bash
+# Project A (E-commerce)
+cd ~/dev/ecommerce-app
+# Configure with Database: "E-commerce Tasks"
+
+# Project B (Mobile API)  
+cd ~/dev/mobile-api
+# Configure with Database: "Mobile API Tasks"
+```
+
+Each project maintains:
+- Own `.claude/mcp-config.json` with specific database ID
+- Own `.claude/instructions.md` with project-specific rules
+- Separate Notion databases for task isolation
+
+### Benefits for Development Teams
+
+✅ **Consistent Workflow** - Same process across all projects and team members  
+✅ **Automatic Documentation** - Implementation details automatically saved to Notion  
+✅ **Progress Tracking** - Real-time status updates visible to entire team  
+✅ **Quality Gates** - Mandatory testing phase prevents rushed releases  
+✅ **Team Visibility** - Shared Notion workspace for project oversight  
+✅ **Context Preservation** - Claude remembers task context throughout implementation  
+
+### Troubleshooting Common Issues
+
+#### MCP Not Detected
+- Verify `.claude/mcp-config.json` path is correct
+- Check Notion API key validity
+- Ensure database is shared with your Notion integration
+
+#### Status Transition Errors  
+- Confirm `config.json` transitions match your Notion board setup
+- Verify status values exactly match Notion select options
+- Check that required statuses exist: "Not Started", "In Progress", "Test", "Done"
+
+#### Database Access Errors
+- Confirm integration has access to the target database
+- Verify database ID is correct in project configuration
+- Check that database has required properties: Status, Type
 
 ## Available MCP Tools
 
