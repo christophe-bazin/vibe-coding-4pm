@@ -159,12 +159,24 @@ Guide complete execution of a development task from start to completion.
 - After execution, AI must move task to "Test"
 - AI must add summary and test list before transition
 
+### Todo-Based Auto-Progression
+- Use `progress_todo` tool to mark individual todos as completed
+- Task automatically progresses from "Not Started" to "In Progress" when first todo is completed
+- Task automatically progresses to "Test" when all todos are completed (100%)
+- Use `analyze_task_todos` to check overall progress and get recommendations
+
 ### Finalization Process
-1. Complete implementation
+1. Complete implementation and mark all todos as completed
 2. Add execution summary to Notion task
-3. Add test list to Notion task
-4. Change status to "Test"
+3. Add test list to Notion task  
+4. Status automatically changes to "Test" when todos reach 100%
 5. Human validation is required to move to "Done"
+
+### Todo Management During Execution
+- Mark todos as completed using `progress_todo` tool as you complete each step
+- Use `batch_progress_todos` for updating multiple todos efficiently
+- Let auto-progression handle status transitions based on completion percentage
+- Focus on implementation rather than manual status management
 
 ## Best Practices
 - Follow methodical and structured approach

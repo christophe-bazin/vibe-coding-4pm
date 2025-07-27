@@ -56,12 +56,18 @@ src/
 
 ## MCP Tools Available
 
+### Todo Management
+- `progress_todo`: Mark specific todos as completed with auto-progression
+- `analyze_task_todos`: Extract and analyze all todos with completion statistics
+- `batch_progress_todos`: Update multiple todos efficiently in one operation
+
+### Task Management
 - `create_task`: Create new tasks in Notion database with workflow templates
 - `update_task`: Update task content (title, description, type) without changing status
 - `start_task_workflow`: Initialize workflow for existing Notion task
 - `get_workflow_guidance`: Get markdown guidance for specific workflow
 - `update_task_status`: Change task status with validation
-- `get_task_info`: Get current status and available transitions
+- `get_task_info`: Get current status, transitions, and todo statistics
 
 ## Development Workflow
 

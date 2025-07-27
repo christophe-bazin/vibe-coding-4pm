@@ -112,7 +112,142 @@ The server runs on stdio and is designed to be used with MCP-compatible clients.
 
 ## Available MCP Tools
 
-### `create_task`
+### Todo Management Tools
+
+#### `progress_todo`
+
+Mark a specific todo as completed and auto-update task status based on progress.
+
+**Parameters:**
+- `taskId` (string, required): Notion page ID
+- `todoText` (string, required): Exact text of the todo to update
+- `completed` (boolean, required): Mark as completed (true) or uncompleted (false)
+- `autoProgress` (boolean, optional): Automatically update task status (default: true)
+
+**Example:**
+```json
+{
+  "taskId": "abc123...",
+  "todoText": "Setup database schema",
+  "completed": true,
+  "autoProgress": true
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "taskId": "abc123...",
+  "todoText": "Setup database schema",
+  "completed": true,
+  "autoProgressed": true,
+  "newStatus": "In Progress",
+  "stats": {
+    "total": 5,
+    "completed": 2,
+    "percentage": 40,
+    "nextTodos": ["Create user model", "Add validation"]
+  },
+  "summary": "📊 **Task Status:** In Progress\n✅ **Progress:** 2/5 todos (40%)",
+  "message": "Todo \"Setup database schema\" marked as completed"
+}
+```
+
+#### `analyze_task_todos`
+
+Extract and analyze all todos from a task with completion statistics.
+
+**Parameters:**
+- `taskId` (string, required): Notion page ID
+- `includeHierarchy` (boolean, optional): Include nested todo structure (default: false)
+
+**Example:**
+```json
+{
+  "taskId": "abc123...",
+  "includeHierarchy": false
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "taskId": "abc123...",
+  "todos": [
+    {
+      "text": "Setup database schema",
+      "completed": true,
+      "level": 0,
+      "index": 0
+    },
+    {
+      "text": "Create user model",
+      "completed": false,
+      "level": 1,
+      "index": 1
+    }
+  ],
+  "stats": {
+    "total": 5,
+    "completed": 2,
+    "percentage": 40,
+    "nextTodos": ["Create user model", "Add validation"]
+  },
+  "currentStatus": "In Progress",
+  "recommendedStatus": "In Progress",
+  "shouldAutoProgress": false,
+  "insights": ["2/5 todos completed (40%)", "Task in early progress"],
+  "recommendations": ["Continue with next priority todos"],
+  "message": "Found 5 todos (2 completed)"
+}
+```
+
+#### `batch_progress_todos`
+
+Update multiple todos at once for efficient progress tracking.
+
+**Parameters:**
+- `taskId` (string, required): Notion page ID
+- `updates` (array, required): Array of todo updates with `todoText` and `completed` properties
+- `autoProgress` (boolean, optional): Auto-update task status (default: true)
+
+**Example:**
+```json
+{
+  "taskId": "abc123...",
+  "updates": [
+    {"todoText": "Setup database", "completed": true},
+    {"todoText": "Create models", "completed": true},
+    {"todoText": "Add validation", "completed": false}
+  ],
+  "autoProgress": true
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "taskId": "abc123...",
+  "updatesApplied": 3,
+  "autoProgressed": true,
+  "newStatus": "In Progress",
+  "stats": {
+    "total": 5,
+    "completed": 3,
+    "percentage": 60,
+    "nextTodos": ["Add validation", "Testing"]
+  },
+  "summary": "📊 **Task Status:** In Progress\n✅ **Progress:** 3/5 todos (60%)",
+  "message": "Batch updated 3 todos"
+}
+```
+
+### Task Management Tools
+
+#### `create_task`
 
 Create a new task in Notion database with workflow template.
 
@@ -253,7 +388,7 @@ Update task status according to workflow rules.
 
 ### `get_task_info`
 
-Get current task status and available transitions.
+Get current task status and available transitions with todo statistics.
 
 **Parameters:**
 - `taskId` (string, required): The Notion task/page ID
@@ -275,6 +410,17 @@ Get current task status and available transitions.
   "nextStatuses": ["Test"],
   "allStatuses": ["Not Started", "In Progress", "Test", "Done"],
   "taskTypes": ["Feature", "Bug", "Refactoring"],
+  "todoStats": {
+    "total": 8,
+    "completed": 3,
+    "percentage": 37.5,
+    "nextTodos": ["Setup API endpoints", "Add error handling"]
+  },
+  "progressRecommendation": {
+    "recommendedStatus": "In Progress",
+    "shouldAutoProgress": false,
+    "reason": "Progress detected: 37.5% of todos completed"
+  },
   "message": "Task info retrieved for abc123..."
 }
 ```
@@ -290,12 +436,34 @@ The AI follows these rules defined in `config.json`:
 3. **Testing Phase**: AI must move to "Test" (cannot skip to "Done")
 4. **Completion**: Only humans can move tasks to "Done"
 
+### Todo-Based Auto-Progression
+
+The system automatically updates task status based on todo completion:
+
+- **0% completion**: Task remains in "Not Started"
+- **>0% and <100%**: Auto-progression to "In Progress"
+- **100% completion**: Auto-progression to "Test" (never "Done")
+
+**Configuration:**
+```json
+{
+  "todoProgression": {
+    "todoProgressionEnabled": true,
+    "autoProgressionThresholds": {
+      "inProgress": 1,   // 1% triggers "In Progress"
+      "test": 100        // 100% triggers "Test"
+    }
+  }
+}
+```
+
 ### AI Restrictions
 
 - **Cannot close tasks**: AI must move tasks to "Test", not "Done"
 - **Must provide summary**: AI adds execution summary before status change
 - **Must provide test plan**: AI generates test checklist for validation
 - **Content vs Execution**: Clear separation between updating content and executing tasks
+- **Smart todo matching**: Fuzzy search finds todos even with minor text variations
 
 ### Workflow Types
 
@@ -317,7 +485,7 @@ The AI follows these rules defined in `config.json`:
 
 ## Usage Examples
 
-### Creating a New Task
+### Creating a New Task with Todos
 
 1. **Create Task:**
 ```json
@@ -325,20 +493,53 @@ The AI follows these rules defined in `config.json`:
   "databaseId": "your-database-id",
   "title": "Implement user authentication",
   "taskType": "Feature",
-  "description": "Add JWT-based authentication system"
+  "description": "Add JWT-based authentication system with login/logout functionality"
 }
 ```
 
-2. **Get Creation Guidance (optional):**
+2. **Analyze Initial Todos:**
 ```json
 {
-  "action": "creation"
+  "taskId": "abc123...",
+  "includeHierarchy": false
 }
 ```
 
-### Updating Task Content
+### Working with Todos
 
-1. **Update Task:**
+1. **Mark Individual Todo as Complete:**
+```json
+{
+  "taskId": "abc123...",
+  "todoText": "Setup database schema",
+  "completed": true,
+  "autoProgress": true
+}
+```
+
+2. **Batch Update Multiple Todos:**
+```json
+{
+  "taskId": "abc123...",
+  "updates": [
+    {"todoText": "Setup database", "completed": true},
+    {"todoText": "Create user model", "completed": true},
+    {"todoText": "Add password hashing", "completed": false}
+  ]
+}
+```
+
+3. **Get Todo Analysis and Progress:**
+```json
+{
+  "taskId": "abc123...",
+  "includeHierarchy": true
+}
+```
+
+### Traditional Task Management
+
+1. **Update Task Content:**
 ```json
 {
   "taskId": "abc123...",
@@ -347,40 +548,7 @@ The AI follows these rules defined in `config.json`:
 }
 ```
 
-2. **Get Update Guidance (optional):**
-```json
-{
-  "action": "update"
-}
-```
-
-### Working with Existing Tasks
-
-1. **Initialize Workflow for Existing Task:**
-```json
-{
-  "taskUrl": "https://notion.so/implement-user-auth",
-  "workflowType": "feature"
-}
-```
-
-2. **Get Task Information:**
-```json
-{
-  "taskId": "abc123..."
-}
-```
-
-### Executing a Task
-
-1. **Get Execution Guidance:**
-```json
-{
-  "action": "execution"
-}
-```
-
-2. **Update Status to In Progress:**
+2. **Manual Status Updates:**
 ```json
 {
   "taskId": "abc123...",
@@ -388,13 +556,35 @@ The AI follows these rules defined in `config.json`:
 }
 ```
 
-3. **Complete Implementation and Move to Test:**
+3. **Get Complete Task Information:**
+```json
+{
+  "taskId": "abc123..."
+}
+```
+
+### Execution Workflow
+
+1. **Initialize Workflow:**
+```json
+{
+  "taskUrl": "https://notion.so/implement-user-auth",
+  "workflowType": "feature"
+}
+```
+
+2. **Progress Through Todos:**
 ```json
 {
   "taskId": "abc123...",
-  "newStatus": "Test"
+  "todoText": "Complete implementation",
+  "completed": true
 }
 ```
+
+3. **Auto-Transition to Test Phase:**
+- When all todos are completed, task automatically moves to "Test"
+- AI provides summary and test plan as per execution workflow
 
 ## Development
 

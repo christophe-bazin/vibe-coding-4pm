@@ -353,6 +353,13 @@ export class SimpleProgressTracker {
   }
 
   /**
+   * Load configuration (public method for other classes)
+   */
+  loadConfig(): any {
+    return this.config.loadConfig();
+  }
+
+  /**
    * Reload configuration
    */
   reloadConfig(): void {

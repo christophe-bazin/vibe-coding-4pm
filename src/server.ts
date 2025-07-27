@@ -19,11 +19,15 @@ import { Client } from '@notionhq/client';
 
 import { SimpleProgressTracker } from './simple-progress-tracker.js';
 import { parseNotionUrl } from './utils.js';
+import { TodoManager } from './todo-manager.js';
+import { ProgressCalculator } from './progress-calculator.js';
 
 class NotionWorkflowServer {
   private server: Server;
   private notion: Client;
   private tracker: SimpleProgressTracker;
+  private todoManager: TodoManager;
+  private progressCalculator: ProgressCalculator;
 
   constructor() {
     this.server = new Server(
@@ -46,6 +50,18 @@ class NotionWorkflowServer {
 
     this.notion = new Client({ auth: apiKey });
     this.tracker = new SimpleProgressTracker(this.notion, './config.json');
+    this.todoManager = new TodoManager(this.notion);
+    
+    // Initialize progress calculator with config
+    const config = this.tracker.loadConfig();
+    this.progressCalculator = new ProgressCalculator(
+      config.todoProgression || {
+        todoProgressionEnabled: true,
+        autoProgressionThresholds: { inProgress: 1, test: 100 }
+      },
+      config.board.statuses,
+      config.board.transitions
+    );
 
     this.setupToolHandlers();
   }
@@ -178,6 +194,83 @@ class NotionWorkflowServer {
             required: ['taskId'],
           },
         },
+        {
+          name: 'progress_todo',
+          description: 'Mark a specific todo as completed and auto-update task status based on progress',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              taskId: {
+                type: 'string',
+                description: 'Notion page ID',
+              },
+              todoText: {
+                type: 'string',
+                description: 'Exact text of the todo to update',
+              },
+              completed: {
+                type: 'boolean',
+                description: 'Mark as completed (true) or uncompleted (false)',
+              },
+              autoProgress: {
+                type: 'boolean',
+                description: 'Automatically update task status based on completion percentage',
+                default: true,
+              },
+            },
+            required: ['taskId', 'todoText', 'completed'],
+          },
+        },
+        {
+          name: 'analyze_task_todos',
+          description: 'Extract and analyze all todos from a task with completion statistics',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              taskId: {
+                type: 'string',
+                description: 'Notion page ID',
+              },
+              includeHierarchy: {
+                type: 'boolean',
+                description: 'Include hierarchical structure analysis (nested todos)',
+                default: false,
+              },
+            },
+            required: ['taskId'],
+          },
+        },
+        {
+          name: 'batch_progress_todos',
+          description: 'Update multiple todos at once for efficient progress tracking',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              taskId: {
+                type: 'string',
+                description: 'Notion page ID',
+              },
+              updates: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    todoText: { type: 'string' },
+                    completed: { type: 'boolean' },
+                  },
+                  required: ['todoText', 'completed'],
+                },
+                description: 'Array of todo updates to apply',
+              },
+              autoProgress: {
+                type: 'boolean',
+                description: 'Auto-update task status after batch update',
+                default: true,
+              },
+            },
+            required: ['taskId', 'updates'],
+          },
+        },
       ],
     }));
 
@@ -223,6 +316,27 @@ class NotionWorkflowServer {
               title?: string;
               content?: string;
               taskType?: string;
+            });
+
+          case 'progress_todo':
+            return await this.handleProgressTodo(args as {
+              taskId: string;
+              todoText: string;
+              completed: boolean;
+              autoProgress?: boolean;
+            });
+
+          case 'analyze_task_todos':
+            return await this.handleAnalyzeTaskTodos(args as {
+              taskId: string;
+              includeHierarchy?: boolean;
+            });
+
+          case 'batch_progress_todos':
+            return await this.handleBatchProgressTodos(args as {
+              taskId: string;
+              updates: Array<{ todoText: string; completed: boolean }>;
+              autoProgress?: boolean;
             });
 
           default:
@@ -346,6 +460,23 @@ class NotionWorkflowServer {
       const allStatuses = this.tracker.getAvailableStatuses();
       const taskTypes = this.tracker.getAvailableTaskTypes();
 
+      // Get todo statistics
+      let todoStats = null;
+      let progressRecommendation = null;
+      try {
+        const todoAnalysis = await this.todoManager.extractTodosFromTask(taskId, false);
+        todoStats = todoAnalysis.stats;
+        
+        const currentStatus = state?.currentStatus || await this.tracker.readCurrentStatus(taskId);
+        progressRecommendation = this.progressCalculator.calculateRecommendedStatus(
+          currentStatus,
+          todoStats
+        );
+      } catch (todoError) {
+        // Todo analysis is optional - don't fail if it doesn't work
+        console.warn(`Could not analyze todos for task ${taskId}: ${todoError}`);
+      }
+
       return {
         content: [
           {
@@ -358,6 +489,17 @@ class NotionWorkflowServer {
               nextStatuses,
               allStatuses,
               taskTypes,
+              todoStats: todoStats ? {
+                total: todoStats.total,
+                completed: todoStats.completed,
+                percentage: todoStats.percentage,
+                nextTodos: todoStats.nextTodos
+              } : null,
+              progressRecommendation: progressRecommendation ? {
+                recommendedStatus: progressRecommendation.recommendedStatus,
+                shouldAutoProgress: progressRecommendation.shouldAutoProgress,
+                reason: progressRecommendation.reason
+              } : null,
               message: `Task info retrieved for ${taskId}`
             }, null, 2)
           }
@@ -512,6 +654,157 @@ ${description}
     }
 
     return template;
+  }
+
+  private async handleProgressTodo(args: {
+    taskId: string;
+    todoText: string;
+    completed: boolean;
+    autoProgress?: boolean;
+  }) {
+    const { taskId, todoText, completed, autoProgress = true } = args;
+
+    try {
+      // Update the todo
+      const result = await this.todoManager.updateTodo(taskId, todoText, completed);
+      
+      // Calculate progress recommendation
+      const currentStatus = await this.tracker.readCurrentStatus(taskId);
+      const recommendation = this.progressCalculator.calculateRecommendedStatus(
+        currentStatus,
+        result.stats
+      );
+
+      // Auto-progress if enabled and recommended
+      if (autoProgress && recommendation.shouldAutoProgress) {
+        await this.tracker.updateTaskStatus(taskId, recommendation.recommendedStatus);
+      }
+
+      // Generate progress summary
+      const summary = this.progressCalculator.generateProgressSummary(
+        recommendation.shouldAutoProgress ? recommendation.recommendedStatus : currentStatus,
+        result.stats,
+        recommendation
+      );
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              taskId,
+              todoText,
+              completed,
+              autoProgressed: autoProgress && recommendation.shouldAutoProgress,
+              newStatus: recommendation.shouldAutoProgress ? recommendation.recommendedStatus : currentStatus,
+              stats: result.stats,
+              summary,
+              message: `Todo "${todoText}" marked as ${completed ? 'completed' : 'incomplete'}`
+            }, null, 2)
+          }
+        ]
+      };
+    } catch (error) {
+      throw new Error(`Failed to progress todo: ${error}`);
+    }
+  }
+
+  private async handleAnalyzeTaskTodos(args: {
+    taskId: string;
+    includeHierarchy?: boolean;
+  }) {
+    const { taskId, includeHierarchy = false } = args;
+
+    try {
+      // Extract and analyze todos
+      const analysis = await this.todoManager.extractTodosFromTask(taskId, includeHierarchy);
+      
+      // Get current status for recommendation
+      const currentStatus = await this.tracker.readCurrentStatus(taskId);
+      const recommendation = this.progressCalculator.calculateRecommendedStatus(
+        currentStatus,
+        analysis.stats
+      );
+
+      // Get additional insights
+      const insights = this.progressCalculator.analyzeProgressDistribution(analysis.stats);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              taskId,
+              todos: analysis.todos,
+              stats: analysis.stats,
+              currentStatus,
+              recommendedStatus: recommendation.recommendedStatus,
+              shouldAutoProgress: recommendation.shouldAutoProgress,
+              insights: insights.insights,
+              recommendations: insights.recommendations,
+              blockers: insights.blockers,
+              message: `Found ${analysis.stats.total} todos (${analysis.stats.completed} completed)`
+            }, null, 2)
+          }
+        ]
+      };
+    } catch (error) {
+      throw new Error(`Failed to analyze task todos: ${error}`);
+    }
+  }
+
+  private async handleBatchProgressTodos(args: {
+    taskId: string;
+    updates: Array<{ todoText: string; completed: boolean }>;
+    autoProgress?: boolean;
+  }) {
+    const { taskId, updates, autoProgress = true } = args;
+
+    try {
+      // Batch update todos
+      const result = await this.todoManager.batchUpdateTodos(taskId, updates);
+      
+      // Calculate progress recommendation
+      const currentStatus = await this.tracker.readCurrentStatus(taskId);
+      const recommendation = this.progressCalculator.calculateRecommendedStatus(
+        currentStatus,
+        result.stats
+      );
+
+      // Auto-progress if enabled and recommended
+      if (autoProgress && recommendation.shouldAutoProgress) {
+        await this.tracker.updateTaskStatus(taskId, recommendation.recommendedStatus);
+      }
+
+      // Generate progress summary
+      const summary = this.progressCalculator.generateProgressSummary(
+        recommendation.shouldAutoProgress ? recommendation.recommendedStatus : currentStatus,
+        result.stats,
+        recommendation
+      );
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              taskId,
+              updatesApplied: updates.length,
+              autoProgressed: autoProgress && recommendation.shouldAutoProgress,
+              newStatus: recommendation.shouldAutoProgress ? recommendation.recommendedStatus : currentStatus,
+              stats: result.stats,
+              summary,
+              message: `Batch updated ${updates.length} todos`
+            }, null, 2)
+          }
+        ]
+      };
+    } catch (error) {
+      throw new Error(`Failed to batch progress todos: ${error}`);
+    }
   }
 
   async run(): Promise<void> {
