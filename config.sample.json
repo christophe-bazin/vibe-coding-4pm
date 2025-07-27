@@ -1,0 +1,29 @@
+{
+  "board": {
+    "name": "Development Tasks",
+    "statuses": ["Not Started", "In Progress", "Test", "Done"],
+    "transitions": {
+      "Not Started": ["In Progress"],
+      "In Progress": ["Test"],
+      "Test": ["Done", "In Progress"],
+      "Done": ["Test"]
+    },
+    "autoProgressionEnabled": true,
+    "requiresValidation": ["Done"]
+  },
+  "taskTypes": ["Feature", "Bug", "Refactoring"],
+  "defaultStatus": "Not Started",
+  "workflowFiles": {
+    "creation": "workflows/task-creation.md",
+    "update": "workflows/task-update.md", 
+    "execution": "workflows/task-execution.md"
+  },
+  "notion": {
+    "databaseId": "your-notion-database-id-here",
+    "properties": {
+      "title": "Name",
+      "status": "Status",
+      "type": "Type"
+    }
+  }
+}
