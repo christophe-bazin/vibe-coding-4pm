@@ -1,4 +1,4 @@
-# notion-workflow-mcp
+# notion-dev-agent
 
 A Model Context Protocol (MCP) server that provides AI-guided development workflows for Notion tasks. This server uses configuration-driven workflows to help AI assistants create, update, and execute development tasks with proper status management.
 
@@ -26,7 +26,7 @@ This MCP server provides a simplified, configuration-based approach to Notion wo
 1. Clone this repository:
 ```bash
 git clone <repository-url>
-cd notion-workflow-mcp
+cd notion-dev-agent
 ```
 
 2. Copy configuration files:
@@ -401,7 +401,7 @@ The AI follows these rules defined in `config.json`:
 ### Project Structure
 
 ```
-notion-workflow-mcp/
+notion-dev-agent/
 ├── config.json                 # Board configuration
 ├── workflows/                  # Workflow guidance files
 │   ├── task-creation.md
