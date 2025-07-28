@@ -3,7 +3,7 @@
  */
 
 import { Client } from '@notionhq/client';
-import { ConfigLoader } from './config-loader.js';
+import { ConfigLoader, WorkflowConfig } from './config-loader.js';
 import { TodoItem } from './types.js';
 
 export interface SimpleWorkflowState {
@@ -20,10 +20,12 @@ export class SimpleProgressTracker {
   private notion: Client;
   private config: ConfigLoader;
   private workflowStates: Map<string, SimpleWorkflowState> = new Map();
+  private databaseId: string;
 
-  constructor(notion: Client, configPath?: string) {
+  constructor(notion: Client, config: WorkflowConfig, databaseId: string) {
     this.notion = notion;
-    this.config = new ConfigLoader(configPath);
+    this.config = new ConfigLoader(config);
+    this.databaseId = databaseId;
   }
 
   /**
@@ -88,10 +90,26 @@ export class SimpleProgressTracker {
   }
 
   /**
+   * Process workflow template with status mappings
+   */
+  private processWorkflowTemplate(content: string): string {
+    const statusMappings = this.config.getStatusMappings();
+    let processed = content;
+    
+    for (const [key, label] of Object.entries(statusMappings)) {
+      const placeholder = `{{status_${key}}}`;
+      processed = processed.replace(new RegExp(placeholder, 'g'), label);
+    }
+    
+    return processed;
+  }
+
+  /**
    * Get workflow guidance for a specific action
    */
   getWorkflowGuidance(action: 'creation' | 'update' | 'execution'): string {
-    return this.config.loadWorkflow(action);
+    const rawContent = this.config.loadWorkflow(action);
+    return this.processWorkflowTemplate(rawContent);
   }
 
   /**
@@ -125,7 +143,7 @@ export class SimpleProgressTracker {
     }
 
     const config = this.config.loadConfig();
-    return config.board.transitions[state.currentStatus] || [];
+    return config.transitions[state.currentStatus] || [];
   }
 
   /**
@@ -187,7 +205,6 @@ export class SimpleProgressTracker {
    * Create a new task in Notion
    */
   async createTask(
-    databaseId: string, 
     title: string, 
     taskType: string, 
     content: string
@@ -203,7 +220,7 @@ export class SimpleProgressTracker {
       // Create the page in Notion
       const response = await this.notion.pages.create({
         parent: {
-          database_id: databaseId
+          database_id: this.databaseId
         },
         properties: {
           title: {
@@ -360,9 +377,9 @@ export class SimpleProgressTracker {
   }
 
   /**
-   * Reload configuration
+   * Reload configuration (no longer needed with direct config)
    */
   reloadConfig(): void {
-    this.config.reload();
+    // Configuration is now passed directly, no reload needed
   }
 }

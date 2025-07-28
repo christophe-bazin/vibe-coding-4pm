@@ -85,23 +85,23 @@ export class ProgressCalculator {
     percentage: number
   ): string {
     // Special case: if no todos exist, maintain current status
-    if (percentage === 0 && currentStatus !== "Not Started") {
+    if (percentage === 0 && currentStatus !== "notStarted") {
       return currentStatus;
     }
 
     // Apply threshold rules
     if (percentage === 0) {
-      return "Not Started";
+      return "notStarted";
     }
 
     if (percentage >= this.config.autoProgressionThresholds.test) {
       // 100% completion -> Test (never skip to Done)
-      return "Test";
+      return "test";
     }
 
     if (percentage >= this.config.autoProgressionThresholds.inProgress) {
       // >0% completion -> In Progress
-      return "In Progress";
+      return "inProgress";
     }
 
     // Default: maintain current status
@@ -127,7 +127,7 @@ export class ProgressCalculator {
     }
 
     // Never auto-progress to "Done" - always requires human validation
-    if (recommendedStatus === "Done") {
+    if (recommendedStatus === "done") {
       return false;
     }
 
@@ -146,19 +146,19 @@ export class ProgressCalculator {
       return `Status remains "${currentStatus}" (${percentage}% complete)`;
     }
 
-    if (recommendedStatus === "Not Started") {
+    if (recommendedStatus === "notStarted") {
       return `No todos completed yet (${percentage}%)`;
     }
 
-    if (recommendedStatus === "In Progress") {
+    if (recommendedStatus === "inProgress") {
       return `Progress detected: ${percentage}% of todos completed`;
     }
 
-    if (recommendedStatus === "Test") {
+    if (recommendedStatus === "test") {
       return `All todos completed (${percentage}%) - ready for testing`;
     }
 
-    if (recommendedStatus === "Done") {
+    if (recommendedStatus === "done") {
       return `Task fully completed (${percentage}%) - requires human validation`;
     }
 

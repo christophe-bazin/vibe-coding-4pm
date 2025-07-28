@@ -4,38 +4,34 @@ MCP server providing AI-guided development workflows for Notion tasks with confi
 
 ## Project Overview
 
-This is a Model Context Protocol (MCP) server that enables AI assistants to manage Notion development tasks through structured workflows. The system uses simple JSON configuration and markdown workflow files to guide AI behavior.
+This is a Model Context Protocol (MCP) server that enables AI assistants to manage Notion development tasks through structured workflows. The system uses MCP configuration with camelCase conventions and workflow files to guide AI behavior.
 
 ## Development Guidelines
 
-- Follow established coding standards in [docs/development/coding-standards.md](docs/development/coding-standards.md)
-- Adhere to commit conventions in [docs/development/commit-conventions.md](docs/development/commit-conventions.md)
-- Maintain clear documentation style per [docs/development/documentation-style.md](docs/development/documentation-style.md)
-- Follow the release process defined in [docs/development/release-process.md](docs/development/release-process.md)
+- Follow established coding standards in [.ai/development/coding-standards.md](.ai/development/coding-standards.md)
+- Adhere to commit conventions in [.ai/development/commit-conventions.md](.ai/development/commit-conventions.md)
+- Maintain clear documentation style per [.ai/development/documentation-style.md](.ai/development/documentation-style.md)
+- Follow the release process defined in [.ai/development/release-process.md](.ai/development/release-process.md)
 
 ## Project Architecture
 
-- **Configuration-driven**: All behavior defined in `config.json` and `workflows/*.md`
-- **Simple MCP server**: Provides 4 main tools for AI task management
+- **Configuration-driven**: All behavior defined in MCP configuration and `workflows/*.md`
+- **Simple MCP server**: Provides 8 main tools for AI task management
 - **Workflow separation**: Clear distinction between creation, updates, and execution
 - **AI restrictions**: Built-in safeguards prevent AI from closing tasks directly
+- **camelCase convention**: Consistent naming for internal configuration
 
-See detailed architecture in [docs/project/mcp-architecture.md](docs/project/mcp-architecture.md)
+See detailed architecture in [.ai/project/mcp-architecture.md](.ai/project/mcp-architecture.md)
 
 ## Essential Commands
 
-Build and run the server:
+Build the server:
 
 ```bash
 npm run build
-npm start
 ```
 
-Development mode:
-
-```bash
-npm run dev
-```
+The server is designed to run as an MCP server via Claude's configuration.
 
 ## Codebase Structure
 
@@ -50,9 +46,12 @@ src/
 
 ## Configuration System
 
-- `config.json`: Board configuration, statuses, transitions, task types
-- `workflows/*.md`: AI guidance files loaded dynamically
-- All workflow behavior comes from config files, not hardcoded
+All configuration is centralized in your project's `.claude/mcp-config.json`:
+- **Board configuration**: statusMapping (camelCase), transitions, taskTypes
+- **Workflow guidance**: AI guidance in separate .md files with template processing
+- **Notion integration**: API key and database ID via environment variables
+- **Workflow files**: Referenced by path, kept in MCP server directory
+- **camelCase convention**: notStarted, inProgress, test, done
 
 ## MCP Tools Available
 
@@ -79,18 +78,26 @@ src/
 
 ## Integration Strategy
 
-See [docs/project/notion-integration.md](docs/project/notion-integration.md) for Notion API setup and board configuration.
+1. Clone MCP server in your project: `git clone https://github.com/christophe-bazin/notion-vibe-coding.git`
+2. Build the server: `cd notion-vibe-coding && npm install && npm run build`
+3. Copy `mcp-config.example.json` to your project's `.claude/mcp-config.json`
+4. Replace API key and database ID with your Notion credentials
+5. Customize statusMapping, transitions, taskTypes as needed
+6. Workflows remain in `./notion-vibe-coding/workflows/` (V1 approach)
 
 ## Key Implementation Notes
 
-- Status transitions enforced by `config.json`, not code
-- Workflow guidance comes from markdown files
+- Status transitions enforced by MCP configuration, not code
+- Workflow guidance in separate .md files with template processing
 - AI behavior defined by workflow content, not hardcoded rules
 - Simple, maintainable architecture focused on configuration over code
+- Template system supports `{{status_notStarted}}` style placeholders (camelCase)
+- Environment variables use SCREAMING_CASE, config uses camelCase
 
 ## Security and Best Practices
 
-- Environment variables for API keys
+- API keys configured via MCP environment variables
 - Input validation on all MCP tools
 - Error handling with clear messages
 - No logging of sensitive information
+- Configuration isolated per project

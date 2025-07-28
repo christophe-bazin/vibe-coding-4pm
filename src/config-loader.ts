@@ -1,22 +1,15 @@
 /**
- * Simple configuration loader for workflow files
+ * Configuration manager for workflow settings
  */
 
 import { readFileSync } from 'fs';
-import { join } from 'path';
-
-export interface BoardConfig {
-  name: string;
-  statuses: string[];
-  transitions: Record<string, string[]>;
-  autoProgressionEnabled: boolean;
-  requiresValidation: string[];
-}
 
 export interface WorkflowConfig {
-  board: BoardConfig;
+  statusMapping: Record<string, string>;
+  transitions: Record<string, string[]>;
   taskTypes: string[];
   defaultStatus: string;
+  requiresValidation: string[];
   workflowFiles: {
     creation: string;
     update: string;
@@ -25,82 +18,37 @@ export interface WorkflowConfig {
 }
 
 export class ConfigLoader {
-  private configPath: string;
-  private config: WorkflowConfig | null = null;
+  private config: WorkflowConfig;
   private workflows: Map<string, string> = new Map();
 
-  constructor(configPath: string = './config.json') {
-    this.configPath = configPath;
+  constructor(config: WorkflowConfig) {
+    this.config = config;
   }
 
   /**
-   * Load configuration from config.json
+   * Get configuration
    */
   loadConfig(): WorkflowConfig {
-    if (this.config) {
-      return this.config;
-    }
-
-    try {
-      const configContent = readFileSync(this.configPath, 'utf-8');
-      this.config = JSON.parse(configContent);
-      return this.config!;
-    } catch (error) {
-      throw new Error(`Failed to load config from ${this.configPath}: ${error}`);
-    }
+    return this.config;
   }
 
-  /**
-   * Load a specific workflow file
-   */
-  loadWorkflow(workflowType: 'creation' | 'update' | 'execution'): string {
-    const cacheKey = workflowType;
-    
-    if (this.workflows.has(cacheKey)) {
-      return this.workflows.get(cacheKey)!;
-    }
 
-    const config = this.loadConfig();
-    const workflowPath = config.workflowFiles[workflowType];
-
-    try {
-      const workflowContent = readFileSync(workflowPath, 'utf-8');
-      this.workflows.set(cacheKey, workflowContent);
-      return workflowContent;
-    } catch (error) {
-      throw new Error(`Failed to load workflow ${workflowType} from ${workflowPath}: ${error}`);
-    }
-  }
-
-  /**
-   * Get all available workflows
-   */
-  getAllWorkflows(): Record<string, string> {
-    const config = this.loadConfig();
-    const workflows: Record<string, string> = {};
-
-    for (const [type, _] of Object.entries(config.workflowFiles)) {
-      workflows[type] = this.loadWorkflow(type as any);
-    }
-
-    return workflows;
-  }
 
   /**
    * Check if a status transition is allowed
    */
   isTransitionAllowed(currentStatus: string, newStatus: string): boolean {
     const config = this.loadConfig();
-    const allowedTransitions = config.board.transitions[currentStatus] || [];
+    const allowedTransitions = config.transitions[currentStatus] || [];
     return allowedTransitions.includes(newStatus);
   }
 
   /**
-   * Get all valid statuses
+   * Get all valid statuses (derived from statusMapping)
    */
   getValidStatuses(): string[] {
     const config = this.loadConfig();
-    return config.board.statuses;
+    return Object.keys(config.statusMapping);
   }
 
   /**
@@ -124,14 +72,55 @@ export class ConfigLoader {
    */
   requiresValidation(status: string): boolean {
     const config = this.loadConfig();
-    return config.board.requiresValidation.includes(status);
+    return config.requiresValidation.includes(status);
   }
 
   /**
-   * Reload configuration (useful for development)
+   * Get status display label from key
    */
-  reload(): void {
-    this.config = null;
-    this.workflows.clear();
+  getStatusLabel(statusKey: string): string {
+    const config = this.loadConfig();
+    return config.statusMapping[statusKey] || statusKey;
+  }
+
+  /**
+   * Get status key from display label
+   */
+  getStatusKey(statusLabel: string): string {
+    const config = this.loadConfig();
+    for (const [key, label] of Object.entries(config.statusMapping)) {
+      if (label === statusLabel) return key;
+    }
+    return statusLabel;
+  }
+
+  /**
+   * Get all status mappings
+   */
+  getStatusMappings(): Record<string, string> {
+    const config = this.loadConfig();
+    return config.statusMapping;
+  }
+
+  /**
+   * Load a specific workflow content
+   */
+  loadWorkflow(workflowType: 'creation' | 'update' | 'execution'): string {
+    const cacheKey = workflowType;
+    
+    if (this.workflows.has(cacheKey)) {
+      return this.workflows.get(cacheKey)!;
+    }
+
+    const config = this.loadConfig();
+    const workflowPath = config.workflowFiles[workflowType];
+
+    try {
+      const workflowContent = readFileSync(workflowPath, 'utf-8');
+      this.workflows.set(cacheKey, workflowContent);
+      return workflowContent;
+    } catch (error) {
+      throw new Error(`Failed to load workflow ${workflowType} from ${workflowPath}: ${error}`);
+    }
   }
 }

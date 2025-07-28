@@ -4,8 +4,8 @@
 Guide complete execution of a development task from start to completion.
 
 ## Execution Context
-- **New task**: Start implementation from "Not Started"
-- **Task resumption**: Continue from current state (In Progress/Test)
+- **New task**: Start implementation from "{{status_notStarted}}"
+- **Task resumption**: Continue from current state ({{status_inProgress}}/{{status_test}})
 - **Modified task**: Resume with new criteria after update
 
 ## Before Starting
@@ -48,140 +48,139 @@ Guide complete execution of a development task from start to completion.
 - Run unit tests
 - Check integration tests
 - Test edge cases
-- Validate performance if necessary
+- Verify performance requirements
 
-### Functional Validation
-- Verify each acceptance criterion
+### Acceptance Tests
 - Test user scenarios
-- Validate compatibility
-- Document results
+- Validate against acceptance criteria
+- Check compatibility requirements
+- Test in different environments
 
 ## Phase 4: Finalization and Test Preparation
 
-### Code Review (if applicable)
-- Prepare code for review
-- Document important changes
-- Respond to comments
-- Make necessary corrections
-
 ### Documentation
-- Update technical documentation
-- Document new endpoints/APIs
-- Update user guides
-- Add examples if necessary
+- Update relevant documentation
+- Add inline code comments if necessary
+- Update configuration examples
+- Record architectural decisions
 
-### Execution Summary
-- Add summary of what was implemented
-- List modified/created files
-- Document technical decisions made
-- Note any compromises or limitations
+### Code Review Preparation
+- Clean up experimental code
+- Ensure consistent formatting
+- Add comprehensive tests
+- Prepare clear commit messages
 
 ### Test List Generation
-- Create comprehensive list of tests to perform
-- Include functional tests based on acceptance criteria
-- Add necessary regression tests
-- Specify edge case test scenarios
-- Indicate required test environments
+Based on the task, generate a comprehensive test list including:
+- Functional verification tests
+- Edge case tests
+- Performance tests (if applicable)
+- Integration tests
+- Regression tests to ensure nothing was broken
 
-## Problem Management
+## Completion Criteria
 
-### Technical Blockers
-1. Identify the problem precisely
-2. Research solutions (documentation, Stack Overflow, etc.)
-3. Experiment with potential solutions
-4. Document the chosen solution
-5. Escalate if necessary
+### Technical Completion
+- All acceptance criteria met
+- Code properly tested
+- Documentation updated
+- No obvious bugs or performance issues
 
-### Scope Changes
-1. Evaluate change impact
-2. Discuss with stakeholders
-3. Update task accordingly
-4. Adjust planning
-5. Communicate changes
-
-### Quality Issues
-1. Identify problems (tests, review, etc.)
-2. Prioritize corrections
-3. Fix critical problems
-4. Retest after corrections
-5. Validate final quality
-
-## Execution Summary Template
-
-```markdown
-## 🎯 Execution Summary
-
-### What was implemented
-- [2-3 sentence summary of what was done]
-
-### Files modified/created
-- `file1.ts` - [Description of changes]
-- `file2.js` - [Description of changes]
-- `new-file.ts` - [Description of new file]
-
-### Technical decisions
-- [Decision 1 and justification]
-- [Decision 2 and justification]
-
-### Limitations/Compromises
-- [Any limitations or compromises made]
-```
-
-## Test List Template
-
-```markdown
-## 🧪 Tests to Perform
-
-### Functional Tests
-- [ ] [Test based on acceptance criterion 1]
-- [ ] [Test based on acceptance criterion 2]
-- [ ] [Main workflow test]
-
-### Regression Tests
-- [ ] [Verify feature X still works]
-- [ ] [Verify integration Y is not broken]
-
-### Edge Cases
-- [ ] [Edge case scenario 1]
-- [ ] [Edge case scenario 2]
-- [ ] [Specific error handling]
-
-### Environment Tests
-- [ ] Development tests
-- [ ] Staging tests
-- [ ] Production verification (if applicable)
-```
+### Process Completion
+- All todos marked as completed
+- Clear summary of what was implemented
+- Test list generated for validation
+- Ready for human review and testing
 
 ## Status Transition Rules
 
 ### IMPORTANT: AI Restrictions
-- AI cannot move a task to "Done"
-- After execution, AI must move task to "Test"
+- AI cannot move a task to "{{status_done}}"
+- After execution, AI must move task to "{{status_test}}"
 - AI must add summary and test list before transition
 
 ### Todo-Based Auto-Progression
 - Use `progress_todo` tool to mark individual todos as completed
-- Task automatically progresses from "Not Started" to "In Progress" when first todo is completed
-- Task automatically progresses to "Test" when all todos are completed (100%)
+- Task automatically progresses from "{{status_notStarted}}" to "{{status_inProgress}}" when first todo is completed
+- Task automatically progresses to "{{status_test}}" when all todos are completed (100%)
 - Use `analyze_task_todos` to check overall progress and get recommendations
 
 ### Finalization Process
 1. Complete implementation and mark all todos as completed
 2. Add execution summary to Notion task
-3. Add test list to Notion task  
-4. Status automatically changes to "Test" when todos reach 100%
-5. Human validation is required to move to "Done"
+3. Add test list to Notion task
+4. Status automatically changes to "{{status_test}}" when todos reach 100%
+5. Human validation is required to move to "{{status_done}}"
 
-### Todo Management During Execution
-- Mark todos as completed using `progress_todo` tool as you complete each step
-- Use `batch_progress_todos` for updating multiple todos efficiently
-- Let auto-progression handle status transitions based on completion percentage
-- Focus on implementation rather than manual status management
+## Workflow Progression Summary
+1. AI analyzes task requirements and creates implementation plan
+2. AI executes the task step by step, marking todos as completed
+3. Progress tracking automatically moves task from "{{status_notStarted}}" to "{{status_inProgress}}"
+4. Status automatically changes to "{{status_test}}" when todos reach 100%
+5. Human validation is required to move to "{{status_done}}"
+
+## Quality Standards
+- Follow established coding standards
+- Ensure proper error handling
+- Write comprehensive tests
+- Document complex logic
+- Test after each implementation
+- Maintain backward compatibility when possible
+
+## Common Patterns
+- Start with the most critical functionality
+- Build incrementally and test frequently
+- Use established patterns and libraries when available
+- Keep changes focused and atomic
+- Test edge cases and error conditions
+
+## Test List Template
+
+When task moves to Test status, include:
+
+## 🧪 Tests to Perform
+
+### Functional Tests
+- [ ] [Test based on acceptance criterion 1]
+- [ ] [Test based on acceptance criterion 2]
+- [ ] [Additional functional tests as needed]
+
+### Regression Tests
+- [ ] Existing functionality still works
+- [ ] No performance degradation
+- [ ] No breaking changes introduced
+- [ ] Integration points still function
+
+### Edge Cases
+- [ ] [Specific edge case 1]
+- [ ] [Specific edge case 2]
+
+### Environment Tests
+- [ ] Works in development environment
+- [ ] Compatible with staging environment
+- [ ] Ready for production deployment
+
+## Important Notes
+- AI cannot move a task to "{{status_done}}"
+- After execution, AI must move task to "{{status_test}}"
+- All implementation must be complete before status change
+- Testing and validation are human responsibilities
+
+## Auto-Progression Rules
+- Task automatically progresses from "{{status_notStarted}}" to "{{status_inProgress}}" when first todo is completed
+- Task automatically progresses to "{{status_test}}" when all todos are completed (100%)
+- Human validation is required to move to "{{status_done}}"
+
+## Quality Checklist
+1. All acceptance criteria addressed
+2. Code follows project standards
+3. Tests added for new functionality
+4. Status automatically changes to "{{status_test}}" when todos reach 100%
+5. Human validation is required to move to "{{status_done}}"
 
 ## Best Practices
-- Follow methodical and structured approach
-- Validate each step before moving to next
-- Document important technical decisions
 - Test after each implementation
-- Identify and resolve blockers quickly
-- Maintain change traceability
+- Commit frequently with clear messages
+- Document important decisions
+- Follow coding standards
+- Ensure all acceptance criteria are met

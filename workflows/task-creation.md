@@ -14,7 +14,7 @@ Create a new development task in Notion with all necessary information.
 - Create a new page in the Notion board
 - Define a clear and descriptive title
 - Select the appropriate type
-- Assign initial status "Not Started"
+- Assign initial status "{{status_notStarted}}"
 
 ### 3. Content Structure
 - Description: Clear explanation of the problem/need

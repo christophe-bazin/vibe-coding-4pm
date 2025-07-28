@@ -21,6 +21,7 @@ import { SimpleProgressTracker } from './simple-progress-tracker.js';
 import { parseNotionUrl } from './utils.js';
 import { TodoManager } from './todo-manager.js';
 import { ProgressCalculator } from './progress-calculator.js';
+import { WorkflowConfig } from './config-loader.js';
 
 class NotionWorkflowServer {
   private server: Server;
@@ -42,28 +43,76 @@ class NotionWorkflowServer {
       }
     );
 
-    // Initialize Notion client
+    // Get configuration from environment variables
     const apiKey = process.env.NOTION_API_KEY;
+    const databaseId = process.env.NOTION_DATABASE_ID;
+    
     if (!apiKey) {
       throw new Error('NOTION_API_KEY environment variable is required');
     }
+    if (!databaseId) {
+      throw new Error('NOTION_DATABASE_ID environment variable is required');
+    }
+
+    // Parse configuration from environment
+    const config: WorkflowConfig = this.parseConfigFromEnv();
 
     this.notion = new Client({ auth: apiKey });
-    this.tracker = new SimpleProgressTracker(this.notion, './config.json');
+    this.tracker = new SimpleProgressTracker(this.notion, config, databaseId);
     this.todoManager = new TodoManager(this.notion);
     
     // Initialize progress calculator with config
-    const config = this.tracker.loadConfig();
     this.progressCalculator = new ProgressCalculator(
-      config.todoProgression || {
+      {
         todoProgressionEnabled: true,
         autoProgressionThresholds: { inProgress: 1, test: 100 }
       },
-      config.board.statuses,
-      config.board.transitions
+      Object.keys(config.statusMapping),
+      config.transitions
     );
 
     this.setupToolHandlers();
+  }
+
+  private parseConfigFromEnv(): WorkflowConfig {
+    try {
+      // Try to read config from environment variable
+      const configJson = process.env.WORKFLOW_CONFIG;
+      if (configJson) {
+        // Handle both string and object formats
+        if (typeof configJson === 'string') {
+          return JSON.parse(configJson);
+        } else {
+          return configJson as WorkflowConfig;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to parse WORKFLOW_CONFIG:', error);
+    }
+
+    // Default configuration fallback
+    return {
+      statusMapping: {
+        "notStarted": "Not Started",
+        "inProgress": "In Progress",
+        "test": "Test",
+        "done": "Done"
+      },
+      transitions: {
+        "notStarted": ["inProgress"],
+        "inProgress": ["test"],
+        "test": ["done", "inProgress"],
+        "done": ["test"]
+      },
+      taskTypes: ["Feature", "Bug", "Refactoring"],
+      defaultStatus: "notStarted",
+      requiresValidation: ["done"],
+      workflowFiles: {
+        creation: "./notion-vibe-coding/workflows/task-creation.md",
+        update: "./notion-vibe-coding/workflows/task-update.md", 
+        execution: "./notion-vibe-coding/workflows/task-execution.md"
+      }
+    };
   }
 
   private setupToolHandlers(): void {
@@ -146,10 +195,6 @@ class NotionWorkflowServer {
           inputSchema: {
             type: 'object',
             properties: {
-              databaseId: {
-                type: 'string',
-                description: 'The Notion database ID where to create the task',
-              },
               title: {
                 type: 'string',
                 description: 'The task title',
@@ -164,7 +209,7 @@ class NotionWorkflowServer {
                 description: 'Task description and content',
               },
             },
-            required: ['databaseId', 'title', 'taskType', 'description'],
+            required: ['title', 'taskType', 'description'],
           },
         },
         {
@@ -304,7 +349,6 @@ class NotionWorkflowServer {
 
           case 'create_task':
             return await this.handleCreateTask(args as {
-              databaseId: string;
               title: string;
               taskType: string;
               description: string;
@@ -511,12 +555,11 @@ class NotionWorkflowServer {
   }
 
   private async handleCreateTask(args: {
-    databaseId: string;
     title: string;
     taskType: string;
     description: string;
   }) {
-    const { databaseId, title, taskType, description } = args;
+    const { title, taskType, description } = args;
 
     try {
       // Get workflow guidance for creation
@@ -526,7 +569,7 @@ class NotionWorkflowServer {
       const formattedContent = this.formatTaskContent(taskType, description, guidance);
 
       // Create the task
-      const taskId = await this.tracker.createTask(databaseId, title, taskType, formattedContent);
+      const taskId = await this.tracker.createTask(title, taskType, formattedContent);
 
       return {
         content: [

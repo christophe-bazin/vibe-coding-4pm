@@ -29,46 +29,32 @@ Update only the content of a development task without changing its status.
 - Include useful references or links
 - Note upstream decisions
 
-## Important Principle
-**The task status remains unchanged** during content updates. This workflow serves only to modify task information.
+## IMPORTANT Restrictions
+- **NEVER change task status** during content update
+- Only modify description, criteria, and notes
+- Preserve the original task intent
+- Do not add or remove todos without explicit request
 
-If execution resumption is needed after modification, use the execution workflow.
+## Process
 
-## Modification Formats
+### 1. Content Analysis
+- Read current task content carefully
+- Identify what needs to be modified
+- Preserve existing structure and organization
 
-### Description Modification
-```markdown
-## Updated Description
-[New description or additions to existing description]
+### 2. Targeted Modifications
+- Make specific changes requested
+- Add clarification without removing essential information
+- Maintain consistency with existing content
 
-### Changes Made
-- [Describe what was modified]
-- [Why this modification was necessary]
-```
-
-### Acceptance Criteria Addition
-```markdown
-## Added Acceptance Criteria
-- [ ] [New criterion 1]
-- [ ] [New criterion 2]
-
-### Context
-[Explain why these criteria were added]
-```
-
-### Technical Update
-```markdown
-## Added Technical Information
-### [Concerned Section]
-[New technical information]
-
-### Impact
-[How this information affects implementation]
-```
+### 3. Verification
+- Ensure modifications improve task understanding
+- Check that no essential information was lost
+- Verify content structure remains logical
 
 ## Best Practices
-- Clearly explain the reasons for modifications
-- Maintain overall task consistency
-- Document the impact of changes on implementation
-- Preserve existing task structure
-- Justify important scope changes
+- Always preserve the original intent
+- Maintain content structure and organization
+- Add clarification without removing essential information
+- Ensure modifications improve task understanding
+- Ask for clarification if the requested change might alter task scope
