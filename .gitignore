@@ -99,3 +99,6 @@ Thumbs.db
 
 # Notion integration secrets
 notion-credentials.json
+
+# MCP configuration (contains API keys)
+.claude/mcp-config.json

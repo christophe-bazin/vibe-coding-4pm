@@ -73,8 +73,8 @@ export class SimpleProgressTracker {
         page_id: taskId,
         properties: {
           Status: {
-            select: {
-              name: newStatus
+            status: {
+              name: this.config.getStatusLabel(newStatus)
             }
           }
         }
@@ -160,8 +160,11 @@ export class SimpleProgressTracker {
   async readCurrentStatus(taskId: string): Promise<string> {
     try {
       const page = await this.notion.pages.retrieve({ page_id: taskId });
-      const status = (page as any).properties?.Status?.select?.name;
-      return status || this.config.getDefaultStatus();
+      const statusLabel = (page as any).properties?.Status?.status?.name;
+      if (statusLabel) {
+        return this.config.getStatusKey(statusLabel);
+      }
+      return this.config.getDefaultStatus();
     } catch (error) {
       throw new Error(`Failed to read status from Notion: ${error}`);
     }
@@ -215,7 +218,8 @@ export class SimpleProgressTracker {
         throw new Error(`Invalid task type: ${taskType}`);
       }
 
-      const defaultStatus = this.config.getDefaultStatus();
+      const defaultStatusKey = this.config.getDefaultStatus();
+      const defaultStatus = this.config.getStatusLabel(defaultStatusKey);
 
       // Create the page in Notion
       const response = await this.notion.pages.create({
@@ -233,7 +237,7 @@ export class SimpleProgressTracker {
             ]
           },
           Status: {
-            select: {
+            status: {
               name: defaultStatus
             }
           },

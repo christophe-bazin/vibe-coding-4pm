@@ -75,44 +75,57 @@ class NotionWorkflowServer {
   }
 
   private parseConfigFromEnv(): WorkflowConfig {
-    try {
-      // Try to read config from environment variable
-      const configJson = process.env.WORKFLOW_CONFIG;
-      if (configJson) {
-        // Handle both string and object formats
-        if (typeof configJson === 'string') {
-          return JSON.parse(configJson);
-        } else {
-          return configJson as WorkflowConfig;
-        }
-      }
-    } catch (error) {
-      console.error('Failed to parse WORKFLOW_CONFIG:', error);
+    const configJson = process.env.WORKFLOW_CONFIG;
+    
+    if (!configJson) {
+      throw new Error('WORKFLOW_CONFIG environment variable is required');
     }
 
-    // Default configuration fallback
-    return {
-      statusMapping: {
-        "notStarted": "Not Started",
-        "inProgress": "In Progress",
-        "test": "Test",
-        "done": "Done"
-      },
-      transitions: {
-        "notStarted": ["inProgress"],
-        "inProgress": ["test"],
-        "test": ["done", "inProgress"],
-        "done": ["test"]
-      },
-      taskTypes: ["Feature", "Bug", "Refactoring"],
-      defaultStatus: "notStarted",
-      requiresValidation: ["done"],
-      workflowFiles: {
-        creation: "./notion-vibe-coding/workflows/task-creation.md",
-        update: "./notion-vibe-coding/workflows/task-update.md", 
-        execution: "./notion-vibe-coding/workflows/task-execution.md"
+    try {
+      let config: any;
+      
+      // Gère les deux formats : string JSON et objet direct
+      if (typeof configJson === 'string') {
+        config = JSON.parse(configJson);
+      } else if (typeof configJson === 'object' && configJson !== null) {
+        config = configJson;
+      } else {
+        throw new Error('WORKFLOW_CONFIG must be a JSON string or object');
       }
-    };
+      
+      // VALIDATION CRITIQUE: Vérifie la structure
+      this.validateWorkflowConfig(config);
+      
+      return config as WorkflowConfig;
+    } catch (error) {
+      console.error('Failed to parse WORKFLOW_CONFIG:', error);
+      throw new Error(`Failed to parse WORKFLOW_CONFIG: ${error}`);
+    }
+  }
+
+  private validateWorkflowConfig(config: any): void {
+    const requiredFields = ['statusMapping', 'transitions', 'taskTypes', 'defaultStatus', 'requiresValidation', 'workflowFiles'];
+    
+    for (const field of requiredFields) {
+      if (!config[field]) {
+        throw new Error(`Missing required field in WORKFLOW_CONFIG: ${field}`);
+      }
+    }
+    
+    // Vérifie statusMapping
+    const requiredStatuses = ['notStarted', 'inProgress', 'test', 'done'];
+    for (const status of requiredStatuses) {
+      if (!config.statusMapping[status]) {
+        throw new Error(`Missing status mapping: ${status}`);
+      }
+    }
+    
+    // Vérifie que defaultStatus existe dans statusMapping
+    if (!config.statusMapping[config.defaultStatus]) {
+      throw new Error(`Default status "${config.defaultStatus}" not found in statusMapping`);
+    }
+    
+    console.error('✅ WORKFLOW_CONFIG validation passed');
   }
 
   private setupToolHandlers(): void {
