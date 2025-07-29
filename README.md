@@ -25,12 +25,16 @@ npm install && npm run build
 
 **For Claude Desktop:**
 ```bash
-cp mcp-config-claude-desktop.example.json your-project/.claude/mcp-config.json
+# Generate configuration automatically
+./install-claude-desktop.sh
+
+# Copy the displayed config into Claude Desktop's MCP settings
+# Update API key and database ID with your values
 ```
 
 **For Claude Code:**  
 ```bash
-cp mcp-config-claude-code.example.json your-project/.claude/mcp-config.json  
+cp mcp-config.example.json your-project/.claude/mcp-config.json  
 ```
 
 Then edit `.claude/mcp-config.json` and replace:

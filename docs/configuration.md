@@ -2,10 +2,29 @@
 
 Complete reference for configuring the Notion Vibe Coding MCP server.
 
+## Quick Setup
+
+### Claude Desktop
+Use the installation script to generate the correct configuration:
+
+```bash
+./install-claude-desktop.sh
+```
+
+This automatically converts the object format to the JSON string format required by Claude Desktop.
+
+### Claude Code
+Copy the example configuration:
+
+```bash
+cp mcp-config.example.json .claude/mcp-config.json
+```
+
 ## MCP Configuration Structure
 
-The main configuration is defined in your project's `.claude/mcp-config.json`:
+The configuration differs between Claude Desktop and Claude Code:
 
+### Claude Code Format (Object)
 ```json
 {
   "mcpServers": {
@@ -16,13 +35,32 @@ The main configuration is defined in your project's `.claude/mcp-config.json`:
         "NOTION_API_KEY": "secret_your_notion_integration_token_here",
         "NOTION_DATABASE_ID": "your_notion_database_id_here",
         "WORKFLOW_CONFIG": {
-          // Workflow configuration object
+          // Configuration object
         }
       }
     }
   }
 }
 ```
+
+### Claude Desktop Format (JSON String)
+```json
+{
+  "mcpServers": {
+    "notion-vibe-coding": {
+      "command": "node",
+      "args": ["./notion-vibe-coding/dist/server.js"],
+      "env": {
+        "NOTION_API_KEY": "secret_your_notion_integration_token_here",
+        "NOTION_DATABASE_ID": "your_notion_database_id_here",
+        "WORKFLOW_CONFIG": "{\"statusMapping\":{...},\"transitions\":{...}}"
+      }
+    }
+  }
+}
+```
+
+💡 **Use the installation script** to avoid manual JSON string conversion errors.
 
 ## Environment Variables
 
