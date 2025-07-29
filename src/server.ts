@@ -29,6 +29,7 @@ class NotionWorkflowServer {
   private tracker: SimpleProgressTracker;
   private todoManager: TodoManager;
   private progressCalculator: ProgressCalculator;
+  private config: WorkflowConfig;
 
   constructor() {
     this.server = new Server(
@@ -55,10 +56,10 @@ class NotionWorkflowServer {
     }
 
     // Parse configuration from environment
-    const config: WorkflowConfig = this.parseConfigFromEnv();
+    this.config = this.parseConfigFromEnv();
 
     this.notion = new Client({ auth: apiKey });
-    this.tracker = new SimpleProgressTracker(this.notion, config, databaseId);
+    this.tracker = new SimpleProgressTracker(this.notion, this.config, databaseId);
     this.todoManager = new TodoManager(this.notion);
     
     // Initialize progress calculator with config
@@ -67,8 +68,8 @@ class NotionWorkflowServer {
         todoProgressionEnabled: true,
         autoProgressionThresholds: { inProgress: 1, test: 100 }
       },
-      Object.keys(config.statusMapping),
-      config.transitions
+      Object.keys(this.config.statusMapping),
+      this.config.transitions
     );
 
     this.setupToolHandlers();
@@ -143,7 +144,7 @@ class NotionWorkflowServer {
               },
               workflowType: {
                 type: 'string',
-                enum: ['feature', 'bug', 'refactor'],
+                enum: this.config.taskTypes.map(t => t.toLowerCase()),
                 description: 'Type of workflow to initialize',
               },
             },
@@ -214,7 +215,7 @@ class NotionWorkflowServer {
               },
               taskType: {
                 type: 'string',
-                enum: ['Feature', 'Bug', 'Refactoring'],
+                enum: this.config.taskTypes,
                 description: 'Type of task to create',
               },
               description: {
@@ -245,7 +246,7 @@ class NotionWorkflowServer {
               },
               taskType: {
                 type: 'string',
-                enum: ['Feature', 'Bug', 'Refactoring'],
+                enum: this.config.taskTypes,
                 description: 'New task type (optional)',
               },
             },
@@ -580,6 +581,7 @@ class NotionWorkflowServer {
       
       // Create formatted content using the workflow template
       const formattedContent = this.formatTaskContent(taskType, description, guidance);
+      
 
       // Create the task
       const taskId = await this.tracker.createTask(title, taskType, formattedContent);
@@ -646,70 +648,28 @@ class NotionWorkflowServer {
   }
 
   private formatTaskContent(taskType: string, description: string, guidance: string): string {
-    // Extract template from guidance based on task type
-    let template = '';
+    // Extract template from workflow guidance
+    const regex = new RegExp(`#### ${taskType}\\s*\`\`\`([\\s\\S]*?)\`\`\``, 'i');
+    const match = guidance.match(regex);
     
-    if (taskType === 'Feature') {
-      template = `## Description
-${description}
-
-## Acceptance Criteria
-- [ ] Feature implemented
-- [ ] Unit tests added
-- [ ] Documentation updated
-
-## Implementation Steps
-- [ ] Initial setup
-- [ ] Core implementation
-- [ ] Testing  
-- [ ] Review
-
-## Technical Notes
-${description}`;
-    } else if (taskType === 'Bug') {
-      template = `## Problem Description
-${description}
-
-## Reproduction
-1. [Steps to reproduce]
-2. [Expected vs actual result]
-
-## Correction Criteria
-- [ ] Bug fixed
-- [ ] Non-regression tests added
-- [ ] Verification in test environment
-
-## Investigation
-- [ ] Identify root cause
-- [ ] Analyze impact
-- [ ] Propose solution
-
-## Notes
-${description}`;
-    } else if (taskType === 'Refactoring') {
-      template = `## Refactoring Objective
-${description}
-
-## Scope
-[Files/modules concerned]
-
-## Acceptance Criteria
-- [ ] Code refactored
-- [ ] Existing tests still pass
-- [ ] Performance maintained or improved
-- [ ] Documentation updated
-
-## Action Plan
-- [ ] Analyze existing code
-- [ ] Define new structure
-- [ ] Refactor in steps
-- [ ] Validate tests
-
-## Risks
-[Identified risks and mitigation]`;
+    if (match && match[1]) {
+      // Use template from guidance and replace placeholders
+      let template = match[1].trim();
+      
+      // Replace specific placeholders based on task type
+      if (taskType === 'Feature') {
+        template = template.replace(/\[Description of the feature\]/g, description);
+      } else if (taskType === 'Bug') {
+        template = template.replace(/\[Description of the bug\]/g, description);
+      } else if (taskType === 'Refactoring') {
+        template = template.replace(/\[Why this refactoring is necessary\]/g, description);
+      }
+      
+      return template;
     }
-
-    return template;
+    
+    // No template found - this is a configuration error
+    throw new Error(`Template not found for task type "${taskType}" in workflow guidance. Check your workflow configuration.`);
   }
 
   private async handleProgressTodo(args: {

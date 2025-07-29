@@ -5,6 +5,7 @@
 import { Client } from '@notionhq/client';
 import { ConfigLoader, WorkflowConfig } from './config-loader.js';
 import { TodoItem } from './types.js';
+import { TaskIntelligenceService, ProjectContext, IntelligenceConfig, ContextualInstruction } from './task-intelligence-service.js';
 
 export interface SimpleWorkflowState {
   taskId: string;
@@ -21,11 +22,19 @@ export class SimpleProgressTracker {
   private config: ConfigLoader;
   private workflowStates: Map<string, SimpleWorkflowState> = new Map();
   private databaseId: string;
+  private intelligenceService: TaskIntelligenceService;
 
-  constructor(notion: Client, config: WorkflowConfig, databaseId: string) {
+  constructor(notion: Client, config: WorkflowConfig, databaseId: string, intelligenceConfig?: IntelligenceConfig) {
     this.notion = notion;
     this.config = new ConfigLoader(config);
     this.databaseId = databaseId;
+    
+    // Initialize intelligence service with default config if not provided
+    const defaultIntelligenceConfig: IntelligenceConfig = {
+      mode: 'contextual',
+      environment: 'claude-code'
+    };
+    this.intelligenceService = new TaskIntelligenceService(intelligenceConfig || defaultIntelligenceConfig);
   }
 
   /**
@@ -210,8 +219,10 @@ export class SimpleProgressTracker {
   async createTask(
     title: string, 
     taskType: string, 
-    content: string
+    content: string,
+    projectContext?: ProjectContext
   ): Promise<string> {
+    
     try {
       // Validate task type
       if (!this.config.getValidTaskTypes().includes(taskType)) {
@@ -247,22 +258,9 @@ export class SimpleProgressTracker {
             }
           }
         },
-        children: [
-          {
-            object: 'block',
-            type: 'paragraph',
-            paragraph: {
-              rich_text: [
-                {
-                  type: 'text',
-                  text: {
-                    content: content
-                  }
-                }
-              ]
-            }
-          }
-        ]
+        children: this.parseContentToBlocks(
+          this.contextualizeTaskContent(taskType, content, projectContext)
+        )
       });
 
       const taskId = response.id;
@@ -340,22 +338,7 @@ export class SimpleProgressTracker {
         // Add new content
         await this.notion.blocks.children.append({
           block_id: taskId,
-          children: [
-            {
-              object: 'block',
-              type: 'paragraph',
-              paragraph: {
-                rich_text: [
-                  {
-                    type: 'text',
-                    text: {
-                      content: updates.content
-                    }
-                  }
-                ]
-              }
-            }
-          ]
+          children: this.parseContentToBlocks(updates.content)
         });
       }
 
@@ -371,6 +354,302 @@ export class SimpleProgressTracker {
     } catch (error) {
       throw new Error(`Failed to update task content: ${error}`);
     }
+  }
+
+  /**
+   * Contextualize task content using intelligence service
+   */
+  private contextualizeTaskContent(taskType: string, content: string, projectContext?: ProjectContext): string {
+    // If content already looks like a full template (has sections), don't contextualize
+    if (content.includes('## Acceptance Criteria') || content.includes('## Implementation Steps')) {
+      return content;
+    }
+    
+    // Get workflow guidance to use as template
+    const guidance = this.getWorkflowGuidance('creation');
+    
+    // Extract template for this task type
+    const regex = new RegExp(`#### ${taskType}\\s*\`\`\`([\\s\\S]*?)\`\`\``, 'i');
+    const match = guidance.match(regex);
+    
+    if (match && match[1]) {
+      const template = match[1].trim();
+      
+      // Use intelligence service to prepare contextual instruction
+      const instruction = this.intelligenceService.prepareContextualInstruction(
+        taskType,
+        content, // This is the description
+        template,
+        projectContext
+      );
+      
+      // If in simple mode, just return basic template
+      if (instruction.mode === 'simple') {
+        return instruction.context.template;
+      }
+      
+      // For contextual mode, apply basic contextualization based on the instruction
+      return this.applyContextualIntelligence(instruction);
+    }
+    
+    // Fallback to original content if no template found
+    return content;
+  }
+
+  /**
+   * Apply contextual intelligence based on instruction and project context
+   */
+  private applyContextualIntelligence(instruction: ContextualInstruction): string {
+    let template = instruction.context.template;
+    const { task, project } = instruction.context;
+    
+    // Analyze task description for contextual clues
+    const lowerDesc = task.description.toLowerCase();
+    const isTestRelated = lowerDesc.includes('test') || lowerDesc.includes('testing');
+    const withJest = lowerDesc.includes('jest');
+    const isErrorHandling = lowerDesc.includes('error') || lowerDesc.includes('handling');
+    const isConfig = lowerDesc.includes('config') || lowerDesc.includes('configuration');
+    const isCLI = lowerDesc.includes('cli') || lowerDesc.includes('command');
+    
+    // Contextually replace acceptance criteria
+    if (task.type === 'Feature') {
+      template = this.replaceAcceptanceCriteria(template, {
+        isTestRelated, withJest, isErrorHandling, isConfig, isCLI, project
+      });
+      
+      template = this.replaceImplementationSteps(template, {
+        isTestRelated, withJest, isErrorHandling, isConfig, isCLI, project
+      });
+      
+      template = this.replaceTechnicalNotes(template, {
+        isTestRelated, withJest, isErrorHandling, isConfig, isCLI, project
+      });
+    }
+    
+    return template;
+  }
+
+  private replaceAcceptanceCriteria(template: string, context: any): string {
+    let criteria: string[] = [];
+    
+    if (context.isTestRelated) {
+      if (context.withJest) {
+        criteria = [
+          '[ ] Jest testing framework configured',
+          '[ ] Unit tests for all MCP tools (create_task, update_task, progress_todo, etc.)',
+          '[ ] Integration tests for Notion API interactions',
+          '[ ] Test coverage reports generated',
+          '[ ] CI/CD pipeline runs tests automatically'
+        ];
+      } else {
+        criteria = [
+          '[ ] Testing framework chosen and configured',
+          '[ ] Unit tests cover core functionality',
+          '[ ] Integration tests validate end-to-end behavior',
+          '[ ] Test coverage meets project standards'
+        ];
+      }
+    } else if (context.isErrorHandling) {
+      criteria = [
+        '[ ] Error types defined for different scenarios',
+        '[ ] User-friendly error messages implemented',
+        '[ ] Error logging captures necessary context',
+        '[ ] Graceful fallbacks for error conditions'
+      ];
+    } else if (context.isConfig) {
+      criteria = [
+        '[ ] Configuration schema defined and validated',
+        '[ ] Support for different config modes added',
+        '[ ] Default values provide sensible behavior',
+        '[ ] Configuration validation prevents invalid states'
+      ];
+    } else if (context.isCLI) {
+      criteria = [
+        '[ ] CLI functionality implemented correctly',
+        '[ ] Command-line arguments properly parsed',
+        '[ ] Help documentation updated',
+        '[ ] Error handling for invalid inputs'
+      ];
+    } else {
+      // Generic but contextual based on project
+      criteria = [
+        '[ ] Core functionality implemented and working',
+        '[ ] Integration with existing codebase verified',
+        '[ ] Edge cases identified and handled',
+        '[ ] Documentation updated to reflect changes'
+      ];
+      
+      // Add project-specific criteria
+      if (!context.project.hasTests) {
+        criteria.push('[ ] Basic tests added for new functionality');
+      }
+    }
+    
+    const criteriaText = criteria.map(c => `- ${c}`).join('\n');
+    return template.replace(/- \[ \] Criterion 1\n- \[ \] Criterion 2/g, criteriaText);
+  }
+
+  private replaceImplementationSteps(template: string, context: any): string {
+    let steps: string[] = [];
+    
+    if (context.isTestRelated) {
+      if (context.withJest) {
+        steps = [
+          '[ ] Install and configure Jest with TypeScript support',
+          '[ ] Create test directory structure and utilities',
+          '[ ] Write unit tests for SimpleProgressTracker class',
+          '[ ] Write unit tests for TodoManager and ProgressCalculator',
+          '[ ] Add integration tests for MCP server endpoints',
+          '[ ] Set up test coverage reporting with Istanbul',
+          '[ ] Configure automated testing in development workflow'
+        ];
+      } else {
+        steps = [
+          '[ ] Research and choose appropriate testing framework',
+          '[ ] Set up test environment and configuration',
+          '[ ] Create test utilities and mock objects',
+          '[ ] Write comprehensive unit tests',
+          '[ ] Add integration tests for critical paths',
+          '[ ] Configure test coverage reporting'
+        ];
+      }
+    } else if (context.isErrorHandling) {
+      steps = [
+        '[ ] Audit existing code for error scenarios',
+        '[ ] Define custom error classes and types',
+        '[ ] Implement error handling in critical functions',
+        '[ ] Add structured error logging',
+        '[ ] Create user-friendly error message mapping',
+        '[ ] Test error scenarios and edge cases'
+      ];
+    } else if (context.isConfig) {
+      steps = [
+        '[ ] Design configuration schema and structure',
+        '[ ] Implement configuration loading with validation',
+        '[ ] Add support for environment-specific configs',
+        '[ ] Create configuration examples and documentation',
+        '[ ] Test configuration with various scenarios',
+        '[ ] Handle configuration errors gracefully'
+      ];
+    } else {
+      steps = [
+        '[ ] Analyze current codebase and integration points',
+        '[ ] Design solution architecture with clear interfaces',
+        '[ ] Implement core functionality incrementally',
+        '[ ] Add comprehensive error handling',
+        '[ ] Write tests to ensure reliability',
+        '[ ] Update documentation and usage examples'
+      ];
+    }
+    
+    const stepsText = steps.map(s => `- ${s}`).join('\n');
+    return template.replace(/- \[ \] Step 1\n- \[ \] Step 2/g, stepsText);
+  }
+
+  private replaceTechnicalNotes(template: string, context: any): string {
+    let notes: string[] = [];
+    
+    if (context.isTestRelated && context.project.language === 'typescript') {
+      notes.push('Consider Jest for TypeScript support and mocking capabilities.');
+      notes.push('Mock Notion API calls to avoid hitting rate limits during tests.');
+      notes.push('Focus on testing business logic in SimpleProgressTracker and TodoManager.');
+    } else if (context.isErrorHandling) {
+      notes.push('Focus on common scenarios: invalid API keys, network timeouts, malformed IDs.');
+      notes.push('Consider implementing exponential backoff for retries.');
+      notes.push('Use structured error types for better debugging experience.');
+    } else if (context.isConfig) {
+      notes.push('Use schema validation to catch configuration errors early.');
+      notes.push('Consider supporting both file-based and environment variable config.');
+      notes.push('Implement proper default values and validation rules.');
+    } else {
+      notes.push('Consider impact on existing functionality and backward compatibility.');
+      if (context.project.language === 'typescript') {
+        notes.push('Ensure TypeScript types are properly defined and exported.');
+      }
+    }
+    
+    const notesText = notes.join(' ');
+    return template.replace(/\[Technical information, dependencies, etc\.\]/g, notesText);
+  }
+
+  /**
+   * Parse markdown content into Notion blocks
+   */
+  private parseContentToBlocks(content: string): any[] {
+    const lines = content.split('\n');
+    const blocks: any[] = [];
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      
+      if (!trimmed) {
+        // Skip empty lines
+        continue;
+      } else if (trimmed.startsWith('## ')) {
+        // Heading 2
+        blocks.push({
+          object: 'block',
+          type: 'heading_2',
+          heading_2: {
+            rich_text: [{
+              type: 'text',
+              text: { content: trimmed.substring(3) }
+            }]
+          }
+        });
+      } else if (trimmed.startsWith('- [ ] ')) {
+        // Todo item
+        blocks.push({
+          object: 'block',
+          type: 'to_do',
+          to_do: {
+            rich_text: [{
+              type: 'text',
+              text: { content: trimmed.substring(6) }
+            }],
+            checked: false
+          }
+        });
+      } else if (trimmed.startsWith('- ')) {
+        // Bullet point
+        blocks.push({
+          object: 'block',
+          type: 'bulleted_list_item',
+          bulleted_list_item: {
+            rich_text: [{
+              type: 'text',
+              text: { content: trimmed.substring(2) }
+            }]
+          }
+        });
+      } else if (/^\d+\.\s/.test(trimmed)) {
+        // Numbered list
+        blocks.push({
+          object: 'block',
+          type: 'numbered_list_item',
+          numbered_list_item: {
+            rich_text: [{
+              type: 'text',
+              text: { content: trimmed.replace(/^\d+\.\s/, '') }
+            }]
+          }
+        });
+      } else {
+        // Regular paragraph
+        blocks.push({
+          object: 'block',
+          type: 'paragraph',
+          paragraph: {
+            rich_text: [{
+              type: 'text',
+              text: { content: trimmed }
+            }]
+          }
+        });
+      }
+    }
+    
+    return blocks;
   }
 
   /**
