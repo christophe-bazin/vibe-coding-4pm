@@ -42,6 +42,7 @@ export interface ContextualInstruction {
     template: string;
   };
   mode: string;
+  enhancedContent: string;
 }
 
 export class TaskIntelligenceService {
@@ -58,18 +59,22 @@ export class TaskIntelligenceService {
   ): ContextualInstruction {
     // If simple mode, just replace basic placeholders and return
     if (this.config.mode === 'simple') {
+      const enhancedContent = this.replaceBasicPlaceholders(taskType, description, template);
       return {
         instruction: "Replace basic placeholders only",
         context: {
           task: { type: taskType, description },
           project: projectContext || {},
-          template: this.replaceBasicPlaceholders(taskType, description, template)
+          template: template
         },
-        mode: 'simple'
+        mode: 'simple',
+        enhancedContent
       };
     }
 
-    // For contextual/advanced modes, prepare rich context for AI
+    // For contextual/advanced modes, generate enhanced content with AI instructions
+    const enhancedContent = this.generateEnhancedContent(taskType, description, template, projectContext);
+    
     return {
       instruction: this.generateIntelligenceInstruction(taskType),
       context: {
@@ -77,8 +82,27 @@ export class TaskIntelligenceService {
         project: projectContext || {},
         template: template
       },
-      mode: this.config.mode
+      mode: this.config.mode,
+      enhancedContent
     };
+  }
+
+  /**
+   * Generate enhanced content with AI instructions embedded in the template
+   */
+  private generateEnhancedContent(
+    taskType: string,
+    description: string,
+    template: string,
+    projectContext?: ProjectContext
+  ): string {
+    const projectInfo = projectContext ? 
+      `Project uses ${projectContext.language || 'unknown language'}, ${projectContext.hasTests ? 'has tests' : 'no tests'}.` : 
+      '';
+    
+    const instruction = `**AI: Based on the task "${description}" and project context (${projectInfo}), follow the workflow template structure below and replace all generic placeholders with specific, actionable content appropriate for this task and project.**`;
+    
+    return `${instruction}\n\n${template}`;
   }
 
   /**

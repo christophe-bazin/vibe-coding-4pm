@@ -1,6 +1,6 @@
 # Notion Workflow MCP Server - Claude Instructions
 
-MCP server providing AI-guided development workflows for Notion tasks with configuration-driven approach. Available via MCP protocol (Claude Desktop) and CLI wrapper (Claude Code).
+MCP server providing AI-guided development workflows for Notion tasks with configuration-driven approach. Available via MCP protocol for Claude Desktop integration.
 
 ## Project Overview
 
@@ -11,7 +11,7 @@ This is a Model Context Protocol (MCP) server that enables AI assistants to mana
 - Follow established coding standards (see [docs/development.md](docs/development.md))
 - Use semantic commit messages with conventional format
 - Maintain clear documentation style with examples
-- Test all MCP functions via both Claude Desktop and CLI wrapper
+- Test all MCP functions via Claude Desktop MCP integration
 
 ## Project Architecture
 
@@ -36,22 +36,13 @@ npm run build
 **Via Claude Desktop (MCP Protocol):**
 - The server runs as an MCP server via Claude's configuration
 - All 8 MCP tools available through natural language interface
+- Uses `.claude/mcp-config.json` automatically
 
-**Via Claude Code (CLI Wrapper):**
-```bash
-# Install global CLI
-ln -sf $(pwd)/mcp ~/.local/bin/mcp
-export PATH="$HOME/.local/bin:$PATH"
+**Via Claude Code CLI (Development/Testing):**
+- Use `node mcp.js <tool> '<json_args>'` to call MCP tools directly
+- Example: `node mcp.js create_task '{"title":"test","taskType":"Bug","description":"desc"}'`
+- The wrapper handles server startup and MCP protocol automatically
 
-# Usage examples
-mcp create-task "Fix login bug" "Bug" "Users can't authenticate"
-mcp get-task-info <task-id>
-mcp update-status <task-id> inProgress
-mcp progress-todo <task-id> "Write tests" true
-mcp analyze-todos <task-id>
-mcp get-guidance creation
-mcp help
-```
 
 ## Codebase Structure
 

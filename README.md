@@ -23,24 +23,13 @@ npm install && npm run build
 
 ### 3. Configure Your Project
 
-**For Claude Desktop:**
-```bash
-# Generate configuration automatically
-./install-claude-desktop.sh
-
-# Copy the displayed config into Claude Desktop's MCP settings
-# Update API key and database ID with your values
-```
-
-**For Claude Code:**  
 ```bash
 cp mcp-config.example.json your-project/.claude/mcp-config.json  
 ```
 
 Then edit `.claude/mcp-config.json` and replace:
 - `your_notion_integration_token_here` with your Notion API key
-- `your_notion_database_id_here` with your database ID  
-- `path/to/notion-vibe-coding` with actual paths
+- `your_notion_database_id_here` with your database ID
 
 ### 4. Start Using
 
@@ -59,16 +48,12 @@ You: Review and mark as "Done" when satisfied
 
 #### Option B: Claude Code CLI (Wrapper)
 ```bash
-# Install global CLI
-ln -sf $(pwd)/mcp ~/.local/bin/mcp
-export PATH="$HOME/.local/bin:$PATH"
-
-# Create tasks directly
-mcp create-task "Add user authentication" "Feature" "Implement OAuth login"
-mcp get-task-info <task-id>
-mcp update-status <task-id> inProgress
-mcp progress-todo <task-id> "Setup OAuth provider" true
-mcp analyze-todos <task-id>
+# Create tasks directly with JSON arguments
+node mcp.js create_task '{"title":"Add user authentication","taskType":"Feature","description":"Implement OAuth login"}'
+node mcp.js get_task_info '{"taskId":"<task-id>"}'
+node mcp.js update_task_status '{"taskId":"<task-id>","newStatus":"In progress"}'
+node mcp.js progress_todo '{"taskId":"<task-id>","todoText":"Setup OAuth provider","completed":true}'
+node mcp.js analyze_task_todos '{"taskId":"<task-id>"}'
 ```
 
 ## What You Get
@@ -85,22 +70,19 @@ mcp analyze-todos <task-id>
 The MCP server provides 8 tools available both via Claude Desktop (MCP) and CLI wrapper:
 
 ### Task Management
-- `create_task` / `mcp create-task` - Create new tasks with structured templates
-- `update_task` / `mcp update-task` - Modify task content without changing status
-- `start_task_workflow` - Initialize workflow for existing tasks (MCP only)
-- `get_task_info` / `mcp get-task-info` - Get current status and progress statistics
-- `update_task_status` / `mcp update-status` - Change task status with validation
+- `create_task` - Create new tasks with structured templates
+- `update_task` - Modify task content without changing status
+- `start_task_workflow` - Initialize workflow for existing tasks
+- `get_task_info` - Get current status and progress statistics
+- `update_task_status` - Change task status with validation
 
 ### Todo Management  
-- `progress_todo` / `mcp progress-todo` - Mark individual todos complete with auto-progression
-- `analyze_task_todos` / `mcp analyze-todos` - Extract all todos with completion statistics
-- `batch_progress_todos` - Update multiple todos efficiently (MCP only)
+- `progress_todo` - Mark individual todos complete with auto-progression
+- `analyze_task_todos` - Extract all todos with completion statistics
+- `batch_progress_todos` - Update multiple todos efficiently
 
 ### Workflow Guidance
-- `get_workflow_guidance` / `mcp get-guidance` - Get AI guidance for creation/update/execution workflows
-
-### CLI-Only Features
-- `mcp help` - Show all available commands and usage examples
+- `get_workflow_guidance` - Get AI guidance for creation/update/execution workflows
 
 ## How It Works
 

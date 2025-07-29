@@ -4,24 +4,13 @@ This guide covers detailed tool usage, multi-project setup, CLI wrapper, and adv
 
 ## CLI Wrapper Usage
 
-The CLI wrapper (`mcp`) provides direct command-line access to all MCP functions, perfect for Claude Code integration.
+The CLI wrapper (`mcp.js`) provides direct command-line access to all MCP functions, perfect for Claude Code integration.
 
-### Installation
+### Usage
 
 ```bash
 # From the notion-vibe-coding directory
-ln -sf $(pwd)/mcp ~/.local/bin/mcp
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
-```
-
-### Configuration
-
-The CLI automatically loads configuration from `.claude/mcp-config.json`:
-
-```bash
-# Verify configuration
-mcp help  # Should show "✅ Configuration loaded successfully"
+node mcp.js <tool> '<json_arguments>'
 ```
 
 ### Command Reference
@@ -29,36 +18,35 @@ mcp help  # Should show "✅ Configuration loaded successfully"
 #### Task Management
 ```bash
 # Create tasks
-mcp create-task "Fix login bug" "Bug" "Users can't authenticate with OAuth"
-mcp create-task "Add dark mode" "Feature" "Toggle between light and dark themes"
+node mcp.js create_task '{"title":"Fix login bug","taskType":"Bug","description":"Users cannot authenticate with OAuth"}'
 
-# Get task information
-mcp get-task-info 23e0da7a-7a07-8145-9611-e394062d8a55
+# Get task information  
+node mcp.js get_task_info '{"taskId":"23e0da7a-7a07-8145-9611-e394062d8a55"}'
 
 # Update status
-mcp update-status <task-id> inProgress
-mcp update-status <task-id> test --force  # Skip validation
+node mcp.js update_task_status '{"taskId":"<task-id>","newStatus":"In progress"}'
+node mcp.js update_task_status '{"taskId":"<task-id>","newStatus":"Test","force":true}'
 ```
 
 #### Todo Management
 ```bash
 # Mark todos complete
-mcp progress-todo <task-id> "Setup OAuth provider" true
-mcp progress-todo <task-id> "Write unit tests" false  # Mark incomplete
+node mcp.js progress_todo '{"taskId":"<task-id>","todoText":"Setup OAuth provider","completed":true}'
+node mcp.js progress_todo '{"taskId":"<task-id>","todoText":"Write unit tests","completed":false}'
 
 # Disable auto-progression
-mcp progress-todo <task-id> "Manual task" true --no-auto
+node mcp.js progress_todo '{"taskId":"<task-id>","todoText":"Manual task","completed":true,"autoProgress":false}'
 
 # Analyze all todos
-mcp analyze-todos <task-id>
+node mcp.js analyze_task_todos '{"taskId":"<task-id>"}'
 ```
 
 #### Workflow Guidance
 ```bash
 # Get workflow templates
-mcp get-guidance creation
-mcp get-guidance update
-mcp get-guidance execution
+node mcp.js get_workflow_guidance '{"action":"creation"}'
+node mcp.js get_workflow_guidance '{"action":"update"}'
+node mcp.js get_workflow_guidance '{"action":"execution"}'
 ```
 
 ### Integration with Claude Code
@@ -67,15 +55,15 @@ Use the CLI directly in your Claude Code conversations:
 
 ```bash
 # Create a task for the current development session
-mcp create-task "Refactor authentication module" "Refactoring" "Improve code structure and add tests"
+node mcp.js create_task '{"title":"Refactor authentication module","taskType":"Refactoring","description":"Improve code structure and add tests"}'
 
 # Track progress as you work
-mcp progress-todo <task-id> "Extract auth service" true
-mcp progress-todo <task-id> "Add unit tests" true
-mcp progress-todo <task-id> "Update documentation" true
+node mcp.js progress_todo '{"taskId":"<task-id>","todoText":"Extract auth service","completed":true}'
+node mcp.js progress_todo '{"taskId":"<task-id>","todoText":"Add unit tests","completed":true}'
+node mcp.js progress_todo '{"taskId":"<task-id>","todoText":"Update documentation","completed":true}'
 
 # Check final status
-mcp get-task-info <task-id>
+node mcp.js get_task_info '{"taskId":"<task-id>"}'
 ```
 
 ## Multi-Project Setup
@@ -92,6 +80,10 @@ cd ~/tools  # or any global location
 git clone https://github.com/christophe-bazin/notion-vibe-coding.git
 cd notion-vibe-coding
 npm install && npm run build
+
+# Optional: create global alias
+echo 'alias mcp="node ~/tools/notion-vibe-coding/mcp.js"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 ### Per-Project Configuration

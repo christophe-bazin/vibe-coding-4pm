@@ -3,6 +3,7 @@
     "notion-vibe-coding": {
       "command": "node",
       "args": ["./notion-vibe-coding/dist/server.js"],
+      "isDesktop": true,
       "env": {
         "NOTION_API_KEY": "your_notion_integration_token_here",
         "NOTION_DATABASE_ID": "your_notion_database_id_here",

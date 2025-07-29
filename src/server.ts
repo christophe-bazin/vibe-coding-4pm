@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * Simple Notion Workflow MCP Server
  * 
@@ -222,6 +220,10 @@ class NotionWorkflowServer {
                 type: 'string',
                 description: 'Task description and content',
               },
+              processedContent: {
+                type: 'string',
+                description: 'Pre-processed task content (when provided, skips AI instruction step)',
+              },
             },
             required: ['title', 'taskType', 'description'],
           },
@@ -366,6 +368,7 @@ class NotionWorkflowServer {
               title: string;
               taskType: string;
               description: string;
+              processedContent?: string;
             });
 
           case 'update_task':
@@ -572,39 +575,88 @@ class NotionWorkflowServer {
     title: string;
     taskType: string;
     description: string;
+    processedContent?: string;
   }) {
-    const { title, taskType, description } = args;
+    const { title, taskType, description, processedContent } = args;
 
     try {
-      // Get workflow guidance for creation
-      const guidance = this.tracker.getWorkflowGuidance('creation');
-      
-      // Create formatted content using the workflow template
-      const formattedContent = this.formatTaskContent(taskType, description, guidance);
-      
+      // Step 2: If processedContent is provided, create the task directly
+      if (processedContent) {
+        const taskId = await this.tracker.createTask(title, taskType, processedContent);
 
-      // Create the task
-      const taskId = await this.tracker.createTask(title, taskType, formattedContent);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: true,
+                taskId,
+                title,
+                taskType,
+                status: this.tracker.getAvailableStatuses()[0],
+                message: `Task created successfully: ${title}`,
+                url: `https://notion.so/${taskId}`
+              }, null, 2)
+            }
+          ]
+        };
+      }
+
+      // Step 1: Return instruction for Claude to process
+      const guidance = this.tracker.getWorkflowGuidance('creation');
+      const contextualInstruction = this.generateContextualInstruction(taskType, description, guidance);
 
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify({
-              success: true,
-              taskId,
-              title,
-              taskType,
-              status: this.tracker.getAvailableStatuses()[0], // Default status
-              message: `Task created successfully: ${title}`,
-              url: `https://notion.so/${taskId}`
-            }, null, 2)
+            text: `**CONTEXTUALIZATION NEEDED**: Please analyze the task and create appropriate content based on the template below, then call create_task again with the processed content.
+
+**Task**: ${title}
+**Type**: ${taskType}  
+**Description**: ${description}
+
+**Instructions**: ${contextualInstruction.instruction}
+
+**Template to contextualize**:
+${contextualInstruction.template}
+
+**When ready**, call create_task again with:
+- Same title, taskType, description
+- Add processedContent parameter with your contextualized version`
           }
         ]
       };
     } catch (error) {
       throw new Error(`Failed to create task: ${error}`);
     }
+  }
+
+  private generateContextualInstruction(taskType: string, description: string, guidance: string): {
+    instruction: string;
+    template: string;
+  } {
+    // Extract template for this task type from guidance
+    const regex = new RegExp(`#### ${taskType}\\s*\`\`\`([\\s\\S]*?)\`\`\``, 'i');
+    const match = guidance.match(regex);
+    
+    if (!match || !match[1]) {
+      throw new Error(`No template found for task type: ${taskType}`);
+    }
+    
+    const template = match[1].trim();
+    
+    const instruction = `Based on the task "${description}", follow the template structure below and replace generic content with specific, actionable items. 
+    
+Key guidelines:
+- Adapt the number of items based on task complexity (not fixed counts)
+- Create meaningful sections if the task requires them
+- Replace placeholders with concrete, project-specific content
+- Ensure acceptance criteria are measurable and testable
+- Break implementation into logical, sequential steps
+- Focus on what's actually needed for this specific task`;
+
+    return { instruction, template };
   }
 
   private async handleUpdateTask(args: {
