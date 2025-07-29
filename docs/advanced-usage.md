@@ -1,6 +1,82 @@
 # Advanced Usage Guide
 
-This guide covers detailed tool usage, multi-project setup, and advanced workflows for the Notion Vibe Coding MCP server.
+This guide covers detailed tool usage, multi-project setup, CLI wrapper, and advanced workflows for the Notion Vibe Coding MCP server.
+
+## CLI Wrapper Usage
+
+The CLI wrapper (`mcp`) provides direct command-line access to all MCP functions, perfect for Claude Code integration.
+
+### Installation
+
+```bash
+# From the notion-vibe-coding directory
+ln -sf $(pwd)/mcp ~/.local/bin/mcp
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### Configuration
+
+The CLI automatically loads configuration from `.claude/mcp-config.json`:
+
+```bash
+# Verify configuration
+mcp help  # Should show "✅ Configuration loaded successfully"
+```
+
+### Command Reference
+
+#### Task Management
+```bash
+# Create tasks
+mcp create-task "Fix login bug" "Bug" "Users can't authenticate with OAuth"
+mcp create-task "Add dark mode" "Feature" "Toggle between light and dark themes"
+
+# Get task information
+mcp get-task-info 23e0da7a-7a07-8145-9611-e394062d8a55
+
+# Update status
+mcp update-status <task-id> inProgress
+mcp update-status <task-id> test --force  # Skip validation
+```
+
+#### Todo Management
+```bash
+# Mark todos complete
+mcp progress-todo <task-id> "Setup OAuth provider" true
+mcp progress-todo <task-id> "Write unit tests" false  # Mark incomplete
+
+# Disable auto-progression
+mcp progress-todo <task-id> "Manual task" true --no-auto
+
+# Analyze all todos
+mcp analyze-todos <task-id>
+```
+
+#### Workflow Guidance
+```bash
+# Get workflow templates
+mcp get-guidance creation
+mcp get-guidance update
+mcp get-guidance execution
+```
+
+### Integration with Claude Code
+
+Use the CLI directly in your Claude Code conversations:
+
+```bash
+# Create a task for the current development session
+mcp create-task "Refactor authentication module" "Refactoring" "Improve code structure and add tests"
+
+# Track progress as you work
+mcp progress-todo <task-id> "Extract auth service" true
+mcp progress-todo <task-id> "Add unit tests" true
+mcp progress-todo <task-id> "Update documentation" true
+
+# Check final status
+mcp get-task-info <task-id>
+```
 
 ## Multi-Project Setup
 

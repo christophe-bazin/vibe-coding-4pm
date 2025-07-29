@@ -1,6 +1,6 @@
 # Notion Workflow MCP Server - Claude Instructions
 
-MCP server providing AI-guided development workflows for Notion tasks with configuration-driven approach.
+MCP server providing AI-guided development workflows for Notion tasks with configuration-driven approach. Available via MCP protocol (Claude Desktop) and CLI wrapper (Claude Code).
 
 ## Project Overview
 
@@ -8,10 +8,10 @@ This is a Model Context Protocol (MCP) server that enables AI assistants to mana
 
 ## Development Guidelines
 
-- Follow established coding standards in [.ai/development/coding-standards.md](.ai/development/coding-standards.md)
-- Adhere to commit conventions in [.ai/development/commit-conventions.md](.ai/development/commit-conventions.md)
-- Maintain clear documentation style per [.ai/development/documentation-style.md](.ai/development/documentation-style.md)
-- Follow the release process defined in [.ai/development/release-process.md](.ai/development/release-process.md)
+- Follow established coding standards (see [docs/development.md](docs/development.md))
+- Use semantic commit messages with conventional format
+- Maintain clear documentation style with examples
+- Test all MCP functions via both Claude Desktop and CLI wrapper
 
 ## Project Architecture
 
@@ -21,7 +21,7 @@ This is a Model Context Protocol (MCP) server that enables AI assistants to mana
 - **AI restrictions**: Built-in safeguards prevent AI from closing tasks directly
 - **camelCase convention**: Consistent naming for internal configuration
 
-See detailed architecture in [.ai/project/mcp-architecture.md](.ai/project/mcp-architecture.md)
+See detailed architecture in [docs/development.md](docs/development.md)
 
 ## Essential Commands
 
@@ -31,7 +31,27 @@ Build the server:
 npm run build
 ```
 
-The server is designed to run as an MCP server via Claude's configuration.
+### Usage Options
+
+**Via Claude Desktop (MCP Protocol):**
+- The server runs as an MCP server via Claude's configuration
+- All 8 MCP tools available through natural language interface
+
+**Via Claude Code (CLI Wrapper):**
+```bash
+# Install global CLI
+ln -sf $(pwd)/mcp ~/.local/bin/mcp
+export PATH="$HOME/.local/bin:$PATH"
+
+# Usage examples
+mcp create-task "Fix login bug" "Bug" "Users can't authenticate"
+mcp get-task-info <task-id>
+mcp update-status <task-id> inProgress
+mcp progress-todo <task-id> "Write tests" true
+mcp analyze-todos <task-id>
+mcp get-guidance creation
+mcp help
+```
 
 ## Codebase Structure
 

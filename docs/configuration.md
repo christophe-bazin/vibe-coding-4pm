@@ -41,9 +41,9 @@ The main configuration is defined in your project's `.claude/mcp-config.json`:
 - **Example**: `"abc123def456ghi789jkl012mno345pq"`
 
 #### `WORKFLOW_CONFIG`
-- **Type**: Object or JSON String
-- **Description**: Complete workflow configuration
-- **Note**: Can be provided as object (recommended) or JSON string
+- **Type**: JSON String (for Claude Desktop) or Object (for CLI/development)
+- **Description**: Complete workflow configuration  
+- **Note**: Claude Desktop MCP requires JSON string format, CLI wrapper accepts both
 
 ## Workflow Configuration Object
 
@@ -208,24 +208,56 @@ You can add additional properties as needed:
 
 ## Configuration Examples
 
-### Minimal Configuration
+### Complete Configuration (Required)
+
+**Note**: `WORKFLOW_CONFIG` is mandatory. No defaults are provided.
+
+#### Claude Desktop Format (JSON String)
 
 ```json
 {
   "mcpServers": {
     "notion-vibe-coding": {
-      "command": "node",
-      "args": ["./notion-vibe-coding/dist/server.js"],
+      "command": "node", 
+      "args": ["path/to/notion-vibe-coding/dist/server.js"],
       "env": {
         "NOTION_API_KEY": "secret_your_key_here",
-        "NOTION_DATABASE_ID": "your_database_id_here"
+        "NOTION_DATABASE_ID": "your_database_id_here",
+        "WORKFLOW_CONFIG": "{\"statusMapping\":{\"notStarted\":\"Not Started\",\"inProgress\":\"In Progress\",\"test\":\"Test\",\"done\":\"Done\"},\"transitions\":{\"notStarted\":[\"inProgress\"],\"inProgress\":[\"test\"],\"test\":[\"done\",\"inProgress\"],\"done\":[\"test\"]},\"taskTypes\":[\"Feature\",\"Bug\",\"Refactoring\"],\"defaultStatus\":\"notStarted\",\"requiresValidation\":[\"done\"],\"workflowFiles\":{\"creation\":\"path/to/workflows/task-creation.md\",\"update\":\"path/to/workflows/task-update.md\",\"execution\":\"path/to/workflows/task-execution.md\"}}"
       }
     }
   }
 }
 ```
 
-Uses default configuration with standard statuses and types.
+#### CLI/Development Format (Object)
+
+For reference, the equivalent object structure:
+
+```json
+{
+  "statusMapping": {
+    "notStarted": "Not Started",
+    "inProgress": "In Progress", 
+    "test": "Test",
+    "done": "Done"
+  },
+  "transitions": {
+    "notStarted": ["inProgress"],
+    "inProgress": ["test"],
+    "test": ["done", "inProgress"],
+    "done": ["test"]
+  },
+  "taskTypes": ["Feature", "Bug", "Refactoring"],
+  "defaultStatus": "notStarted",
+  "requiresValidation": ["done"],
+  "workflowFiles": {
+    "creation": "path/to/workflows/task-creation.md",
+    "update": "path/to/workflows/task-update.md",
+    "execution": "path/to/workflows/task-execution.md"
+  }
+}
+```
 
 ### Custom Status Names
 
@@ -349,34 +381,17 @@ Before starting the server, verify:
 - ✅ All workflow files exist at specified paths
 - ✅ Transitions form a valid state machine
 
-## Default Configuration
+## Required Configuration
 
-If WORKFLOW_CONFIG is not provided, the server uses these defaults:
+`WORKFLOW_CONFIG` must always be provided. The server will fail to start without it.
 
-```json
-{
-  "statusMapping": {
-    "notStarted": "Not Started",
-    "inProgress": "In Progress",
-    "test": "Test",
-    "done": "Done"
-  },
-  "transitions": {
-    "notStarted": ["inProgress"],
-    "inProgress": ["test"],
-    "test": ["done", "inProgress"],
-    "done": ["test"]
-  },
-  "taskTypes": ["Feature", "Bug", "Refactoring"],
-  "defaultStatus": "notStarted",
-  "requiresValidation": ["done"],
-  "workflowFiles": {
-    "creation": "./notion-vibe-coding/workflows/task-creation.md",
-    "update": "./notion-vibe-coding/workflows/task-update.md",
-    "execution": "./notion-vibe-coding/workflows/task-execution.md"
-  }
-}
-```
+**All fields are mandatory:**
+- `statusMapping` - Must contain exactly: notStarted, inProgress, test, done
+- `transitions` - Must define valid state transitions  
+- `taskTypes` - Array of available task types
+- `defaultStatus` - Initial status for new tasks
+- `requiresValidation` - Statuses requiring human approval
+- `workflowFiles` - Paths to all three workflow guidance files
 
 ## Best Practices
 

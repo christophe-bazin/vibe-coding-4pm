@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "notion-vibe-coding": {
+      "command": "node",
+      "args": ["path/to/notion-vibe-coding/dist/server.js"],
+      "env": {
+        "NOTION_API_KEY": "your_notion_integration_token_here",
+        "NOTION_DATABASE_ID": "your_notion_database_id_here",
+        "WORKFLOW_CONFIG": "{\"statusMapping\":{\"notStarted\":\"Not Started\",\"inProgress\":\"In Progress\",\"test\":\"Test\",\"done\":\"Done\"},\"transitions\":{\"notStarted\":[\"inProgress\"],\"inProgress\":[\"test\"],\"test\":[\"done\",\"inProgress\"],\"done\":[\"test\"]},\"taskTypes\":[\"Feature\",\"Bug\",\"Refactoring\"],\"defaultStatus\":\"notStarted\",\"requiresValidation\":[\"done\"],\"workflowFiles\":{\"creation\":\"path/to/notion-vibe-coding/workflows/task-creation.md\",\"update\":\"path/to/notion-vibe-coding/workflows/task-update.md\",\"execution\":\"path/to/notion-vibe-coding/workflows/task-execution.md\"}}"
+      }
+    }
+  }
+}

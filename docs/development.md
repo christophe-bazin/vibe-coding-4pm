@@ -14,6 +14,7 @@ notion-vibe-coding/
 │   ├── progress-calculator.ts        # Progress and auto-progression logic
 │   ├── utils.ts                      # Utility functions
 │   └── types.ts                      # TypeScript definitions
+├── mcp                               # CLI wrapper executable
 ├── workflows/
 │   ├── task-creation.md              # AI guidance for task creation
 │   ├── task-update.md                # AI guidance for task updates
@@ -65,12 +66,32 @@ npm run dev
 
 ### Testing
 
+#### MCP Server Testing
 ```bash
 # Run with your test Notion database
 npm start
 
 # Test MCP tools manually via Claude Code
 ```
+
+#### CLI Wrapper Testing
+```bash
+# Install CLI locally for testing
+ln -sf $(pwd)/mcp ~/.local/bin/mcp
+
+# Test all commands
+mcp help
+mcp create-task "Test task" "Feature" "Testing CLI"
+mcp get-task-info <task-id>
+mcp analyze-todos <task-id>
+```
+
+#### Development Workflow
+1. Make changes to TypeScript source
+2. Run `npm run build` to compile
+3. Test via MCP server (Claude Desktop) 
+4. Test via CLI wrapper (Claude Code)
+5. Update documentation if needed
 
 ## Architecture Overview
 

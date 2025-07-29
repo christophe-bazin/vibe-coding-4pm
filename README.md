@@ -1,6 +1,6 @@
 # Notion Vibe Coding
 
-Transform Claude Code into an intelligent project manager that tracks your development tasks in Notion automatically.
+Transform Claude Code into an intelligent project manager that tracks your development tasks in Notion automatically. Use it directly from Claude Desktop (MCP) or from Claude Code CLI (wrapper).
 
 ## Quick Start
 
@@ -23,53 +23,24 @@ npm install && npm run build
 
 ### 3. Configure Your Project
 
-Copy the example config to your project:
-
+**For Claude Desktop:**
 ```bash
-cp mcp-config.example.json your-project/.claude/mcp-config.json
+cp mcp-config-claude-desktop.example.json your-project/.claude/mcp-config.json
 ```
 
-Edit `.claude/mcp-config.json`:
-
-```json
-{
-  "mcpServers": {
-    "notion-vibe-coding": {
-      "command": "node",
-      "args": ["./notion-vibe-coding/dist/server.js"],
-      "env": {
-        "NOTION_API_KEY": "your_notion_integration_token_here",
-        "NOTION_DATABASE_ID": "your_notion_database_id_here",
-        "WORKFLOW_CONFIG": {
-          "statusMapping": {
-            "notStarted": "Not Started",
-            "inProgress": "In Progress",
-            "test": "Test",
-            "done": "Done"
-          },
-          "transitions": {
-            "notStarted": ["inProgress"],
-            "inProgress": ["test"],
-            "test": ["done", "inProgress"],
-            "done": ["test"]
-          },
-          "taskTypes": ["Feature", "Bug", "Refactoring"],
-          "defaultStatus": "notStarted",
-          "requiresValidation": ["done"],
-          "workflowFiles": {
-            "creation": "./notion-vibe-coding/workflows/task-creation.md",
-            "update": "./notion-vibe-coding/workflows/task-update.md",
-            "execution": "./notion-vibe-coding/workflows/task-execution.md"
-          }
-        }
-      }
-    }
-  }
-}
+**For Claude Code:**  
+```bash
+cp mcp-config-claude-code.example.json your-project/.claude/mcp-config.json  
 ```
+
+Then edit `.claude/mcp-config.json` and replace:
+- `your_notion_integration_token_here` with your Notion API key
+- `your_notion_database_id_here` with your database ID  
+- `path/to/notion-vibe-coding` with actual paths
 
 ### 4. Start Using
 
+#### Option A: Claude Desktop (MCP)
 ```
 You: "Add user authentication to this React app"
 
@@ -82,9 +53,24 @@ Claude:
 You: Review and mark as "Done" when satisfied
 ```
 
+#### Option B: Claude Code CLI (Wrapper)
+```bash
+# Install global CLI
+ln -sf $(pwd)/mcp ~/.local/bin/mcp
+export PATH="$HOME/.local/bin:$PATH"
+
+# Create tasks directly
+mcp create-task "Add user authentication" "Feature" "Implement OAuth login"
+mcp get-task-info <task-id>
+mcp update-status <task-id> inProgress
+mcp progress-todo <task-id> "Setup OAuth provider" true
+mcp analyze-todos <task-id>
+```
+
 ## What You Get
 
 ✅ **Automatic Task Tracking** - Claude creates and updates Notion tasks as you work  
+✅ **CLI Integration** - Direct command-line access to all MCP functions  
 ✅ **Progress Visualization** - Real-time status updates in your Notion workspace  
 ✅ **Quality Gates** - Built-in testing phase prevents rushing to production  
 ✅ **Team Collaboration** - Shared visibility across your development team  
@@ -92,22 +78,25 @@ You: Review and mark as "Done" when satisfied
 
 ## Available Tools
 
-The MCP server provides 8 tools for task management:
+The MCP server provides 8 tools available both via Claude Desktop (MCP) and CLI wrapper:
 
 ### Task Management
-- `create_task` - Create new tasks with structured templates
-- `update_task` - Modify task content without changing status
-- `start_task_workflow` - Initialize workflow for existing tasks
-- `get_task_info` - Get current status and progress statistics
-- `update_task_status` - Change task status with validation
+- `create_task` / `mcp create-task` - Create new tasks with structured templates
+- `update_task` / `mcp update-task` - Modify task content without changing status
+- `start_task_workflow` - Initialize workflow for existing tasks (MCP only)
+- `get_task_info` / `mcp get-task-info` - Get current status and progress statistics
+- `update_task_status` / `mcp update-status` - Change task status with validation
 
 ### Todo Management  
-- `progress_todo` - Mark individual todos complete with auto-progression
-- `analyze_task_todos` - Extract all todos with completion statistics
-- `batch_progress_todos` - Update multiple todos efficiently
+- `progress_todo` / `mcp progress-todo` - Mark individual todos complete with auto-progression
+- `analyze_task_todos` / `mcp analyze-todos` - Extract all todos with completion statistics
+- `batch_progress_todos` - Update multiple todos efficiently (MCP only)
 
 ### Workflow Guidance
-- `get_workflow_guidance` - Get AI guidance for creation/update/execution workflows
+- `get_workflow_guidance` / `mcp get-guidance` - Get AI guidance for creation/update/execution workflows
+
+### CLI-Only Features
+- `mcp help` - Show all available commands and usage examples
 
 ## How It Works
 
