@@ -84,37 +84,34 @@ export class TodoManager {
     completed: boolean
   ): Promise<{ success: boolean; updatedContent: string; stats: TodoStats }> {
     try {
-      // Get current task analysis
-      const analysis = await this.extractTodosFromTask(taskId);
-      
-      // Find the todo to update using fuzzy matching
-      const todoToUpdate = this.findTodoByText(analysis.todos, todoText);
-      if (!todoToUpdate) {
+      // Get current blocks with their IDs
+      const blocks = await this.notion.blocks.children.list({
+        block_id: taskId,
+        page_size: 100
+      });
+
+      // Find the specific todo block to update
+      const todoBlock = await this.findTodoBlockByText(blocks.results, todoText);
+      if (!todoBlock) {
         throw new Error(`Todo not found: "${todoText}"`);
       }
 
-      // Update the content
-      const updatedContent = this.updateTodoInContent(
-        analysis.content, 
-        todoToUpdate, 
-        completed
-      );
+      // Update ONLY this specific block
+      await this.notion.blocks.update({
+        block_id: todoBlock.id,
+        to_do: {
+          rich_text: todoBlock.to_do.rich_text,
+          checked: completed
+        }
+      });
 
-      // Update the Notion page
-      await this.updateNotionPageContent(taskId, updatedContent);
-
-      // Recalculate stats
-      const updatedTodos = analysis.todos.map(todo => 
-        todo.index === todoToUpdate.index 
-          ? { ...todo, completed }
-          : todo
-      );
-      const newStats = this.calculateTodoStats(updatedTodos);
-
+      // Get fresh analysis for stats (without re-parsing everything)
+      const analysis = await this.extractTodosFromTask(taskId);
+      
       return {
         success: true,
-        updatedContent,
-        stats: newStats
+        updatedContent: analysis.content,
+        stats: analysis.stats
       };
     } catch (error) {
       throw new Error(`Failed to update todo: ${error}`);
@@ -129,29 +126,33 @@ export class TodoManager {
     updates: Array<{ todoText: string; completed: boolean }>
   ): Promise<{ success: boolean; updatedContent: string; stats: TodoStats }> {
     try {
-      const analysis = await this.extractTodosFromTask(taskId);
-      let content = analysis.content;
+      // Get current blocks with their IDs
+      const blocks = await this.notion.blocks.children.list({
+        block_id: taskId,
+        page_size: 100
+      });
 
-      // Apply all updates
+      // Update each todo block individually
       for (const update of updates) {
-        const todoToUpdate = this.findTodoByText(analysis.todos, update.todoText);
-        if (todoToUpdate) {
-          content = this.updateTodoInContent(content, todoToUpdate, update.completed);
-          // Update the todo in our local analysis for next iterations
-          todoToUpdate.completed = update.completed;
+        const todoBlock = await this.findTodoBlockByText(blocks.results, update.todoText);
+        if (todoBlock) {
+          await this.notion.blocks.update({
+            block_id: todoBlock.id,
+            to_do: {
+              rich_text: todoBlock.to_do.rich_text,
+              checked: update.completed
+            }
+          });
         }
       }
 
-      // Update the Notion page once with all changes
-      await this.updateNotionPageContent(taskId, content);
-
-      // Calculate final stats
-      const newStats = this.calculateTodoStats(analysis.todos);
+      // Get fresh analysis for stats
+      const analysis = await this.extractTodosFromTask(taskId);
 
       return {
         success: true,
-        updatedContent: content,
-        stats: newStats
+        updatedContent: analysis.content,
+        stats: analysis.stats
       };
     } catch (error) {
       throw new Error(`Failed to batch update todos: ${error}`);
@@ -232,6 +233,38 @@ export class TodoManager {
   }
 
   /**
+   * Find a todo block by matching text content
+   */
+  private async findTodoBlockByText(blocks: any[], searchText: string): Promise<any | null> {
+    const normalizedSearch = searchText.toLowerCase().trim();
+    
+    for (const block of blocks) {
+      if (block.type === 'to_do' && block.to_do?.rich_text) {
+        const blockText = this.extractRichText(block.to_do.rich_text).toLowerCase().trim();
+        
+        // Try exact match first
+        if (blockText === normalizedSearch) {
+          return block;
+        }
+        
+        // Then partial match
+        if (blockText.includes(normalizedSearch) || normalizedSearch.includes(blockText)) {
+          return block;
+        }
+        
+        // Finally fuzzy match
+        const cleanSearch = normalizedSearch.replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+        const cleanBlock = blockText.replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+        if (cleanBlock.includes(cleanSearch) || cleanSearch.includes(cleanBlock)) {
+          return block;
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  /**
    * Find todo by text using fuzzy matching
    */
   private findTodoByText(todos: TodoItem[], searchText: string): TodoItem | null {
@@ -262,27 +295,6 @@ export class TodoManager {
     return found || null;
   }
 
-  /**
-   * Update todo status in content string
-   */
-  private updateTodoInContent(content: string, todo: TodoItem, completed: boolean): string {
-    const lines = content.split('\n');
-    const targetLine = lines[todo.lineNumber];
-    
-    if (targetLine === undefined) {
-      throw new Error(`Line ${todo.lineNumber} not found in content`);
-    }
-
-    // Replace the checkbox
-    const newCheckmark = completed ? 'x' : ' ';
-    const updatedLine = targetLine.replace(
-      /\[([ x])\]/i, 
-      `[${newCheckmark}]`
-    );
-
-    lines[todo.lineNumber] = updatedLine;
-    return lines.join('\n');
-  }
 
   /**
    * Extract text content from a Notion block
@@ -322,100 +334,5 @@ export class TodoManager {
     return richText
       .map((text: any) => text.plain_text || '')
       .join('');
-  }
-
-  /**
-   * Update Notion page content
-   */
-  private async updateNotionPageContent(taskId: string, newContent: string): Promise<void> {
-    try {
-      // Get current blocks
-      const blocks = await this.notion.blocks.children.list({
-        block_id: taskId
-      });
-
-      // Delete existing blocks
-      for (const block of blocks.results) {
-        await this.notion.blocks.delete({
-          block_id: block.id
-        });
-      }
-
-      // Create new blocks from content
-      const newBlocks = this.contentToNotionBlocks(newContent);
-      
-      if (newBlocks.length > 0) {
-        await this.notion.blocks.children.append({
-          block_id: taskId,
-          children: newBlocks
-        });
-      }
-    } catch (error) {
-      throw new Error(`Failed to update Notion page content: ${error}`);
-    }
-  }
-
-  /**
-   * Convert content string to Notion blocks
-   */
-  private contentToNotionBlocks(content: string): any[] {
-    const lines = content.split('\n');
-    const blocks = [];
-
-    for (const line of lines) {
-      if (!line.trim()) continue;
-
-      // Parse different content types
-      if (line.startsWith('# ')) {
-        blocks.push({
-          object: 'block',
-          type: 'heading_1',
-          heading_1: {
-            rich_text: [{ type: 'text', text: { content: line.substring(2) } }]
-          }
-        });
-      } else if (line.startsWith('## ')) {
-        blocks.push({
-          object: 'block',
-          type: 'heading_2',
-          heading_2: {
-            rich_text: [{ type: 'text', text: { content: line.substring(3) } }]
-          }
-        });
-      } else if (line.startsWith('### ')) {
-        blocks.push({
-          object: 'block',
-          type: 'heading_3',
-          heading_3: {
-            rich_text: [{ type: 'text', text: { content: line.substring(4) } }]
-          }
-        });
-      } else if (line.match(/^\s*[-*]\s*\[([ x])\]/i)) {
-        // Todo item
-        const match = line.match(/^\s*[-*]\s*\[([ x])\]\s*(.+)$/i);
-        if (match) {
-          const [, checkmark = ' ', text = ''] = match;
-          blocks.push({
-            object: 'block',
-            type: 'to_do',
-            to_do: {
-              rich_text: [{ type: 'text', text: { content: text } }],
-              checked: checkmark.toLowerCase() === 'x'
-            }
-          });
-        }
-      } else {
-        // Regular paragraph
-        blocks.push({
-          object: 'block',
-          type: 'paragraph',
-          paragraph: {
-            rich_text: [{ type: 'text', text: { content: line } }]
-          }
-        });
-      }
-    }
-
-    return blocks;
   }
 }
