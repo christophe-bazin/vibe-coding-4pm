@@ -100,15 +100,15 @@ Based on the task, generate a comprehensive test list including:
 - AI must add summary and test list before transition
 
 ### Todo-Based Auto-Progression
-- Use `progress_todo` tool to mark individual todos as completed
+- Use `update_todos` tool to mark individual todos as completed
 - Task automatically progresses from "{{status_notStarted}}" to "{{status_inProgress}}" when first todo is completed
 - Task automatically progresses to "{{status_test}}" when all todos are completed (100%)
-- Use `analyze_task_todos` to check overall progress and get recommendations
+- Use `analyze_todos` to check overall progress and get recommendations
 
 ### Finalization Process
 1. Complete implementation and mark all todos as completed
-2. Add execution summary to Notion task
-3. Add test list to Notion task
+2. Add execution summary to task
+3. Add test list to task
 4. Status automatically changes to "{{status_test}}" when todos reach 100%
 5. Human validation is required to move to "{{status_done}}"
 

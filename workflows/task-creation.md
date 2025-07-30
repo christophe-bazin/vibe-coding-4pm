@@ -8,7 +8,7 @@
 - Generate actionable todos that address the real requirements
 
 ## Objective
-Create a new development task in Notion with all necessary information.
+Create a new development task with all necessary information and structured content.
 
 ## Steps
 
@@ -18,7 +18,7 @@ Create a new development task in Notion with all necessary information.
 - Evaluate complexity and priority
 
 ### 2. Task Creation
-- Create a new page in the Notion board
+- Create a new task in the project management system
 - Define a clear and descriptive title
 - Select the appropriate type
 - Assign initial status "{{status_notStarted}}"
