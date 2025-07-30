@@ -18,7 +18,7 @@ This is a Model Context Protocol (MCP) server that enables AI assistants to mana
 - **Provider Pattern**: TaskProvider interface enables pluggable task management backends
 - **Current Implementation**: Direct Notion API integration via @notionhq/client
 - **Workflow Intelligence**: Template-driven task creation with type-specific structures  
-- **MCP Protocol**: 8 tools for comprehensive task and todo management
+- **MCP Protocol**: 9 tools for comprehensive task and todo management
 - **Extensible Design**: Ready for Linear, GitHub, Jira providers in future versions
 
 See detailed architecture in [docs/development.md](docs/development.md)
@@ -35,7 +35,7 @@ npm run build
 
 **Via Claude Desktop (MCP Protocol):**
 - The server runs as an MCP server via Claude's configuration
-- All 8 MCP tools available through natural language interface
+- All 9 MCP tools available through natural language interface
 - Uses `.claude/mcp-config.json` automatically
 
 **Via Claude Code CLI (Development/Testing):**
@@ -49,10 +49,20 @@ npm run build
 ```
 src/
 ├── server.ts                 # MCP server entry point
-├── simple-progress-tracker.ts # Core workflow logic  
-├── config-loader.ts          # Configuration management
-├── utils.ts                  # Utility functions
-└── types.ts                  # Type definitions
+├── adapters/
+│   └── NotionAPIAdapter.ts   # Notion API integration
+├── interfaces/
+│   └── TaskProvider.ts       # Provider interface
+├── models/
+│   ├── Task.ts              # Task type definitions
+│   ├── Todo.ts              # Todo type definitions
+│   └── Workflow.ts          # Workflow type definitions
+└── services/
+    ├── ExecutionService.ts   # Task execution logic
+    ├── ResponseFormatter.ts  # Response formatting
+    ├── TaskService.ts        # Task management
+    ├── TodoService.ts        # Todo management
+    └── WorkflowService.ts    # Workflow management
 ```
 
 ## Configuration System
@@ -66,18 +76,20 @@ All configuration is centralized in your project's `.claude/mcp-config.json`:
 
 ## MCP Tools Available
 
-### Todo Management
-- `progress_todo`: Mark specific todos as completed with auto-progression
-- `analyze_task_todos`: Extract and analyze all todos with completion statistics
-- `batch_progress_todos`: Update multiple todos efficiently in one operation
-
 ### Task Management
-- `create_task`: Create new tasks in Notion database with workflow templates
+- `create_task`: Create new tasks in Notion database with AI-adapted content
+- `get_task`: Get task information with todo statistics and status
 - `update_task`: Update task content (title, description, type) without changing status
-- `start_task_workflow`: Initialize workflow for existing Notion task
-- `get_workflow_guidance`: Get markdown guidance for specific workflow
 - `update_task_status`: Change task status with validation
-- `get_task_info`: Get current status, transitions, and todo statistics
+- `execute_task`: Execute task workflow (auto/step/batch modes)
+
+### Template & Workflow
+- `get_task_template`: Get task template for AI adaptation
+- `get_workflow_guidance`: Get markdown guidance for specific workflow
+
+### Todo Management  
+- `analyze_todos`: Extract and analyze all todos with completion statistics
+- `update_todos`: Batch update multiple todos efficiently in one operation
 
 ## Development Workflow
 
@@ -100,10 +112,11 @@ All configuration is centralized in your project's `.claude/mcp-config.json`:
 
 - TaskProvider abstraction enables pluggable backend implementations
 - Current Notion implementation uses direct API integration for stability
-- Workflow templates intelligently merge user content with structured formats
+- Dynamic title property resolution via Notion database schema API
+- AI-driven template adaptation via get_task_template tool
 - Provider-specific formatting (Notion blocks, Linear markdown, etc.)
 - Status transitions and workflows configured per provider
-- Template system supports dynamic content replacement
+- Claude adapts templates contextually before task creation
 
 ## Security and Best Practices
 

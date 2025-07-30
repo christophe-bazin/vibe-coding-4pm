@@ -25,9 +25,7 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "@notionhq/client": "^2.2.15",
-    "@notionhq/notion-mcp-server": "^1.8.1",
-    "dotenv": "^17.2.1"
+    "@notionhq/client": "^2.2.15"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
