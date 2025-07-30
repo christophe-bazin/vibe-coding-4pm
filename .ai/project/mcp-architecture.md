@@ -27,72 +27,89 @@ The Notion Workflow MCP Server is built as a lightweight, configuration-driven s
 **Responsibility**: Handle MCP protocol and expose tools to AI clients
 
 - Implements MCP protocol specification
-- Provides 4 main tools for AI interaction
+- Provides 9 main tools for AI interaction
 - Handles tool parameter validation
 - Manages error responses and formatting
 - Routes requests to appropriate handlers
 
-**Key Methods**:
-- `start_task_workflow`: Initialize workflow with URL parsing
-- `get_workflow_guidance`: Return markdown guidance for AI
+**Key Tools**:
+- `create_task`: Create new tasks with AI-adapted content
+- `get_task`: Get task information with todo statistics
+- `update_task`: Update task content without changing status
 - `update_task_status`: Change status with validation
-- `get_task_info`: Retrieve current state and options
+- `execute_task`: Execute task workflow in various modes
+- `get_task_template`: Get task template for AI adaptation
+- `get_workflow_guidance`: Return markdown guidance for AI
+- `analyze_todos`: Extract and analyze all todos
+- `update_todos`: Batch update multiple todos
 
-### Configuration Loader (`src/config-loader.ts`)
-**Responsibility**: Load and validate configuration files
+### Service Layer Architecture
 
-- Loads `config.json` with board setup and rules
-- Caches workflow markdown files in memory
-- Validates configuration format on startup
-- Provides status transition validation
-- Supports configuration reload for development
+**TaskService** (`src/services/TaskService.ts`)
+**Responsibility**: High-level task operations
 
-**Configuration Structure**:
-```json
-{
-  "board": {
-    "statuses": ["status1", "status2", "..."],
-    "transitions": { "status1": ["status2"] }
-  },
-  "taskTypes": ["type1", "type2", "..."],
-  "workflowFiles": {
-    "creation": "workflows/task-creation.md"
-  }
-}
-```
+- Task creation, updates, and status management
+- Task type validation against configuration
+- Status transition validation and recommendations
+- Integration with workflow configuration
 
-See `config.json` for actual values used.
+**TodoService** (`src/services/TodoService.ts`)
+**Responsibility**: Todo analysis and updates
 
-### Progress Tracker (`src/simple-progress-tracker.ts`)
-**Responsibility**: Manage task state and status transitions
+- Extracts todos from Notion task content
+- Provides completion statistics and insights
+- Batch todo update operations
+- Progress tracking and recommendations
 
-- Maintains in-memory workflow state for active tasks
-- Enforces status transition rules from configuration
-- Communicates with Notion API for updates
-- Provides override mechanisms when needed
-- Tracks task metadata and progression
+**ExecutionService** (`src/services/ExecutionService.ts`)
+**Responsibility**: Task execution workflows
 
-**State Management**:
-- Initializes workflow state from Notion
-- Validates transitions against config rules
-- Supports forced updates with logging
-- Syncs changes back to Notion
+- Auto, step-by-step, and batch execution modes
+- Progress tracking and status updates
+- Workflow state management
+- Integration with AI guidance
 
-### Utilities (`src/utils.ts`)
-**Responsibility**: Helper functions for common operations
+**WorkflowService** (`src/services/WorkflowService.ts`)
+**Responsibility**: Workflow guidance management
 
-- Notion URL parsing and validation
-- Page ID extraction from various URL formats
-- URL format normalization
-- Error handling helpers
+- Loads workflow markdown templates
+- Provides structured guidance for AI
+- Template processing and context injection
+- Workflow file caching
 
-### Types (`src/types.ts`)
-**Responsibility**: TypeScript type definitions
+**ResponseFormatter** (`src/services/ResponseFormatter.ts`)
+**Responsibility**: Standardized response formatting
 
-- Core data structures for tasks and todos
-- Configuration interfaces
-- Notion API response types
-- MCP tool parameter types
+- Consistent response structures for MCP tools
+- Error message formatting
+- Success confirmation formatting
+- Status and metadata display
+
+### Provider Pattern
+
+**TaskProvider Interface** (`src/interfaces/TaskProvider.ts`)
+**Responsibility**: Abstract task management backend
+
+- Pluggable backend implementations
+- Standardized task operations
+- Provider-agnostic API surface
+
+**NotionAPIAdapter** (`src/adapters/NotionAPIAdapter.ts`)
+**Responsibility**: Notion API integration
+
+- Direct Notion API communication
+- Dynamic title property resolution
+- Markdown to Notion blocks conversion
+- API error handling and retry logic
+
+### Type Definitions
+
+**Models** (`src/models/`)
+**Responsibility**: Core data structures
+
+- Task.ts: Task entities and metadata
+- Todo.ts: Todo items and analysis results
+- Workflow.ts: Workflow configuration and execution modes
 
 ## Data Flow
 

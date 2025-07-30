@@ -126,10 +126,20 @@ console.log('API Key:', apiKey); // Never log secrets
 ```
 src/
 ├── server.ts                 # MCP server entry point
-├── simple-progress-tracker.ts # Core workflow logic
-├── config-loader.ts          # Configuration management
-├── utils.ts                  # Utility functions
-└── types.ts                  # Type definitions
+├── adapters/
+│   └── NotionAPIAdapter.ts   # Notion API integration
+├── interfaces/
+│   └── TaskProvider.ts       # Provider interface
+├── models/
+│   ├── Task.ts              # Task type definitions
+│   ├── Todo.ts              # Todo type definitions
+│   └── Workflow.ts          # Workflow type definitions
+└── services/
+    ├── ExecutionService.ts   # Task execution logic
+    ├── ResponseFormatter.ts  # Response formatting
+    ├── TaskService.ts        # Task management
+    ├── TodoService.ts        # Todo management
+    └── WorkflowService.ts    # Workflow management
 ```
 
 ### File Naming
