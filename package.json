@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "start:mcp": "node dist/server.js",
+    "start:clean": "node dist/server-clean.js",
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -25,6 +26,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
     "@notionhq/client": "^2.2.15",
+    "@notionhq/notion-mcp-server": "^1.8.1",
     "dotenv": "^17.2.1"
   },
   "devDependencies": {

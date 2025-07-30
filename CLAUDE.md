@@ -15,11 +15,11 @@ This is a Model Context Protocol (MCP) server that enables AI assistants to mana
 
 ## Project Architecture
 
-- **Configuration-driven**: All behavior defined in MCP configuration and `workflows/*.md`
-- **Simple MCP server**: Provides 8 main tools for AI task management
-- **Workflow separation**: Clear distinction between creation, updates, and execution
-- **AI restrictions**: Built-in safeguards prevent AI from closing tasks directly
-- **camelCase convention**: Consistent naming for internal configuration
+- **Provider Pattern**: TaskProvider interface enables pluggable task management backends
+- **Current Implementation**: Direct Notion API integration via @notionhq/client
+- **Workflow Intelligence**: Template-driven task creation with type-specific structures  
+- **MCP Protocol**: 8 tools for comprehensive task and todo management
+- **Extensible Design**: Ready for Linear, GitHub, Jira providers in future versions
 
 See detailed architecture in [docs/development.md](docs/development.md)
 
@@ -98,12 +98,12 @@ All configuration is centralized in your project's `.claude/mcp-config.json`:
 
 ## Key Implementation Notes
 
-- Status transitions enforced by MCP configuration, not code
-- Workflow guidance in separate .md files with template processing
-- AI behavior defined by workflow content, not hardcoded rules
-- Simple, maintainable architecture focused on configuration over code
-- Template system supports `{{status_notStarted}}` style placeholders (camelCase)
-- Environment variables use SCREAMING_CASE, config uses camelCase
+- TaskProvider abstraction enables pluggable backend implementations
+- Current Notion implementation uses direct API integration for stability
+- Workflow templates intelligently merge user content with structured formats
+- Provider-specific formatting (Notion blocks, Linear markdown, etc.)
+- Status transitions and workflows configured per provider
+- Template system supports dynamic content replacement
 
 ## Security and Best Practices
 

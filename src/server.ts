@@ -1,1066 +1,118 @@
 /**
- * Simple Notion Workflow MCP Server
- * 
- * This MCP server provides workflow guidance for development tasks
- * using config-based workflows and simple status management.
+ * MCP Server - Pure router (< 100 lines)
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  McpError,
-  ErrorCode,
-} from '@modelcontextprotocol/sdk/types.js';
-import { Client } from '@notionhq/client';
+import { CallToolRequestSchema, ListToolsRequestSchema, McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 
-import { SimpleProgressTracker } from './simple-progress-tracker.js';
-import { parseNotionUrl } from './utils.js';
-import { TodoManager } from './todo-manager.js';
-import { ProgressCalculator } from './progress-calculator.js';
-import { WorkflowConfig } from './config-loader.js';
-import { HierarchicalTaskExecutor } from './hierarchical-task-executor.js';
+import { NotionAPIAdapter } from './adapters/NotionAPIAdapter.js';
+import { TaskService } from './services/TaskService.js';
+import { TodoService } from './services/TodoService.js';
+import { ExecutionService } from './services/ExecutionService.js';
+import { WorkflowService } from './services/WorkflowService.js';
+import { ResponseFormatter } from './services/ResponseFormatter.js';
+import { WorkflowConfig, ExecutionMode } from './models/Workflow.js';
 
-class NotionWorkflowServer {
+class MCPServer {
   private server: Server;
-  private notion: Client;
-  private tracker: SimpleProgressTracker;
-  private todoManager: TodoManager;
-  private progressCalculator: ProgressCalculator;
-  private hierarchicalExecutor: HierarchicalTaskExecutor;
-  private config: WorkflowConfig;
+  private services: any;
 
   constructor() {
-    this.server = new Server(
-      {
-        name: 'notion-vibe-coding',
-        version: '1.0.0',
-      },
-      {
-        capabilities: {
-          tools: {},
-        },
-      }
-    );
-
-    // Get configuration from environment variables
-    const apiKey = process.env.NOTION_API_KEY;
-    const databaseId = process.env.NOTION_DATABASE_ID;
-    
-    if (!apiKey) {
-      throw new Error('NOTION_API_KEY environment variable is required');
-    }
-    if (!databaseId) {
-      throw new Error('NOTION_DATABASE_ID environment variable is required');
-    }
-
-    // Parse configuration from environment
-    this.config = this.parseConfigFromEnv();
-
-    this.notion = new Client({ auth: apiKey });
-    this.tracker = new SimpleProgressTracker(this.notion, this.config, databaseId);
-    this.todoManager = new TodoManager(this.notion);
-    
-    // Initialize progress calculator with config
-    this.progressCalculator = new ProgressCalculator(
-      {
-        todoProgressionEnabled: true,
-        autoProgressionThresholds: { inProgress: 1, test: 100 }
-      },
-      Object.keys(this.config.statusMapping),
-      this.config.transitions
-    );
-
-    // Initialize hierarchical executor
-    this.hierarchicalExecutor = new HierarchicalTaskExecutor(
-      this.notion,
-      this.todoManager,
-      this.tracker
-    );
-
-    this.setupToolHandlers();
+    this.server = new Server({ name: 'notion-vibe-coding', version: '2.0.0' }, { capabilities: { tools: {} } });
+    this.services = this.initServices();
+    this.setupRoutes();
   }
 
-  private parseConfigFromEnv(): WorkflowConfig {
-    const configJson = process.env.WORKFLOW_CONFIG;
-    
-    if (!configJson) {
-      throw new Error('WORKFLOW_CONFIG environment variable is required');
-    }
+  private initServices() {
+    const apiKey = process.env.NOTION_API_KEY!;
+    const databaseId = process.env.NOTION_DATABASE_ID!;
+    const workflowConfig: WorkflowConfig = JSON.parse(process.env.WORKFLOW_CONFIG!);
 
-    try {
-      let config: any;
-      
-      // Gère les deux formats : string JSON et objet direct
-      if (typeof configJson === 'string') {
-        config = JSON.parse(configJson);
-      } else if (typeof configJson === 'object' && configJson !== null) {
-        config = configJson;
-      } else {
-        throw new Error('WORKFLOW_CONFIG must be a JSON string or object');
-      }
-      
-      // VALIDATION CRITIQUE: Vérifie la structure
-      this.validateWorkflowConfig(config);
-      
-      return config as WorkflowConfig;
-    } catch (error) {
-      console.error('Failed to parse WORKFLOW_CONFIG:', error);
-      throw new Error(`Failed to parse WORKFLOW_CONFIG: ${error}`);
-    }
+    // Initialize Notion API adapter
+    const taskProvider = new NotionAPIAdapter(apiKey, databaseId);
+    
+    // Initialize services with TaskProvider
+    const todo = new TodoService(taskProvider);
+    const workflow = new WorkflowService(workflowConfig);
+    const task = new TaskService(taskProvider, todo, workflowConfig, workflow);
+    const execution = new ExecutionService(task, todo, workflow);
+    const formatter = new ResponseFormatter();
+
+    return { task, todo, execution, workflow, formatter };
   }
 
-  private validateWorkflowConfig(config: any): void {
-    const requiredFields = ['statusMapping', 'transitions', 'taskTypes', 'defaultStatus', 'requiresValidation', 'workflowFiles'];
-    
-    for (const field of requiredFields) {
-      if (!config[field]) {
-        throw new Error(`Missing required field in WORKFLOW_CONFIG: ${field}`);
-      }
-    }
-    
-    // Vérifie statusMapping
-    const requiredStatuses = ['notStarted', 'inProgress', 'test', 'done'];
-    for (const status of requiredStatuses) {
-      if (!config.statusMapping[status]) {
-        throw new Error(`Missing status mapping: ${status}`);
-      }
-    }
-    
-    // Vérifie que defaultStatus existe dans statusMapping
-    if (!config.statusMapping[config.defaultStatus]) {
-      throw new Error(`Default status "${config.defaultStatus}" not found in statusMapping`);
-    }
-    
-    console.error('✅ WORKFLOW_CONFIG validation passed');
-  }
-
-  private setupToolHandlers(): void {
+  private setupRoutes() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
-        {
-          name: 'start_task_workflow',
-          description: 'Initialize a workflow for a Notion task and get workflow guidance',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              taskUrl: {
-                type: 'string',
-                description: 'The Notion task URL',
-              },
-              workflowType: {
-                type: 'string',
-                enum: this.config.taskTypes.map(t => t.toLowerCase()),
-                description: 'Type of workflow to initialize',
-              },
-            },
-            required: ['taskUrl', 'workflowType'],
-          },
-        },
-        {
-          name: 'get_workflow_guidance',
-          description: 'Get workflow guidance for task creation, update, or execution',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              action: {
-                type: 'string',
-                enum: ['creation', 'update', 'execution'],
-                description: 'Type of workflow guidance needed',
-              },
-            },
-            required: ['action'],
-          },
-        },
-        {
-          name: 'update_task_status',
-          description: 'Update task status according to workflow rules',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              taskId: {
-                type: 'string',
-                description: 'The Notion task/page ID',
-              },
-              newStatus: {
-                type: 'string',
-                description: 'New status to set',
-              },
-              force: {
-                type: 'boolean',
-                description: 'Force update bypassing validation',
-                default: false,
-              },
-            },
-            required: ['taskId', 'newStatus'],
-          },
-        },
-        {
-          name: 'get_task_info',
-          description: 'Get current task status and available transitions',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              taskId: {
-                type: 'string',
-                description: 'The Notion task/page ID',
-              },
-            },
-            required: ['taskId'],
-          },
-        },
-        {
-          name: 'create_task',
-          description: 'Create a new task in Notion database with workflow template',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              title: {
-                type: 'string',
-                description: 'The task title',
-              },
-              taskType: {
-                type: 'string',
-                enum: this.config.taskTypes,
-                description: 'Type of task to create',
-              },
-              description: {
-                type: 'string',
-                description: 'Task description and content',
-              },
-              processedContent: {
-                type: 'string',
-                description: 'Pre-processed task content (when provided, skips AI instruction step)',
-              },
-            },
-            required: ['title', 'taskType', 'description'],
-          },
-        },
-        {
-          name: 'update_task',
-          description: 'Update task content (title, description, type) without changing status',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              taskId: {
-                type: 'string',
-                description: 'The Notion task/page ID',
-              },
-              title: {
-                type: 'string',
-                description: 'New task title (optional)',
-              },
-              content: {
-                type: 'string',
-                description: 'New task content/description (optional)',
-              },
-              taskType: {
-                type: 'string',
-                enum: this.config.taskTypes,
-                description: 'New task type (optional)',
-              },
-            },
-            required: ['taskId'],
-          },
-        },
-        {
-          name: 'progress_todo',
-          description: 'Mark a specific todo as completed and auto-update task status based on progress',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              taskId: {
-                type: 'string',
-                description: 'Notion page ID',
-              },
-              todoText: {
-                type: 'string',
-                description: 'Exact text of the todo to update',
-              },
-              completed: {
-                type: 'boolean',
-                description: 'Mark as completed (true) or uncompleted (false)',
-              },
-              autoProgress: {
-                type: 'boolean',
-                description: 'Automatically update task status based on completion percentage',
-                default: true,
-              },
-            },
-            required: ['taskId', 'todoText', 'completed'],
-          },
-        },
-        {
-          name: 'analyze_task_todos',
-          description: 'Extract and analyze all todos from a task with completion statistics',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              taskId: {
-                type: 'string',
-                description: 'Notion page ID',
-              },
-              includeHierarchy: {
-                type: 'boolean',
-                description: 'Include hierarchical structure analysis (nested todos)',
-                default: false,
-              },
-            },
-            required: ['taskId'],
-          },
-        },
-        {
-          name: 'batch_progress_todos',
-          description: 'Update multiple todos at once for efficient progress tracking',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              taskId: {
-                type: 'string',
-                description: 'Notion page ID',
-              },
-              updates: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    todoText: { type: 'string' },
-                    completed: { type: 'boolean' },
-                  },
-                  required: ['todoText', 'completed'],
-                },
-                description: 'Array of todo updates to apply',
-              },
-              autoProgress: {
-                type: 'boolean',
-                description: 'Auto-update task status after batch update',
-                default: true,
-              },
-            },
-            required: ['taskId', 'updates'],
-          },
-        },
-        {
-          name: 'execute_task_hierarchically',
-          description: 'Execute task by parsing Notion document structure (headings + todos) and working section by section',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              taskId: {
-                type: 'string',
-                description: 'Notion page ID',
-              },
-            },
-            required: ['taskId'],
-          },
-        },
-        {
-          name: 'execute_next_section',
-          description: 'Execute the next uncompleted section in hierarchical task, showing real-time progress',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              taskId: {
-                type: 'string',
-                description: 'Notion page ID',
-              },
-            },
-            required: ['taskId'],
-          },
-        },
-      ],
+        { name: 'execute_task', description: 'Execute task (auto/step/batch)', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, mode: { type: 'string', enum: ['auto', 'step', 'batch'] } }, required: ['taskId', 'mode'] } },
+        { name: 'create_task', description: 'Create new task', inputSchema: { type: 'object', properties: { title: { type: 'string' }, taskType: { type: 'string' }, description: { type: 'string' } }, required: ['title', 'taskType', 'description'] } },
+        { name: 'get_task', description: 'Get task info', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
+        { name: 'update_task', description: 'Update task content', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, title: { type: 'string' }, description: { type: 'string' }, taskType: { type: 'string' } }, required: ['taskId'] } },
+        { name: 'get_workflow_guidance', description: 'Get workflow guidance', inputSchema: { type: 'object', properties: { type: { type: 'string', enum: ['creation', 'update', 'execution'] } }, required: ['type'] } },
+        { name: 'analyze_todos', description: 'Analyze todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, includeHierarchy: { type: 'boolean' } }, required: ['taskId'] } },
+        { name: 'update_task_status', description: 'Update task status', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, newStatus: { type: 'string' } }, required: ['taskId', 'newStatus'] } },
+        { name: 'update_todos', description: 'Batch update todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, updates: { type: 'array' } }, required: ['taskId', 'updates'] } },
+      ]
     }));
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
-
       try {
-        switch (name) {
-          case 'start_task_workflow':
-            return await this.handleStartTaskWorkflow(args as {
-              taskUrl: string;
-              workflowType: string;
-            });
-
-          case 'get_workflow_guidance':
-            return await this.handleGetWorkflowGuidance(args as {
-              action: 'creation' | 'update' | 'execution';
-            });
-
-          case 'update_task_status':
-            return await this.handleUpdateTaskStatus(args as {
-              taskId: string;
-              newStatus: string;
-              force?: boolean;
-            });
-
-          case 'get_task_info':
-            return await this.handleGetTaskInfo(args as {
-              taskId: string;
-            });
-
-          case 'create_task':
-            return await this.handleCreateTask(args as {
-              title: string;
-              taskType: string;
-              description: string;
-              processedContent?: string;
-            });
-
-          case 'update_task':
-            return await this.handleUpdateTask(args as {
-              taskId: string;
-              title?: string;
-              content?: string;
-              taskType?: string;
-            });
-
-          case 'progress_todo':
-            return await this.handleProgressTodo(args as {
-              taskId: string;
-              todoText: string;
-              completed: boolean;
-              autoProgress?: boolean;
-            });
-
-          case 'analyze_task_todos':
-            return await this.handleAnalyzeTaskTodos(args as {
-              taskId: string;
-              includeHierarchy?: boolean;
-            });
-
-          case 'batch_progress_todos':
-            return await this.handleBatchProgressTodos(args as {
-              taskId: string;
-              updates: Array<{ todoText: string; completed: boolean }>;
-              autoProgress?: boolean;
-            });
-
-          case 'execute_task_hierarchically':
-            return await this.handleExecuteTaskHierarchically(args as {
-              taskId: string;
-            });
-
-          case 'execute_next_section':
-            return await this.handleExecuteNextSection(args as {
-              taskId: string;
-            });
-
-          default:
-            throw new McpError(
-              ErrorCode.MethodNotFound,
-              `Unknown tool: ${name}`
-            );
-        }
+        const result = await this.routeCall(name, args);
+        return { content: [{ type: 'text', text: result }] };
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        throw new McpError(ErrorCode.InternalError, errorMessage);
+        throw new McpError(ErrorCode.InternalError, `${error}`);
       }
     });
   }
 
-  private async handleStartTaskWorkflow(args: {
-    taskUrl: string;
-    workflowType: string;
-  }) {
-    const { taskUrl, workflowType } = args;
+  private async routeCall(name: string, args: any): Promise<string> {
+    const { task, todo, execution, workflow, formatter } = this.services;
 
-    // Parse Notion URL to get page ID
-    const urlInfo = parseNotionUrl(taskUrl);
-    if (!urlInfo.isValid) {
-      throw new Error(`Invalid Notion URL: ${taskUrl}`);
-    }
+    switch (name) {
+      case 'execute_task':
+        const mode: ExecutionMode = { type: args.mode, showProgress: true, autoUpdateStatus: true };
+        const result = await execution.executeTask(args.taskId, mode);
+        return formatter.formatExecutionResult(result);
 
-    const pageId = urlInfo.pageId;
+      case 'create_task':
+        const newTask = await task.createTask(args.title, args.taskType, args.description);
+        return formatter.formatTaskCreated(newTask);
 
-    try {
-      // Sync with Notion and get current status
-      const state = await this.tracker.syncWithNotion(pageId, workflowType);
-      
-      // Get workflow guidance
-      const guidance = this.tracker.getWorkflowGuidance('creation');
+      case 'get_task':
+        const metadata = await task.getTaskMetadata(args.taskId);
+        return formatter.formatTaskInfo(metadata);
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: true,
-              taskId: pageId,
-              workflowType,
-              currentStatus: state.currentStatus,
-              availableStatuses: this.tracker.getAvailableStatuses(),
-              nextStatuses: this.tracker.getNextStatuses(pageId),
-              guidance: guidance.substring(0, 500) + '...',
-              message: `Workflow initialized for ${workflowType} task. Current status: ${state.currentStatus}`
-            }, null, 2)
-          }
-        ]
-      };
-    } catch (error) {
-      throw new Error(`Failed to start task workflow: ${error}`);
+      case 'update_task':
+        await task.updateTask(args.taskId, args);
+        return formatter.formatTaskUpdated(args.taskId, args);
+
+      case 'get_workflow_guidance':
+        return await workflow.getWorkflowGuidance(args.type, args.context);
+
+      case 'analyze_todos':
+        const analysis = await todo.analyzeTodos(args.taskId, args.includeHierarchy);
+        return formatter.formatTodoAnalysis(analysis);
+
+      case 'update_task_status':
+        await task.updateTaskStatus(args.taskId, args.newStatus);
+        return formatter.formatStatusUpdated(args.taskId, args.newStatus);
+
+      case 'update_todos':
+        const updateResult = await todo.updateTodos(args.taskId, args.updates);
+        return formatter.formatTodosUpdated(args.taskId, updateResult);
+
+      default:
+        throw new Error(`Unknown tool: ${name}`);
     }
   }
 
-  private async handleGetWorkflowGuidance(args: {
-    action: 'creation' | 'update' | 'execution';
-  }) {
-    const { action } = args;
-
-    try {
-      const guidance = this.tracker.getWorkflowGuidance(action);
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: guidance
-          }
-        ]
-      };
-    } catch (error) {
-      throw new Error(`Failed to get workflow guidance: ${error}`);
-    }
-  }
-
-  private async handleUpdateTaskStatus(args: {
-    taskId: string;
-    newStatus: string;
-    force?: boolean;
-  }) {
-    const { taskId, newStatus, force = false } = args;
-
-    try {
-      if (force) {
-        await this.tracker.forceStatusUpdate(taskId, newStatus, 'Manual override');
-      } else {
-        await this.tracker.updateTaskStatus(taskId, newStatus);
-      }
-
-      const nextStatuses = this.tracker.getNextStatuses(taskId);
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: true,
-              taskId,
-              newStatus,
-              nextStatuses,
-              message: `Status updated to: ${newStatus}`
-            }, null, 2)
-          }
-        ]
-      };
-    } catch (error) {
-      throw new Error(`Failed to update task status: ${error}`);
-    }
-  }
-
-  private async handleGetTaskInfo(args: { taskId: string }) {
-    const { taskId } = args;
-
-    try {
-      const state = this.tracker.getWorkflowState(taskId);
-      const nextStatuses = this.tracker.getNextStatuses(taskId);
-      const allStatuses = this.tracker.getAvailableStatuses();
-      const taskTypes = this.tracker.getAvailableTaskTypes();
-
-      // Get todo statistics
-      let todoStats = null;
-      let progressRecommendation = null;
-      try {
-        const todoAnalysis = await this.todoManager.extractTodosFromTask(taskId, false);
-        todoStats = todoAnalysis.stats;
-        
-        const currentStatus = state?.currentStatus || await this.tracker.readCurrentStatus(taskId);
-        progressRecommendation = this.progressCalculator.calculateRecommendedStatus(
-          currentStatus,
-          todoStats
-        );
-      } catch (todoError) {
-        // Todo analysis is optional - don't fail if it doesn't work
-        console.warn(`Could not analyze todos for task ${taskId}: ${todoError}`);
-      }
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: true,
-              taskId,
-              currentStatus: state?.currentStatus || 'Unknown',
-              taskType: state?.taskType || 'Unknown',
-              nextStatuses,
-              allStatuses,
-              taskTypes,
-              todoStats: todoStats ? {
-                total: todoStats.total,
-                completed: todoStats.completed,
-                percentage: todoStats.percentage,
-                nextTodos: todoStats.nextTodos
-              } : null,
-              progressRecommendation: progressRecommendation ? {
-                recommendedStatus: progressRecommendation.recommendedStatus,
-                shouldAutoProgress: progressRecommendation.shouldAutoProgress,
-                reason: progressRecommendation.reason
-              } : null,
-              message: `Task info retrieved for ${taskId}`
-            }, null, 2)
-          }
-        ]
-      };
-    } catch (error) {
-      throw new Error(`Failed to get task info: ${error}`);
-    }
-  }
-
-  private async handleCreateTask(args: {
-    title: string;
-    taskType: string;
-    description: string;
-    processedContent?: string;
-  }) {
-    const { title, taskType, description, processedContent } = args;
-
-    try {
-      // Step 2: If processedContent is provided, create the task directly
-      if (processedContent) {
-        const taskId = await this.tracker.createTask(title, taskType, processedContent);
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: true,
-                taskId,
-                title,
-                taskType,
-                status: this.tracker.getAvailableStatuses()[0],
-                message: `Task created successfully: ${title}`,
-                url: `https://notion.so/${taskId}`
-              }, null, 2)
-            }
-          ]
-        };
-      }
-
-      // Step 1: Return instruction for Claude to process
-      const guidance = this.tracker.getWorkflowGuidance('creation');
-      const contextualInstruction = this.generateContextualInstruction(taskType, description, guidance);
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `**CONTEXTUALIZATION NEEDED**: Please analyze the task and create appropriate content based on the template below, then call create_task again with the processed content.
-
-**Task**: ${title}
-**Type**: ${taskType}  
-**Description**: ${description}
-
-**Instructions**: ${contextualInstruction.instruction}
-
-**Template to contextualize**:
-${contextualInstruction.template}
-
-**When ready**, call create_task again with:
-- Same title, taskType, description
-- Add processedContent parameter with your contextualized version`
-          }
-        ]
-      };
-    } catch (error) {
-      throw new Error(`Failed to create task: ${error}`);
-    }
-  }
-
-  private generateContextualInstruction(taskType: string, description: string, guidance: string): {
-    instruction: string;
-    template: string;
-  } {
-    // Extract template for this task type from guidance
-    const regex = new RegExp(`#### ${taskType}\\s*\`\`\`([\\s\\S]*?)\`\`\``, 'i');
-    const match = guidance.match(regex);
-    
-    if (!match || !match[1]) {
-      throw new Error(`No template found for task type: ${taskType}`);
-    }
-    
-    const template = match[1].trim();
-    
-    const instruction = `Based on the task "${description}", follow the template structure below and replace generic content with specific, actionable items. 
-    
-Key guidelines:
-- Adapt the number of items based on task complexity (not fixed counts)
-- Create meaningful sections if the task requires them
-- Replace placeholders with concrete, project-specific content
-- Ensure acceptance criteria are measurable and testable
-- Break implementation into logical, sequential steps
-- Focus on what's actually needed for this specific task`;
-
-    return { instruction, template };
-  }
-
-  private async handleUpdateTask(args: {
-    taskId: string;
-    title?: string;
-    content?: string;
-    taskType?: string;
-  }) {
-    const { taskId, title, content, taskType } = args;
-
-    try {
-      // Get workflow guidance for updates
-      const guidance = this.tracker.getWorkflowGuidance('update');
-      
-      // Prepare updates object
-      const updates: any = {};
-      if (title) updates.title = title;
-      if (content) updates.content = content;
-      if (taskType) updates.taskType = taskType;
-
-      // Update the task
-      await this.tracker.updateTaskContent(taskId, updates);
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: true,
-              taskId,
-              updates: Object.keys(updates),
-              message: `Task updated successfully`,
-              guidance: guidance.substring(0, 300) + '...'
-            }, null, 2)
-          }
-        ]
-      };
-    } catch (error) {
-      throw new Error(`Failed to update task: ${error}`);
-    }
-  }
-
-  private formatTaskContent(taskType: string, description: string, guidance: string): string {
-    // Extract template from workflow guidance
-    const regex = new RegExp(`#### ${taskType}\\s*\`\`\`([\\s\\S]*?)\`\`\``, 'i');
-    const match = guidance.match(regex);
-    
-    if (match && match[1]) {
-      // Use template from guidance and replace placeholders
-      let template = match[1].trim();
-      
-      // Replace specific placeholders based on task type
-      if (taskType === 'Feature') {
-        template = template.replace(/\[Description of the feature\]/g, description);
-      } else if (taskType === 'Bug') {
-        template = template.replace(/\[Description of the bug\]/g, description);
-      } else if (taskType === 'Refactoring') {
-        template = template.replace(/\[Why this refactoring is necessary\]/g, description);
-      }
-      
-      return template;
-    }
-    
-    // No template found - this is a configuration error
-    throw new Error(`Template not found for task type "${taskType}" in workflow guidance. Check your workflow configuration.`);
-  }
-
-  private async handleProgressTodo(args: {
-    taskId: string;
-    todoText: string;
-    completed: boolean;
-    autoProgress?: boolean;
-  }) {
-    const { taskId, todoText, completed, autoProgress = true } = args;
-
-    try {
-      // Update the todo
-      const result = await this.todoManager.updateTodo(taskId, todoText, completed);
-      
-      // Calculate progress recommendation
-      const currentStatus = await this.tracker.readCurrentStatus(taskId);
-      const recommendation = this.progressCalculator.calculateRecommendedStatus(
-        currentStatus,
-        result.stats
-      );
-
-      // Auto-progress if enabled and recommended
-      if (autoProgress && recommendation.shouldAutoProgress) {
-        await this.tracker.updateTaskStatus(taskId, recommendation.recommendedStatus);
-      }
-
-      // Generate progress summary
-      const summary = this.progressCalculator.generateProgressSummary(
-        recommendation.shouldAutoProgress ? recommendation.recommendedStatus : currentStatus,
-        result.stats,
-        recommendation
-      );
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: true,
-              taskId,
-              todoText,
-              completed,
-              autoProgressed: autoProgress && recommendation.shouldAutoProgress,
-              newStatus: recommendation.shouldAutoProgress ? recommendation.recommendedStatus : currentStatus,
-              stats: result.stats,
-              summary,
-              message: `Todo "${todoText}" marked as ${completed ? 'completed' : 'incomplete'}`
-            }, null, 2)
-          }
-        ]
-      };
-    } catch (error) {
-      throw new Error(`Failed to progress todo: ${error}`);
-    }
-  }
-
-  private async handleAnalyzeTaskTodos(args: {
-    taskId: string;
-    includeHierarchy?: boolean;
-  }) {
-    const { taskId, includeHierarchy = false } = args;
-
-    try {
-      // Extract and analyze todos
-      const analysis = await this.todoManager.extractTodosFromTask(taskId, includeHierarchy);
-      
-      // Get current status for recommendation
-      const currentStatus = await this.tracker.readCurrentStatus(taskId);
-      const recommendation = this.progressCalculator.calculateRecommendedStatus(
-        currentStatus,
-        analysis.stats
-      );
-
-      // Get additional insights
-      const insights = this.progressCalculator.analyzeProgressDistribution(analysis.stats);
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: true,
-              taskId,
-              todos: analysis.todos,
-              stats: analysis.stats,
-              currentStatus,
-              recommendedStatus: recommendation.recommendedStatus,
-              shouldAutoProgress: recommendation.shouldAutoProgress,
-              insights: insights.insights,
-              recommendations: insights.recommendations,
-              blockers: insights.blockers,
-              message: `Found ${analysis.stats.total} todos (${analysis.stats.completed} completed)`
-            }, null, 2)
-          }
-        ]
-      };
-    } catch (error) {
-      throw new Error(`Failed to analyze task todos: ${error}`);
-    }
-  }
-
-  private async handleBatchProgressTodos(args: {
-    taskId: string;
-    updates: Array<{ todoText: string; completed: boolean }>;
-    autoProgress?: boolean;
-  }) {
-    const { taskId, updates, autoProgress = true } = args;
-
-    try {
-      // Batch update todos
-      const result = await this.todoManager.batchUpdateTodos(taskId, updates);
-      
-      // Calculate progress recommendation
-      const currentStatus = await this.tracker.readCurrentStatus(taskId);
-      const recommendation = this.progressCalculator.calculateRecommendedStatus(
-        currentStatus,
-        result.stats
-      );
-
-      // Auto-progress if enabled and recommended
-      if (autoProgress && recommendation.shouldAutoProgress) {
-        await this.tracker.updateTaskStatus(taskId, recommendation.recommendedStatus);
-      }
-
-      // Generate progress summary
-      const summary = this.progressCalculator.generateProgressSummary(
-        recommendation.shouldAutoProgress ? recommendation.recommendedStatus : currentStatus,
-        result.stats,
-        recommendation
-      );
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: true,
-              taskId,
-              updatesApplied: updates.length,
-              autoProgressed: autoProgress && recommendation.shouldAutoProgress,
-              newStatus: recommendation.shouldAutoProgress ? recommendation.recommendedStatus : currentStatus,
-              stats: result.stats,
-              summary,
-              message: `Batch updated ${updates.length} todos`
-            }, null, 2)
-          }
-        ]
-      };
-    } catch (error) {
-      throw new Error(`Failed to batch progress todos: ${error}`);
-    }
-  }
-
-  private async handleExecuteTaskHierarchically(args: {
-    taskId: string;
-  }) {
-    const { taskId } = args;
-
-    try {
-      const result = await this.hierarchicalExecutor.executeTaskHierarchically(taskId);
-      
-      // Format the response to include contextual messages for AI guidance
-      let responseText = `# Hierarchical Task Execution\n\n`;
-      responseText += `**Task ID:** ${taskId}\n`;
-      responseText += `**Progress:** ${result.sectionsExecuted}/${result.totalSections} sections completed\n`;
-      responseText += `**Final Completion:** ${result.finalStats.percentage}%\n\n`;
-      
-      // Add contextual execution flow
-      if (result.executionFlow && result.executionFlow.length > 0) {
-        responseText += `## Execution Flow:\n\n`;
-        result.executionFlow.forEach((step: any, index: number) => {
-          const status = step.completed ? '✅' : '⏳';
-          responseText += `${index + 1}. ${status} **${step.message}**\n`;
-          if (step.sectionName) {
-            responseText += `   - Section: "${step.sectionName}"\n`;
-          }
-          if (step.todos && step.todos.length > 0) {
-            responseText += `   - Todos in this section:\n`;
-            step.todos.forEach((todo: any) => {
-              const todoStatus = todo.checked ? '✅' : '❌';
-              responseText += `     ${todoStatus} ${todo.text}\n`;
-            });
-          }
-          responseText += `\n`;
-        });
-      }
-      
-      // Add section results
-      if (result.results && result.results.length > 0) {
-        responseText += `## Section Results:\n\n`;
-        result.results.forEach((sectionResult: any, index: number) => {
-          const status = sectionResult.success ? '✅' : '❌';
-          responseText += `${index + 1}. ${status} **${sectionResult.sectionName}**: ${sectionResult.completed}/${sectionResult.total} todos completed\n`;
-        });
-        responseText += `\n`;
-      }
-      
-      responseText += `## Summary\n`;
-      responseText += `The task was executed hierarchically, working through each section systematically. `;
-      if (result.finalStats.percentage >= 100) {
-        responseText += `🎉 **Task completed successfully!** All sections and todos are now complete.`;
-      } else if (result.finalStats.percentage > 0) {
-        responseText += `📈 **Task in progress.** Continue working on the remaining sections.`;
-      } else {
-        responseText += `⚠️ No progress made. Check the task structure and todo items.`;
-      }
-      
-      return {
-        content: [
-          {
-            type: 'text',
-            text: responseText
-          }
-        ]
-      };
-    } catch (error) {
-      throw new Error(`Failed to execute task hierarchically: ${error}`);
-    }
-  }
-
-  private async handleExecuteNextSection(args: {
-    taskId: string;
-  }) {
-    const { taskId } = args;
-
-    console.error(`🔧 DEBUG: Starting executeNextSection for taskId: ${taskId}`);
-    
-    try {
-      console.error(`🔧 DEBUG: Calling hierarchicalExecutor.executeNextSection...`);
-      const result = await this.hierarchicalExecutor.executeNextSection(taskId);
-      console.error(`🔧 DEBUG: Got result:`, JSON.stringify(result, null, 2));
-      
-      let responseText = '';
-      
-      if (result.completed) {
-        responseText = `# ✅ Section Completed: "${result.sectionName}"\n\n`;
-        responseText += `**Progress:** ${result.completedTodos}/${result.totalTodos} todos completed in this section\n\n`;
-        
-        if (result.todos && result.todos.length > 0) {
-          responseText += `## Todos processed:\n\n`;
-          result.todos.forEach((todo: any) => {
-            const status = todo.completed ? '✅' : '❌';
-            responseText += `${status} ${todo.text}\n`;
-          });
-          responseText += `\n`;
-        }
-        
-        responseText += `## Overall Progress:\n`;
-        responseText += `- **Current section:** ${result.currentSectionIndex + 1}/${result.totalSections}\n`;
-        responseText += `- **Task completion:** ${result.finalStats.percentage}%\n\n`;
-        
-        if (result.hasMoreSections) {
-          responseText += `🚀 **Next:** Ready to execute "${result.nextSectionName}"\n`;
-          responseText += `👉 Call \`execute_next_section\` again to continue.`;
-        } else {
-          responseText += `🎉 **All sections completed!** Task is now 100% complete.`;
-        }
-      } else {
-        responseText = `# ⚠️ Section Not Found or Already Completed\n\n`;
-        responseText += `**Task ID:** ${taskId}\n`;
-        responseText += `**Current progress:** ${result.finalStats?.percentage || 0}%\n\n`;
-        
-        if (result.finalStats?.percentage >= 100) {
-          responseText += `✅ Task already completed!`;
-        } else {
-          responseText += `❌ No uncompleted sections found. Check task structure.`;
-        }
-      }
-      
-      return {
-        content: [
-          {
-            type: 'text',
-            text: responseText
-          }
-        ]
-      };
-    } catch (error) {
-      throw new Error(`Failed to execute next section: ${error}`);
-    }
-  }
-
-  async run(): Promise<void> {
+  async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error('Notion Vibe Coding MCP server running on stdio');
+    console.error('🚀 MCP Server running');
   }
 }
 
-// Start the server
-const server = new NotionWorkflowServer();
-server.run().catch((error) => {
-  console.error('Server error:', error);
-  process.exit(1);
-});
+new MCPServer().run().catch(console.error);

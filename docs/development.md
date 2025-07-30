@@ -7,22 +7,28 @@ Guide for contributing to and customizing the Notion Vibe Coding MCP server.
 ```
 notion-vibe-coding/
 ├── src/
-│   ├── server.ts                     # Main MCP server
-│   ├── simple-progress-tracker.ts    # Core workflow logic
-│   ├── config-loader.ts              # Configuration management
-│   ├── todo-manager.ts               # Todo parsing and updates
-│   ├── progress-calculator.ts        # Progress and auto-progression logic
-│   ├── utils.ts                      # Utility functions
-│   └── types.ts                      # TypeScript definitions
-├── mcp                               # CLI wrapper executable
+│   ├── server.ts                     # Main MCP server (pure router)
+│   ├── interfaces/
+│   │   └── TaskProvider.ts           # Provider contract (multi-provider ready)
+│   ├── adapters/
+│   │   └── NotionAPIAdapter.ts       # Notion API implementation
+│   ├── services/
+│   │   ├── TaskService.ts            # High-level task operations
+│   │   ├── TodoService.ts            # Todo management and analysis  
+│   │   ├── ExecutionService.ts       # Task execution workflows
+│   │   ├── WorkflowService.ts        # Template processing
+│   │   └── ResponseFormatter.ts      # Output formatting
+│   ├── models/
+│   │   ├── Task.ts                   # Task type definitions
+│   │   ├── Todo.ts                   # Todo type definitions
+│   │   └── Workflow.ts               # Workflow type definitions
+├── mcp.js                            # CLI wrapper for testing
 ├── workflows/
-│   ├── task-creation.md              # AI guidance for task creation
-│   ├── task-update.md                # AI guidance for task updates
-│   └── task-execution.md             # AI guidance for task execution
+│   ├── task-creation.md              # Task type templates
+│   ├── task-update.md                # Update guidance
+│   └── task-execution.md             # Execution guidance
 ├── docs/                             # Documentation
 ├── mcp-config.example.json           # Example MCP configuration
-├── package.json
-├── tsconfig.json
 └── README.md
 ```
 
