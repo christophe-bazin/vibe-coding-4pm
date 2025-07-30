@@ -82,6 +82,8 @@ setTimeout(() => {
 
 // Handle responses
 let responses = 0;
+let toolResultReceived = false;
+
 server.stdout.on('data', (data) => {
   const lines = data.toString().split('\n').filter(line => line.trim());
   
@@ -90,13 +92,18 @@ server.stdout.on('data', (data) => {
       const response = JSON.parse(line);
       responses++;
       
-      if (responses === 2) { // Second response is our tool result
+      // Check if this is our tool result (has id: 2)
+      if (response.id === 2 && !toolResultReceived) {
+        toolResultReceived = true;
+        
         if (response.result && response.result.content) {
           console.log(response.result.content[0].text);
         } else if (response.error) {
           console.error('Error:', response.error.message);
         }
-        server.kill();
+        
+        // Give a moment for any final output, then kill
+        setTimeout(() => server.kill(), 100);
       }
     } catch (e) {
       // Ignore non-JSON lines
@@ -104,5 +111,10 @@ server.stdout.on('data', (data) => {
   });
 });
 
-// Cleanup
-setTimeout(() => server.kill(), 5000);
+// Cleanup with longer timeout for long-running operations
+setTimeout(() => {
+  if (!toolResultReceived) {
+    console.log('Timeout reached, killing server...');
+  }
+  server.kill();
+}, 30000); // 30 seconds timeout for hierarchical execution

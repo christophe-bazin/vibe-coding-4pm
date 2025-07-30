@@ -20,6 +20,7 @@ import { parseNotionUrl } from './utils.js';
 import { TodoManager } from './todo-manager.js';
 import { ProgressCalculator } from './progress-calculator.js';
 import { WorkflowConfig } from './config-loader.js';
+import { HierarchicalTaskExecutor } from './hierarchical-task-executor.js';
 
 class NotionWorkflowServer {
   private server: Server;
@@ -27,6 +28,7 @@ class NotionWorkflowServer {
   private tracker: SimpleProgressTracker;
   private todoManager: TodoManager;
   private progressCalculator: ProgressCalculator;
+  private hierarchicalExecutor: HierarchicalTaskExecutor;
   private config: WorkflowConfig;
 
   constructor() {
@@ -68,6 +70,13 @@ class NotionWorkflowServer {
       },
       Object.keys(this.config.statusMapping),
       this.config.transitions
+    );
+
+    // Initialize hierarchical executor
+    this.hierarchicalExecutor = new HierarchicalTaskExecutor(
+      this.notion,
+      this.todoManager,
+      this.tracker
     );
 
     this.setupToolHandlers();
@@ -332,6 +341,34 @@ class NotionWorkflowServer {
             required: ['taskId', 'updates'],
           },
         },
+        {
+          name: 'execute_task_hierarchically',
+          description: 'Execute task by parsing Notion document structure (headings + todos) and working section by section',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              taskId: {
+                type: 'string',
+                description: 'Notion page ID',
+              },
+            },
+            required: ['taskId'],
+          },
+        },
+        {
+          name: 'execute_next_section',
+          description: 'Execute the next uncompleted section in hierarchical task, showing real-time progress',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              taskId: {
+                type: 'string',
+                description: 'Notion page ID',
+              },
+            },
+            required: ['taskId'],
+          },
+        },
       ],
     }));
 
@@ -398,6 +435,16 @@ class NotionWorkflowServer {
               taskId: string;
               updates: Array<{ todoText: string; completed: boolean }>;
               autoProgress?: boolean;
+            });
+
+          case 'execute_task_hierarchically':
+            return await this.handleExecuteTaskHierarchically(args as {
+              taskId: string;
+            });
+
+          case 'execute_next_section':
+            return await this.handleExecuteNextSection(args as {
+              taskId: string;
             });
 
           default:
@@ -872,6 +919,135 @@ Key guidelines:
       };
     } catch (error) {
       throw new Error(`Failed to batch progress todos: ${error}`);
+    }
+  }
+
+  private async handleExecuteTaskHierarchically(args: {
+    taskId: string;
+  }) {
+    const { taskId } = args;
+
+    try {
+      const result = await this.hierarchicalExecutor.executeTaskHierarchically(taskId);
+      
+      // Format the response to include contextual messages for AI guidance
+      let responseText = `# Hierarchical Task Execution\n\n`;
+      responseText += `**Task ID:** ${taskId}\n`;
+      responseText += `**Progress:** ${result.sectionsExecuted}/${result.totalSections} sections completed\n`;
+      responseText += `**Final Completion:** ${result.finalStats.percentage}%\n\n`;
+      
+      // Add contextual execution flow
+      if (result.executionFlow && result.executionFlow.length > 0) {
+        responseText += `## Execution Flow:\n\n`;
+        result.executionFlow.forEach((step: any, index: number) => {
+          const status = step.completed ? '✅' : '⏳';
+          responseText += `${index + 1}. ${status} **${step.message}**\n`;
+          if (step.sectionName) {
+            responseText += `   - Section: "${step.sectionName}"\n`;
+          }
+          if (step.todos && step.todos.length > 0) {
+            responseText += `   - Todos in this section:\n`;
+            step.todos.forEach((todo: any) => {
+              const todoStatus = todo.checked ? '✅' : '❌';
+              responseText += `     ${todoStatus} ${todo.text}\n`;
+            });
+          }
+          responseText += `\n`;
+        });
+      }
+      
+      // Add section results
+      if (result.results && result.results.length > 0) {
+        responseText += `## Section Results:\n\n`;
+        result.results.forEach((sectionResult: any, index: number) => {
+          const status = sectionResult.success ? '✅' : '❌';
+          responseText += `${index + 1}. ${status} **${sectionResult.sectionName}**: ${sectionResult.completed}/${sectionResult.total} todos completed\n`;
+        });
+        responseText += `\n`;
+      }
+      
+      responseText += `## Summary\n`;
+      responseText += `The task was executed hierarchically, working through each section systematically. `;
+      if (result.finalStats.percentage >= 100) {
+        responseText += `🎉 **Task completed successfully!** All sections and todos are now complete.`;
+      } else if (result.finalStats.percentage > 0) {
+        responseText += `📈 **Task in progress.** Continue working on the remaining sections.`;
+      } else {
+        responseText += `⚠️ No progress made. Check the task structure and todo items.`;
+      }
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: responseText
+          }
+        ]
+      };
+    } catch (error) {
+      throw new Error(`Failed to execute task hierarchically: ${error}`);
+    }
+  }
+
+  private async handleExecuteNextSection(args: {
+    taskId: string;
+  }) {
+    const { taskId } = args;
+
+    console.error(`🔧 DEBUG: Starting executeNextSection for taskId: ${taskId}`);
+    
+    try {
+      console.error(`🔧 DEBUG: Calling hierarchicalExecutor.executeNextSection...`);
+      const result = await this.hierarchicalExecutor.executeNextSection(taskId);
+      console.error(`🔧 DEBUG: Got result:`, JSON.stringify(result, null, 2));
+      
+      let responseText = '';
+      
+      if (result.completed) {
+        responseText = `# ✅ Section Completed: "${result.sectionName}"\n\n`;
+        responseText += `**Progress:** ${result.completedTodos}/${result.totalTodos} todos completed in this section\n\n`;
+        
+        if (result.todos && result.todos.length > 0) {
+          responseText += `## Todos processed:\n\n`;
+          result.todos.forEach((todo: any) => {
+            const status = todo.completed ? '✅' : '❌';
+            responseText += `${status} ${todo.text}\n`;
+          });
+          responseText += `\n`;
+        }
+        
+        responseText += `## Overall Progress:\n`;
+        responseText += `- **Current section:** ${result.currentSectionIndex + 1}/${result.totalSections}\n`;
+        responseText += `- **Task completion:** ${result.finalStats.percentage}%\n\n`;
+        
+        if (result.hasMoreSections) {
+          responseText += `🚀 **Next:** Ready to execute "${result.nextSectionName}"\n`;
+          responseText += `👉 Call \`execute_next_section\` again to continue.`;
+        } else {
+          responseText += `🎉 **All sections completed!** Task is now 100% complete.`;
+        }
+      } else {
+        responseText = `# ⚠️ Section Not Found or Already Completed\n\n`;
+        responseText += `**Task ID:** ${taskId}\n`;
+        responseText += `**Current progress:** ${result.finalStats?.percentage || 0}%\n\n`;
+        
+        if (result.finalStats?.percentage >= 100) {
+          responseText += `✅ Task already completed!`;
+        } else {
+          responseText += `❌ No uncompleted sections found. Check task structure.`;
+        }
+      }
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: responseText
+          }
+        ]
+      };
+    } catch (error) {
+      throw new Error(`Failed to execute next section: ${error}`);
     }
   }
 

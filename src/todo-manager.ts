@@ -13,6 +13,9 @@ export interface TodoItem {
   index: number;
   originalLine: string;
   lineNumber: number;
+  isSubtask: boolean;
+  children: TodoItem[];
+  parentId?: string;
 }
 
 export interface TodoStats {
@@ -46,30 +49,43 @@ export class TodoManager {
         page_size: 100
       });
 
-      let content = '';
-      const todos: TodoItem[] = [];
-      let lineNumber = 0;
+      if (includeHierarchy) {
+        // Use hierarchical parsing inspired by your code
+        const hierarchicalTodos = this.parseHierarchicalTodos(blocks.results);
+        const stats = this.calculateHierarchicalStats(hierarchicalTodos);
+        
+        return {
+          todos: this.flattenHierarchicalTodos(hierarchicalTodos),
+          stats,
+          content: this.generateContentFromBlocks(blocks.results)
+        };
+      } else {
+        // Legacy flat parsing
+        let content = '';
+        const todos: TodoItem[] = [];
+        let lineNumber = 0;
 
-      for (const block of blocks.results) {
-        const blockContent = this.extractTextFromBlock(block);
-        if (blockContent) {
-          content += blockContent + '\n';
-          
-          // Parse todos from this block
-          const blockTodos = this.parseTodosFromText(blockContent, lineNumber, includeHierarchy);
-          todos.push(...blockTodos);
-          
-          lineNumber += blockContent.split('\n').length;
+        for (const block of blocks.results) {
+          const blockContent = this.extractTextFromBlock(block);
+          if (blockContent) {
+            content += blockContent + '\n';
+            
+            // Parse todos from this block
+            const blockTodos = this.parseTodosFromText(blockContent, lineNumber, false);
+            todos.push(...blockTodos);
+            
+            lineNumber += blockContent.split('\n').length;
+          }
         }
+
+        const stats = this.calculateTodoStats(todos);
+
+        return {
+          todos,
+          stats,
+          content: content.trim()
+        };
       }
-
-      const stats = this.calculateTodoStats(todos);
-
-      return {
-        todos,
-        stats,
-        content: content.trim()
-      };
     } catch (error) {
       throw new Error(`Failed to extract todos from task: ${error}`);
     }
@@ -206,7 +222,9 @@ export class TodoManager {
       level,
       index: lineNumber,
       originalLine: line,
-      lineNumber
+      lineNumber,
+      isSubtask: level > 0,
+      children: []
     };
   }
 
@@ -334,5 +352,140 @@ export class TodoManager {
     return richText
       .map((text: any) => text.plain_text || '')
       .join('');
+  }
+
+  /**
+   * Parse hierarchical todos from Notion blocks (inspired by your HierarchicalTaskParser)
+   */
+  private parseHierarchicalTodos(blocks: any[]): TodoItem[] {
+    const hierarchicalTodos: TodoItem[] = [];
+    let currentIndex = 0;
+
+    for (const block of blocks) {
+      if (this.isTodoBlock(block)) {
+        const todo = this.parseTodoWithChildren(block, 0, currentIndex);
+        hierarchicalTodos.push(todo);
+        currentIndex++;
+      }
+    }
+
+    return hierarchicalTodos;
+  }
+
+  /**
+   * Parse a todo block with its children (adapted from your parseTodoWithChildren)
+   */
+  private parseTodoWithChildren(block: any, indentLevel: number, index: number): TodoItem {
+    const todo: TodoItem = {
+      text: this.extractRichText(block.to_do?.rich_text || []).trim(),
+      completed: block.to_do?.checked || false,
+      level: indentLevel,
+      index,
+      originalLine: `- [${block.to_do?.checked ? 'x' : ' '}] ${this.extractRichText(block.to_do?.rich_text || [])}`,
+      lineNumber: index,
+      isSubtask: indentLevel > 0,
+      children: []
+    };
+
+    // Parse children if they exist (this is where Notion's nested structure comes in)
+    if (block.children && Array.isArray(block.children)) {
+      let childIndex = 0;
+      for (const child of block.children) {
+        if (this.isTodoBlock(child)) {
+          const childTodo = this.parseTodoWithChildren(child, indentLevel + 1, index + childIndex + 1);
+          childTodo.parentId = todo.text; // Simple parent identification
+          todo.children.push(childTodo);
+          childIndex++;
+        }
+      }
+    }
+
+    return todo;
+  }
+
+  /**
+   * Calculate hierarchical statistics (parent completion based on children)
+   */
+  private calculateHierarchicalStats(todos: TodoItem[]): TodoStats {
+    const flatTodos = this.flattenHierarchicalTodos(todos);
+    const total = flatTodos.length;
+    
+    // For hierarchical stats, a parent is completed only if all children are completed
+    const completed = flatTodos.filter(todo => {
+      if (todo.children.length > 0) {
+        // Parent: completed if all children are completed
+        return todo.children.every(child => this.isHierarchicallyCompleted(child));
+      } else {
+        // Leaf: use its own completion status
+        return todo.completed;
+      }
+    }).length;
+
+    const percentage = total === 0 ? 0 : Math.round((completed / total) * 100);
+    
+    // Get next uncompleted todos (prioritize parents without completed children)
+    const nextTodos = flatTodos
+      .filter(todo => !this.isHierarchicallyCompleted(todo))
+      .slice(0, 3)
+      .map(todo => todo.text);
+
+    return {
+      total,
+      completed,
+      percentage,
+      nextTodos
+    };
+  }
+
+  /**
+   * Check if a todo is hierarchically completed (all children completed)
+   */
+  private isHierarchicallyCompleted(todo: TodoItem): boolean {
+    if (todo.children.length > 0) {
+      return todo.children.every(child => this.isHierarchicallyCompleted(child));
+    }
+    return todo.completed;
+  }
+
+  /**
+   * Flatten hierarchical todos into a flat list
+   */
+  private flattenHierarchicalTodos(todos: TodoItem[]): TodoItem[] {
+    const flatList: TodoItem[] = [];
+    
+    for (const todo of todos) {
+      flatList.push({
+        ...todo,
+        children: [] // Remove children reference in flat list
+      });
+      
+      if (todo.children && todo.children.length > 0) {
+        const childrenFlat = this.flattenHierarchicalTodos(todo.children);
+        flatList.push(...childrenFlat);
+      }
+    }
+    
+    return flatList;
+  }
+
+  /**
+   * Generate content string from Notion blocks
+   */
+  private generateContentFromBlocks(blocks: any[]): string {
+    let content = '';
+    for (const block of blocks) {
+      const blockContent = this.extractTextFromBlock(block);
+      if (blockContent) {
+        content += blockContent + '\n';
+      }
+    }
+    return content.trim();
+  }
+
+  /**
+   * Check if a block is a todo block
+   */
+  private isTodoBlock(block: any): boolean {
+    return block.type === 'to_do';
   }
 }
