@@ -7,27 +7,27 @@ Guide for contributing to and customizing the Notion Vibe Coding MCP server.
 ```
 notion-vibe-coding/
 ├── src/
-│   ├── server.ts                     # Main MCP server (pure router)
+│   ├── server.ts                     # Main MCP server entry point
 │   ├── interfaces/
-│   │   └── TaskProvider.ts           # Provider contract (multi-provider ready)
+│   │   └── TaskProvider.ts           # Provider abstraction interface
 │   ├── adapters/
 │   │   └── NotionAPIAdapter.ts       # Notion API implementation
 │   ├── services/
 │   │   ├── TaskService.ts            # High-level task operations
 │   │   ├── TodoService.ts            # Todo management and analysis  
 │   │   ├── ExecutionService.ts       # Task execution workflows
-│   │   ├── WorkflowService.ts        # Template processing
-│   │   └── ResponseFormatter.ts      # Output formatting
+│   │   ├── WorkflowService.ts        # Template and guidance management
+│   │   └── ResponseFormatter.ts      # Standardized output formatting
 │   ├── models/
 │   │   ├── Task.ts                   # Task type definitions
 │   │   ├── Todo.ts                   # Todo type definitions
 │   │   └── Workflow.ts               # Workflow type definitions
-├── mcp.js                            # CLI wrapper for testing
 ├── workflows/
-│   ├── task-creation.md              # Task type templates
+│   ├── task-creation.md              # Task type templates and AI guidance
 │   ├── task-update.md                # Update guidance
 │   └── task-execution.md             # Execution guidance
 ├── docs/                             # Documentation
+├── mcp.js                            # CLI wrapper for testing
 ├── mcp-config.example.json           # Example MCP configuration
 └── README.md
 ```
@@ -74,71 +74,70 @@ npm run dev
 
 #### MCP Server Testing
 ```bash
-# Run with your test Notion database
-npm start
-
-# Test MCP tools manually via Claude Code
-```
-
-#### CLI Wrapper Testing
-```bash
-# Install CLI locally for testing
-ln -sf $(pwd)/mcp ~/.local/bin/mcp
-
-# Test all commands
-mcp help
-mcp create-task "Test task" "Feature" "Testing CLI"
-mcp get-task-info <task-id>
-mcp analyze-todos <task-id>
+# Test MCP tools manually via CLI wrapper
+node mcp.js create_task '{"title":"Test","taskType":"Feature","description":"Test task"}'
+node mcp.js get_task '{"taskId":"<task-id>"}'
 ```
 
 #### Development Workflow
 1. Make changes to TypeScript source
 2. Run `npm run build` to compile
-3. Test via MCP server (Claude Desktop) 
-4. Test via CLI wrapper (Claude Code)
+3. Test via CLI wrapper
+4. Test via Claude Desktop MCP integration
 5. Update documentation if needed
 
 ## Architecture Overview
 
-### Core Components
+### Service Layer
 
-#### `server.ts`
-- Main MCP server implementation
-- Tool registration and request handling  
-- Environment variable parsing
-- Error handling and response formatting
+#### `TaskService.ts`
+- High-level task operations
+- Task creation, updates, and status management
+- Validation against workflow configuration
+- Status transition recommendations
 
-#### `simple-progress-tracker.ts`
-- Core workflow management
-- Status transitions and validation
-- Notion API interactions
-- Workflow guidance retrieval
+#### `TodoService.ts`
+- Todo extraction from Notion content
+- Completion statistics and progress analysis
+- Batch todo update operations
+- Progress insights and recommendations
 
-#### `config-loader.ts`
-- Configuration parsing and validation
-- Status mapping between internal keys and Notion labels
-- Template variable processing
-- Workflow file loading
+#### `ExecutionService.ts`
+- Task execution workflows
+- Auto, step-by-step, and batch execution modes
+- Progress tracking and status updates
+- Workflow state management
 
-#### `todo-manager.ts`
-- Todo extraction from Notion pages
-- Todo completion tracking
-- Batch updates for efficiency
-- Smart text matching
+#### `WorkflowService.ts`
+- Workflow template management
+- Markdown guidance loading and processing
+- Template variable substitution
+- File caching for performance
 
-#### `progress-calculator.ts`
-- Auto-progression logic based on todo completion
-- Progress recommendations
-- Status transition calculations
+#### `ResponseFormatter.ts`
+- Standardized response formatting for MCP tools
+- Consistent error and success message formatting
+- Status and metadata display formatting
+
+### Provider Pattern
+
+#### `TaskProvider.ts`
+- Abstract interface for task management backends
+- Enables pluggable provider implementations
+- Standardized API surface for different services
+
+#### `NotionAPIAdapter.ts`
+- Direct Notion API integration
+- Dynamic title property resolution
+- Markdown to Notion blocks conversion
+- API error handling and retry logic
 
 ### Data Flow
 
-1. **Tool Request** → `server.ts` handles MCP request
-2. **Configuration** → `config-loader.ts` provides settings
-3. **Workflow Logic** → `simple-progress-tracker.ts` manages operations
-4. **Notion API** → Direct calls to Notion for data persistence
-5. **Response** → Structured JSON returned to Claude
+1. **MCP Request** → `server.ts` handles tool request
+2. **Service Layer** → Appropriate service processes request
+3. **Provider** → `NotionAPIAdapter` handles Notion API calls
+4. **Response** → `ResponseFormatter` creates standardized output
 
 ## Adding New Features
 
@@ -153,7 +152,6 @@ mcp analyze-todos <task-id>
     type: 'object',
     properties: {
       param1: { type: 'string', description: 'Parameter description' },
-      // ... other parameters
     },
     required: ['param1']
   }
@@ -163,35 +161,20 @@ mcp analyze-todos <task-id>
 2. **Add request handler**:
 ```typescript
 case 'my_new_tool':
-  return await this.handleMyNewTool(args as { param1: string });
+  return await this.handleMyNewTool(args.param1);
 ```
 
 3. **Implement handler method**:
 ```typescript
-private async handleMyNewTool(args: { param1: string }) {
-  try {
-    // Tool implementation
-    const result = await this.tracker.myNewFeature(args.param1);
-    
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          success: true,
-          data: result,
-          message: 'Tool executed successfully'
-        }, null, 2)
-      }]
-    };
-  } catch (error) {
-    throw new Error(`Failed to execute tool: ${error}`);
-  }
+private async handleMyNewTool(param: string): Promise<string> {
+  const result = await this.services.task.myNewFeature(param);
+  return this.services.formatter.formatResult(result);
 }
 ```
 
-4. **Add business logic** to appropriate class:
+4. **Add business logic** to appropriate service:
 ```typescript
-// In simple-progress-tracker.ts or create new service class
+// In TaskService.ts, TodoService.ts, etc.
 async myNewFeature(param: string): Promise<any> {
   // Implementation
 }
@@ -199,34 +182,14 @@ async myNewFeature(param: string): Promise<any> {
 
 ### Adding New Task Types
 
-1. **Update default configuration** in `server.ts`:
-```typescript
-taskTypes: ["Feature", "Bug", "Refactoring", "Documentation"]
-```
-
-2. **Add template logic** in `formatTaskContent()`:
-```typescript
-} else if (taskType === 'Documentation') {
-  template = `## Documentation Objective
-${description}
-
-## Scope
-[What needs to be documented]
-
-## Acceptance Criteria
-- [ ] Documentation written
-- [ ] Examples provided
-- [ ] Review completed
-
-## Content Plan
-- [ ] Research existing information
-- [ ] Create structure
-- [ ] Write content
-- [ ] Review and revise`;
+1. **Update workflow configuration**:
+```json
+{
+  "taskTypes": ["Feature", "Bug", "Refactoring", "Documentation"]
 }
 ```
 
-3. **Update workflow guidance** in `workflows/task-creation.md`:
+2. **Add template** in `workflows/task-creation.md`:
 ```markdown
 #### Documentation
 \`\`\`
@@ -243,117 +206,52 @@ ${description}
 \`\`\`
 ```
 
-### Customizing Workflows
+### Adding New Providers
 
-Workflow files are markdown templates with variable substitution:
-
-1. **Edit workflow files** in `workflows/` directory
-2. **Use template variables**: `{{status_notStarted}}`, `{{status_inProgress}}`, etc.
-3. **Test with** `get_workflow_guidance` tool
-4. **Restart server** to reload changes
-
-Example workflow customization:
-```markdown
-# Custom Workflow: Feature Development
-
-## Phase 1: Planning ({{status_notStarted}})
-- Analyze requirements thoroughly
-- Create detailed technical design
-- Identify potential risks
-
-## Phase 2: Development ({{status_inProgress}})
-- Implement in small, testable increments
-- Write comprehensive tests
-- Document important decisions
-
-## Phase 3: Validation ({{status_test}})
-- Complete functional testing
-- Performance validation
-- Security review
-```
-
-## Configuration Customization
-
-### Status Mapping
-
-Internal status keys use camelCase, Notion labels can be customized:
-
-```json
-{
-  "statusMapping": {
-    "notStarted": "Backlog",        // Custom label
-    "inProgress": "In Development", // Custom label  
-    "test": "Code Review",          // Custom label
-    "done": "Completed"            // Custom label
-  }
-}
-```
-
-### Transitions
-
-Define allowed status changes:
-
-```json
-{
-  "transitions": {
-    "notStarted": ["inProgress"],           // Only one path forward
-    "inProgress": ["test", "notStarted"],   // Can go back to backlog
-    "test": ["done", "inProgress"],         // Can return to development
-    "done": []                              // Terminal state
-  }
-}
-```
-
-### Auto-Progression
-
-Control when tasks automatically change status:
-
+1. **Implement TaskProvider interface**:
 ```typescript
-// In progress-calculator.ts
-const autoProgressionThresholds = {
-  inProgress: 1,    // 1% completion triggers "In Progress"
-  test: 100         // 100% completion triggers "Test"
-};
+export class LinearAdapter implements TaskProvider {
+  getProviderName(): string { return 'Linear'; }
+  getProviderType(): string { return 'linear'; }
+  
+  async createTask(title: string, taskType: string, description: string): Promise<Task> {
+    // Linear API implementation
+  }
+  
+  // Implement other required methods
+}
+```
+
+2. **Add provider initialization** in `server.ts`:
+```typescript
+const provider = process.env.PROVIDER_TYPE === 'linear' 
+  ? new LinearAdapter(apiKey, teamId)
+  : new NotionAPIAdapter(apiKey, databaseId);
 ```
 
 ## Testing
 
 ### Manual Testing
 
-1. **Create test database** in Notion with required properties
-2. **Configure test environment**:
-```json
-{
-  "NOTION_DATABASE_ID": "test_database_id_here"
-}
-```
-
-3. **Test each tool** systematically:
+1. **Create test workspace** in your provider (Notion database, Linear team, etc.)
+2. **Test each tool** systematically:
 ```bash
 # Test task creation
-create_task({ title: "Test Task", taskType: "Feature", description: "Test" })
+node mcp.js create_task '{"title":"Test Task","taskType":"Feature","description":"Test"}'
 
-# Test workflow initialization  
-start_task_workflow({ taskUrl: "notion_url", workflowType: "feature" })
+# Test task retrieval
+node mcp.js get_task '{"taskId":"test_id"}'
 
-# Test todo progression
-progress_todo({ taskId: "test_id", todoText: "Test todo", completed: true })
+# Test status updates
+node mcp.js update_task_status '{"taskId":"test_id","newStatus":"In Progress"}'
 ```
 
 ### Integration Testing
 
-1. **Test with real Notion workspace**
+1. **Test with real workspace**
 2. **Verify status transitions work correctly**
 3. **Test error handling with invalid inputs**
-4. **Check template variable substitution**
-
-### Error Testing
-
-Test common error scenarios:
-- Invalid Notion URLs
-- Missing database permissions
-- Network connectivity issues
-- Malformed configuration
+4. **Check template processing**
 
 ## Code Standards
 
@@ -368,7 +266,7 @@ Test common error scenarios:
 
 ```typescript
 try {
-  const result = await this.notion.pages.retrieve({ page_id: taskId });
+  const result = await this.taskProvider.getTask(taskId);
   return result;
 } catch (error) {
   if (error.code === 'object_not_found') {
@@ -378,31 +276,12 @@ try {
 }
 ```
 
-### Logging
+### Service Design
 
-Use console.error for errors, console.warn for warnings:
-```typescript
-console.error('Failed to update task status:', error);
-console.warn('Todo not found, skipping:', todoText);
-```
-
-### Configuration Validation
-
-Always validate configuration on startup:
-```typescript
-private validateConfig(config: WorkflowConfig): void {
-  if (!config.statusMapping) {
-    throw new Error('statusMapping is required');
-  }
-  
-  const requiredStatuses = ['notStarted', 'inProgress', 'test', 'done'];
-  for (const status of requiredStatuses) {
-    if (!config.statusMapping[status]) {
-      throw new Error(`Missing status mapping: ${status}`);
-    }
-  }
-}
-```
+- Keep services focused on single responsibilities
+- Use dependency injection for testability
+- Maintain clear interfaces between layers
+- Handle provider-specific logic in adapters
 
 ## Contributing
 
@@ -411,7 +290,7 @@ private validateConfig(config: WorkflowConfig): void {
 1. **Fork the repository**
 2. **Create feature branch**: `git checkout -b feature/my-new-feature`
 3. **Make changes** following code standards
-4. **Test thoroughly** with your Notion setup
+4. **Test thoroughly** with your setup
 5. **Update documentation** if needed
 6. **Submit pull request** with clear description
 
@@ -427,38 +306,16 @@ Follow conventional commit format:
 
 - Review for TypeScript type safety
 - Check error handling completeness  
-- Verify Notion API usage is correct
+- Verify provider API usage is correct
 - Ensure backward compatibility
 - Test with different configurations
-
-## Deployment
-
-### Building for Production
-
-```bash
-npm run build
-```
-
-### Distribution
-
-The built server (`dist/server.js`) can be:
-- Shared as a git repository
-- Packaged as npm module
-- Distributed as standalone executable
-
-### Version Management
-
-Use semantic versioning:
-- Major: Breaking changes to configuration or API
-- Minor: New features, backward compatible
-- Patch: Bug fixes, no API changes
 
 ## Troubleshooting Development Issues
 
 ### Common Problems
 
 **TypeScript compilation errors:**
-- Check import paths are correct
+- Check import paths use `.js` extension
 - Verify all types are properly defined
 - Ensure async functions return Promise types
 
@@ -467,9 +324,9 @@ Use semantic versioning:
 - Check parameter names match between schema and handler
 - Ensure all required parameters are marked in schema
 
-**Notion API errors:**
+**Provider API errors:**
 - Verify integration permissions
-- Check database schema matches expectations
+- Check provider schema matches expectations
 - Test API calls with manual requests
 
 **Configuration problems:**
@@ -482,5 +339,5 @@ Use semantic versioning:
 1. **Add logging** to trace execution flow
 2. **Use TypeScript strict mode** to catch type errors early  
 3. **Test configuration** with minimal setup first
-4. **Check Notion integration** permissions in workspace
+4. **Check provider integration** permissions in workspace
 5. **Verify file paths** are correct for workflow files

@@ -21,7 +21,7 @@ node mcp.js <tool> '<json_arguments>'
 node mcp.js create_task '{"title":"Fix login bug","taskType":"Bug","description":"Users cannot authenticate with OAuth"}'
 
 # Get task information  
-node mcp.js get_task_info '{"taskId":"23e0da7a-7a07-8145-9611-e394062d8a55"}'
+node mcp.js get_task '{"taskId":"23e0da7a-7a07-8145-9611-e394062d8a55"}'
 
 # Update status
 node mcp.js update_task_status '{"taskId":"<task-id>","newStatus":"In progress"}'
@@ -30,23 +30,27 @@ node mcp.js update_task_status '{"taskId":"<task-id>","newStatus":"Test","force"
 
 #### Todo Management
 ```bash
-# Mark todos complete
-node mcp.js progress_todo '{"taskId":"<task-id>","todoText":"Setup OAuth provider","completed":true}'
-node mcp.js progress_todo '{"taskId":"<task-id>","todoText":"Write unit tests","completed":false}'
+# Update todos
+node mcp.js update_todos '{"taskId":"<task-id>","updates":[{"todoText":"Setup OAuth provider","completed":true}]}'
+node mcp.js update_todos '{"taskId":"<task-id>","updates":[{"todoText":"Write unit tests","completed":false}]}'
 
-# Disable auto-progression
-node mcp.js progress_todo '{"taskId":"<task-id>","todoText":"Manual task","completed":true,"autoProgress":false}'
+# Batch todo updates
+node mcp.js update_todos '{"taskId":"<task-id>","updates":[{"todoText":"Setup OAuth","completed":true},{"todoText":"Write tests","completed":true}]}'
 
 # Analyze all todos
-node mcp.js analyze_task_todos '{"taskId":"<task-id>"}'
+node mcp.js analyze_todos '{"taskId":"<task-id>"}'
 ```
 
 #### Workflow Guidance
 ```bash
 # Get workflow templates
-node mcp.js get_workflow_guidance '{"action":"creation"}'
-node mcp.js get_workflow_guidance '{"action":"update"}'
-node mcp.js get_workflow_guidance '{"action":"execution"}'
+node mcp.js get_workflow_guidance '{"type":"creation"}'
+node mcp.js get_workflow_guidance '{"type":"update"}'
+node mcp.js get_workflow_guidance '{"type":"execution"}'
+
+# Get task template for AI adaptation
+node mcp.js get_task_template '{"taskType":"Feature"}'
+node mcp.js get_task_template '{"taskType":"Bug"}'
 ```
 
 ### Integration with Claude Code

@@ -53,10 +53,10 @@ You: Review and mark as "Done" when satisfied
 ```bash
 # Create tasks directly with JSON arguments
 node mcp.js create_task '{"title":"Add user authentication","taskType":"Feature","description":"Implement OAuth login"}'
-node mcp.js get_task_info '{"taskId":"<task-id>"}'
+node mcp.js get_task '{"taskId":"<task-id>"}'
 node mcp.js update_task_status '{"taskId":"<task-id>","newStatus":"In progress"}'
-node mcp.js progress_todo '{"taskId":"<task-id>","todoText":"Setup OAuth provider","completed":true}'
-node mcp.js analyze_task_todos '{"taskId":"<task-id>"}'
+node mcp.js update_todos '{"taskId":"<task-id>","updates":[{"todoText":"Setup OAuth provider","completed":true}]}'
+node mcp.js analyze_todos '{"taskId":"<task-id>"}'
 ```
 
 ## What You Get
@@ -70,26 +70,27 @@ node mcp.js analyze_task_todos '{"taskId":"<task-id>"}'
 
 ## Available Tools
 
-The MCP server provides 8 tools available both via Claude Desktop (MCP) and CLI wrapper:
+The MCP server provides 9 tools available both via Claude Desktop (MCP) and CLI wrapper:
 
 ### Task Management
-- `create_task` - Create tasks with intelligent template merging
+- `create_task` - Create tasks with AI-adapted content
 - `get_task` - Retrieve task information and metadata
 - `update_task` - Modify task content (title, type, description)
 - `update_task_status` - Change status with workflow validation
 - `execute_task` - Smart execution with step/auto/batch modes
 
+### Template & Workflow
+- `get_task_template` - Get task template for AI adaptation
+- `get_workflow_guidance` - Get structured guidance for task workflows
+
 ### Todo Management  
 - `analyze_todos` - Extract and analyze all todos with statistics
 - `update_todos` - Batch update multiple todos efficiently
 
-### Workflow Guidance
-- `get_workflow_guidance` - Get structured guidance for task workflows
-
 ## How It Works
 
-1. **Intelligent Templates**: User descriptions merge with task type templates (Feature/Bug/Refactoring)
-2. **Provider Integration**: Direct API integration creates properly formatted tasks and todos
+1. **Intelligent Templates**: AI adapts task templates based on user context and requirements
+2. **Provider Integration**: Direct API integration with dynamic property resolution
 3. **Workflow Intelligence**: Status transitions and todo analysis drive smart execution
 4. **Extensible Architecture**: TaskProvider pattern ready for additional providers (Linear, GitHub, Jira)
 
