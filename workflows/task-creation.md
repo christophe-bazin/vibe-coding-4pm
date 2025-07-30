@@ -1,5 +1,12 @@
 # Workflow: Development Task Creation
 
+**IMPORTANT FOR AI ASSISTANTS**: The templates below are GUIDELINES to help structure tasks, not rigid templates to copy. When creating a task:
+- Use the template structure as inspiration for organization
+- Adapt content to the specific user request and context
+- Replace generic placeholders with relevant, specific information
+- Focus on the actual problem described by the user
+- Generate actionable todos that address the real requirements
+
 ## Objective
 Create a new development task in Notion with all necessary information.
 

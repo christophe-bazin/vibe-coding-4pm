@@ -6,14 +6,12 @@ import { TaskProvider } from '../interfaces/TaskProvider.js';
 import { NotionTask, TaskMetadata, TaskStatus } from '../models/Task.js';
 import { WorkflowConfig } from '../models/Workflow.js';
 import { TodoService } from './TodoService.js';
-import { WorkflowService } from './WorkflowService.js';
 
 export class TaskService {
   constructor(
     private taskProvider: TaskProvider,
     private todoService: TodoService,
-    private workflowConfig: WorkflowConfig,
-    private workflowService: WorkflowService
+    private workflowConfig: WorkflowConfig
   ) {}
 
   async getTask(taskId: string): Promise<NotionTask> {
@@ -41,10 +39,8 @@ export class TaskService {
       throw new Error(`Invalid task type. Available: ${this.workflowConfig.taskTypes.join(', ')}`);
     }
 
-    // Enhance description with workflow template based on task type
-    const enhancedDescription = await this.enhanceDescriptionWithTemplate(taskType, description);
-    
-    return await this.taskProvider.createTask(title, taskType, enhancedDescription);
+    // Use description as-is (AI adaptation should happen at Claude level)
+    return await this.taskProvider.createTask(title, taskType, description);
   }
 
   async updateTask(taskId: string, updates: { title?: string; description?: string; taskType?: string }): Promise<void> {
@@ -93,73 +89,13 @@ export class TaskService {
     const transitions = this.workflowConfig.transitions[currentStatus];
     if (!transitions || transitions.length === 0) return undefined;
     
-    // Simple logic: if in notStarted, recommend inProgress
-    const notStarted = this.workflowConfig.statusMapping.notStarted || 'Not started';
-    const inProgress = this.workflowConfig.statusMapping.inProgress || 'In progress';
-    
-    if (currentStatus === notStarted && transitions.includes(inProgress)) {
-      return inProgress;
+    if (currentStatus === this.workflowConfig.statusMapping.notStarted && 
+        this.workflowConfig.statusMapping.inProgress &&
+        transitions.includes(this.workflowConfig.statusMapping.inProgress)) {
+      return this.workflowConfig.statusMapping.inProgress;
     }
     
-    return transitions[0]; // Default to first available
+    return transitions[0];
   }
 
-  private async enhanceDescriptionWithTemplate(taskType: string, userDescription: string): Promise<string> {
-    try {
-      // Get workflow template for creation
-      const template = await this.workflowService.getWorkflowGuidance('creation');
-      
-      // Extract template for specific task type
-      const typeTemplate = this.extractTemplateForType(template, taskType);
-      
-      if (!typeTemplate) {
-        return userDescription;
-      }
-      
-      // Intelligently merge user content with template
-      return this.mergeContentWithTemplate(typeTemplate, userDescription, taskType);
-      
-    } catch (error) {
-      // If template fails, use original description
-      return userDescription;
-    }
-  }
-
-  private extractTemplateForType(template: string, taskType: string): string | null {
-    const typeSection = new RegExp(`#### ${taskType}\\s*\`\`\`([\\s\\S]*?)\`\`\``, 'i');
-    const match = template.match(typeSection);
-    
-    if (match && match[1]) {
-      return match[1].trim();
-    }
-    
-    return null;
-  }
-
-  private mergeContentWithTemplate(template: string, userDescription: string, taskType: string): string {
-    let result = template;
-    
-    switch (taskType.toLowerCase()) {
-      case 'bug':
-        // Replace [Description of the bug] with user content
-        result = result.replace(/\[Description of the bug\]/g, userDescription);
-        break;
-        
-      case 'feature':
-        // Replace [Description of the feature] with user content
-        result = result.replace(/\[Description of the feature\]/g, userDescription);
-        break;
-        
-      case 'refactoring':
-        // Replace [Why this refactoring is necessary] with user content
-        result = result.replace(/\[Why this refactoring is necessary\]/g, userDescription);
-        break;
-        
-      default:
-        // For unknown types, prepend user description
-        result = `${userDescription}\n\n${template}`;
-    }
-    
-    return result;
-  }
 }

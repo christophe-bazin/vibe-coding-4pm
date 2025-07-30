@@ -35,7 +35,7 @@ class MCPServer {
     // Initialize services with TaskProvider
     const todo = new TodoService(taskProvider);
     const workflow = new WorkflowService(workflowConfig);
-    const task = new TaskService(taskProvider, todo, workflowConfig, workflow);
+    const task = new TaskService(taskProvider, todo, workflowConfig);
     const execution = new ExecutionService(task, todo, workflow);
     const formatter = new ResponseFormatter();
 
@@ -50,6 +50,7 @@ class MCPServer {
         { name: 'get_task', description: 'Get task info', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
         { name: 'update_task', description: 'Update task content', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, title: { type: 'string' }, description: { type: 'string' }, taskType: { type: 'string' } }, required: ['taskId'] } },
         { name: 'get_workflow_guidance', description: 'Get workflow guidance', inputSchema: { type: 'object', properties: { type: { type: 'string', enum: ['creation', 'update', 'execution'] } }, required: ['type'] } },
+        { name: 'get_task_template', description: 'Get task template for AI adaptation', inputSchema: { type: 'object', properties: { taskType: { type: 'string' } }, required: ['taskType'] } },
         { name: 'analyze_todos', description: 'Analyze todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, includeHierarchy: { type: 'boolean' } }, required: ['taskId'] } },
         { name: 'update_task_status', description: 'Update task status', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, newStatus: { type: 'string' } }, required: ['taskId', 'newStatus'] } },
         { name: 'update_todos', description: 'Batch update todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, updates: { type: 'array' } }, required: ['taskId', 'updates'] } },
@@ -91,6 +92,9 @@ class MCPServer {
       case 'get_workflow_guidance':
         return await workflow.getWorkflowGuidance(args.type, args.context);
 
+      case 'get_task_template':
+        return await this.getTaskTemplate(args.taskType);
+
       case 'analyze_todos':
         const analysis = await todo.analyzeTodos(args.taskId, args.includeHierarchy);
         return formatter.formatTodoAnalysis(analysis);
@@ -106,6 +110,21 @@ class MCPServer {
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
+  }
+
+  private async getTaskTemplate(taskType: string): Promise<string> {
+    const { workflow } = this.services;
+    const template = await workflow.getWorkflowGuidance('creation');
+    
+    // Extract template for specific task type
+    const typeSection = new RegExp(`#### ${taskType}\\s*\`\`\`([\\s\\S]*?)\`\`\``, 'i');
+    const match = template.match(typeSection);
+    
+    if (match && match[1]) {
+      return `Template for ${taskType}:\n\n${match[1].trim()}`;
+    }
+    
+    return `No template found for task type: ${taskType}`;
   }
 
   async run() {

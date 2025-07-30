@@ -6,10 +6,31 @@ import { Client } from '@notionhq/client';
 export class NotionAPIAdapter implements TaskProvider {
   private notion: Client;
   private databaseId: string;
+  private titleProperty: string | null = null;
   
   constructor(apiKey: string, databaseId: string) {
     this.notion = new Client({ auth: apiKey });
     this.databaseId = databaseId;
+  }
+
+  private async getTitlePropertyName(): Promise<string> {
+    if (this.titleProperty) return this.titleProperty;
+    
+    try {
+      const database = await this.notion.databases.retrieve({ database_id: this.databaseId });
+      
+      // Find the title property
+      for (const [name, property] of Object.entries(database.properties)) {
+        if ((property as any).type === 'title') {
+          this.titleProperty = name;
+          return name;
+        }
+      }
+      
+      throw new Error('No title property found in database');
+    } catch (error) {
+      throw new Error(`Failed to get database schema: ${error}`);
+    }
   }
 
   getProviderName(): string {
@@ -37,17 +58,22 @@ export class NotionAPIAdapter implements TaskProvider {
         children.push(...this.parseMarkdownToNotionBlocks(description));
       }
       
+      const titlePropertyName = await this.getTitlePropertyName();
+      const properties: any = {
+        Type: { select: { name: taskType } },
+        Status: { status: { name: 'Not started' } }
+      };
+      properties[titlePropertyName] = { title: [{ text: { content: title } }] };
+      
       const page = await this.notion.pages.create({
         parent: { database_id: this.databaseId },
-        properties: {
-          title: { title: [{ text: { content: title } }] },
-          Type: { select: { name: taskType } },
-          Status: { status: { name: 'Not started' } }
-        },
+        properties,
         children: children.length > 0 ? children : undefined
       });
       
-      return this.mapNotionPageToTask(page);
+      // Retrieve the full page to get properly formatted properties
+      const fullPage = await this.notion.pages.retrieve({ page_id: page.id });
+      return this.mapNotionPageToTask(fullPage);
     } catch (error) {
       throw new Error(`Failed to create task: ${error}`);
     }
@@ -58,7 +84,8 @@ export class NotionAPIAdapter implements TaskProvider {
       const properties: any = {};
       
       if (updates.title) {
-        properties.title = { title: [{ text: { content: updates.title } }] };
+        const titlePropertyName = await this.getTitlePropertyName();
+        properties[titlePropertyName] = { title: [{ text: { content: updates.title } }] };
       }
       
       if (updates.taskType) {
@@ -158,7 +185,15 @@ export class NotionAPIAdapter implements TaskProvider {
   }
 
   private mapNotionPageToTask(page: any): NotionTask {
-    const title = page.properties?.title?.title?.[0]?.text?.content || 'Untitled';
+    // Find the title property dynamically
+    let title = 'Untitled';
+    for (const [name, property] of Object.entries(page.properties || {})) {
+      if ((property as any).type === 'title') {
+        title = (property as any).title?.[0]?.text?.content || 'Untitled';
+        break;
+      }
+    }
+    
     const status = page.properties?.Status?.status?.name || 'Unknown';
     const type = page.properties?.Type?.select?.name || 'Unknown';
     
