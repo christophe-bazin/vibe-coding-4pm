@@ -41,6 +41,12 @@ export class NotionAPIAdapter implements TaskProvider {
     return 'notion';
   }
 
+  /**
+   * Retrieve a task by its ID
+   * @param taskId - The unique identifier of the task
+   * @returns Promise resolving to the task data
+   * @throws Error if task cannot be retrieved
+   */
   async getTask(taskId: string): Promise<NotionTask> {
     try {
       const page = await this.notion.pages.retrieve({ page_id: taskId });
@@ -50,7 +56,26 @@ export class NotionAPIAdapter implements TaskProvider {
     }
   }
 
+  /**
+   * Create a new task in the provider system
+   * @param title - Task title (required, max 200 characters)
+   * @param taskType - Type of task (required)
+   * @param description - Task description with markdown support
+   * @returns Promise resolving to the created task
+   * @throws Error if validation fails or creation fails
+   */
   async createTask(title: string, taskType: string, description: string): Promise<NotionTask> {
+    // Input validation
+    if (!title || title.trim().length === 0) {
+      throw new Error('Title is required and cannot be empty');
+    }
+    if (!taskType || taskType.trim().length === 0) {
+      throw new Error('Task type is required and cannot be empty');
+    }
+    if (title.length > 200) {
+      throw new Error('Title cannot exceed 200 characters');
+    }
+
     try {
       const children = [];
       

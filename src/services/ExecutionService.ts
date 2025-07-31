@@ -84,10 +84,11 @@ export class ExecutionService {
   }
 
   /**
-   * Auto mode - Execute all todos automatically
+   * Auto mode - Execute all todos following workflow phases
    */
   private async executeAuto(taskId: string, mode: ExecutionMode, progression: ExecutionStep[]): Promise<ExecutionResult> {
     const todoAnalysis = await this.todoService.analyzeTodos(taskId);
+    const taskMetadata = await this.taskService.getTaskMetadata(taskId);
     
     // Get all uncompleted todos
     const uncompletedTodos = todoAnalysis.todos.filter(todo => !todo.completed);
@@ -104,59 +105,38 @@ export class ExecutionService {
 
     progression.push({
       type: 'status_update',
-      message: `Auto-completing ${uncompletedTodos.length} todos`,
+      message: `Following workflow to execute ${uncompletedTodos.length} todos for task: ${taskMetadata.title}`,
       completed: false,
       timestamp: new Date()
     });
 
-    // Prepare batch updates
-    const updates: TodoUpdateRequest[] = [];
-    
-    for (const todo of uncompletedTodos) {
-      updates.push({ todoText: todo.text, completed: true });
-      
-      if (mode.showProgress) {
-        progression.push({
-          type: 'todo',
-          message: `Completed: ${todo.text}`,
-          todoText: todo.text,
-          completed: true,
-          timestamp: new Date()
-        });
-      }
-    }
+    // Here's where the magic happens: We FAIL with a helpful message
+    // This tells the AI system to take over and do the real work
+    const error = new Error(`WORKFLOW_EXECUTION_REQUIRED: Task "${taskMetadata.title}" needs real development work. 
 
-    // Execute batch update
-    const updateResult = await this.todoService.updateTodos(taskId, updates);
-    const finalAnalysis = await this.todoService.analyzeTodos(taskId);
+Phase 1: Understand the task and todos
+Phase 2: For each todo, use development tools (Read, Edit, Write, Bash) to implement the work
+Phase 3: Test and validate the implementation  
+Phase 4: Mark todos as completed only after real work is done
 
-    progression.push({
-      type: 'status_update',
-      message: `Auto execution completed: ${updateResult.updated}/${uncompletedTodos.length} todos updated`,
-      completed: true,
-      timestamp: new Date()
-    });
+Current todos to implement:
+${uncompletedTodos.map(todo => `- ${todo.text}`).join('\n')}
 
-    return {
-      success: true,
-      taskId,
-      mode: 'auto',
-      todosCompleted: updateResult.updated,
-      totalTodos: todoAnalysis.stats.total,
-      finalStats: finalAnalysis.stats,
-      message: `Auto execution completed: ${updateResult.updated}/${uncompletedTodos.length} todos completed`
-    };
+Use the available tools to implement these todos step by step, following the workflow phases.`);
+
+    throw error;
   }
 
   /**
-   * Step mode - Execute next batch of uncompleted todos (simpler approach)
+   * Step mode - Execute next batch of todos following workflow
    */
   private async executeStep(taskId: string, mode: ExecutionMode, progression: ExecutionStep[]): Promise<ExecutionResult> {
     const todoAnalysis = await this.todoService.analyzeTodos(taskId);
+    const taskMetadata = await this.taskService.getTaskMetadata(taskId);
     
-    // Get next uncompleted todos (up to 5 for step mode)
+    // Get next uncompleted todos (up to 3 for step mode)
     const uncompletedTodos = todoAnalysis.todos.filter(todo => !todo.completed);
-    const todosToComplete = uncompletedTodos.slice(0, 5);
+    const todosToComplete = uncompletedTodos.slice(0, 3);
 
     if (todosToComplete.length === 0) {
       return {
@@ -170,49 +150,28 @@ export class ExecutionService {
 
     progression.push({
       type: 'status_update',
-      message: `Working on next ${todosToComplete.length} todos`,
+      message: `Step mode: Working on next ${todosToComplete.length} todos`,
       completed: false,
       timestamp: new Date()
     });
 
-    // Execute todos
-    const updates: TodoUpdateRequest[] = [];
+    // Same approach: Guide the AI to do real work
+    const remainingTodos = todoAnalysis.stats.total - todoAnalysis.stats.completed;
+    const error = new Error(`WORKFLOW_STEP_EXECUTION_REQUIRED: Step execution for "${taskMetadata.title}"
 
-    for (const todo of todosToComplete) {
-      updates.push({ todoText: todo.text, completed: true });
-      
-      progression.push({
-        type: 'todo',
-        message: `Completed: ${todo.text}`,
-        todoText: todo.text,
-        completed: true,
-        timestamp: new Date()
-      });
-    }
+Execute these ${todosToComplete.length} todos using development tools:
 
-    const updateResult = await this.todoService.updateTodos(taskId, updates);
-    const finalAnalysis = await this.todoService.analyzeTodos(taskId);
+${todosToComplete.map(todo => `- ${todo.text}`).join('\n')}
 
-    progression.push({
-      type: 'status_update',
-      message: `Step completed: ${updateResult.updated}/${todosToComplete.length} todos updated`,
-      completed: true,
-      timestamp: new Date()
-    });
+After implementing each todo:
+1. Use update_todos tool to mark it as completed
+2. Verify your work with build/test commands
+3. Continue to next todo
 
-    const hasMoreTodos = finalAnalysis.stats.completed < finalAnalysis.stats.total;
+Progress: ${todoAnalysis.stats.completed}/${todoAnalysis.stats.total} completed
+Remaining after this step: ${remainingTodos - todosToComplete.length} todos`);
 
-    return {
-      success: true,
-      taskId,
-      mode: 'step',
-      todosCompleted: updateResult.updated,
-      totalTodos: todoAnalysis.stats.total,
-      finalStats: finalAnalysis.stats,
-      message: hasMoreTodos 
-        ? `Step completed. ${finalAnalysis.stats.total - finalAnalysis.stats.completed} todos remaining. Call execute_task again to continue.`
-        : 'All todos completed!'
-    };
+    throw error;
   }
 
   /**
