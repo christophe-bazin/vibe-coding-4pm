@@ -212,10 +212,41 @@ export class NotionAPIAdapter implements TaskProvider {
   private parseMarkdownToNotionBlocks(markdown: string): any[] {
     const blocks = [];
     const lines = markdown.split('\n');
+    let inCodeBlock = false;
+    let codeBlockContent = [];
+    let codeBlockLanguage = '';
 
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i] || '';
       const trimmed = line.trim();
       
+      // Handle code blocks
+      if (trimmed.startsWith('```')) {
+        if (!inCodeBlock) {
+          inCodeBlock = true;
+          codeBlockLanguage = trimmed.replace(/^```/, '').trim();
+          codeBlockContent = [];
+        } else {
+          inCodeBlock = false;
+          blocks.push({
+            type: 'code',
+            code: {
+              rich_text: [{ type: 'text', text: { content: codeBlockContent.join('\n') } }],
+              language: codeBlockLanguage || 'plain text'
+            }
+          });
+          codeBlockContent = [];
+          codeBlockLanguage = '';
+        }
+        continue;
+      }
+
+      if (inCodeBlock) {
+        codeBlockContent.push(line);
+        continue;
+      }
+      
+      // Handle todos
       if (trimmed.startsWith('- [ ]') || trimmed.startsWith('- [x]')) {
         const checked = trimmed.includes('[x]');
         const text = trimmed.replace(/^- \[[ x]\]\s*/, '');
@@ -223,16 +254,38 @@ export class NotionAPIAdapter implements TaskProvider {
         blocks.push({
           type: 'to_do',
           to_do: {
-            rich_text: [{ type: 'text', text: { content: text } }],
+            rich_text: this.parseRichText(text),
             checked
           }
         });
-      } else if (trimmed.startsWith('###')) {
+      }
+      // Handle bullet lists
+      else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+        const text = trimmed.replace(/^[*-]\s*/, '');
+        blocks.push({
+          type: 'bulleted_list_item',
+          bulleted_list_item: {
+            rich_text: this.parseRichText(text)
+          }
+        });
+      }
+      // Handle numbered lists
+      else if (/^\d+\.\s/.test(trimmed)) {
+        const text = trimmed.replace(/^\d+\.\s*/, '');
+        blocks.push({
+          type: 'numbered_list_item',
+          numbered_list_item: {
+            rich_text: this.parseRichText(text)
+          }
+        });
+      }
+      // Handle headings
+      else if (trimmed.startsWith('###')) {
         const text = trimmed.replace(/^###\s*/, '');
         blocks.push({
           type: 'heading_3',
           heading_3: {
-            rich_text: [{ type: 'text', text: { content: text } }]
+            rich_text: this.parseRichText(text)
           }
         });
       } else if (trimmed.startsWith('##')) {
@@ -240,7 +293,7 @@ export class NotionAPIAdapter implements TaskProvider {
         blocks.push({
           type: 'heading_2',
           heading_2: {
-            rich_text: [{ type: 'text', text: { content: text } }]
+            rich_text: this.parseRichText(text)
           }
         });
       } else if (trimmed.startsWith('#')) {
@@ -248,17 +301,30 @@ export class NotionAPIAdapter implements TaskProvider {
         blocks.push({
           type: 'heading_1',
           heading_1: {
-            rich_text: [{ type: 'text', text: { content: text } }]
-          }
-        });
-      } else if (trimmed && !trimmed.startsWith('#')) {
-        blocks.push({
-          type: 'paragraph',
-          paragraph: {
-            rich_text: [{ type: 'text', text: { content: line } }]
+            rich_text: this.parseRichText(text)
           }
         });
       }
+      // Handle paragraphs
+      else if (trimmed && !trimmed.startsWith('#')) {
+        blocks.push({
+          type: 'paragraph',
+          paragraph: {
+            rich_text: this.parseRichText(line || '')
+          }
+        });
+      }
+    }
+
+    // Handle unclosed code block
+    if (inCodeBlock && codeBlockContent.length > 0) {
+      blocks.push({
+        type: 'code',
+        code: {
+          rich_text: [{ type: 'text', text: { content: codeBlockContent.join('\n') } }],
+          language: codeBlockLanguage || 'plain text'
+        }
+      });
     }
 
     return blocks;
@@ -297,6 +363,98 @@ export class NotionAPIAdapter implements TaskProvider {
       }
     }
     return null;
+  }
+
+  private parseRichText(text: string): any[] {
+    if (!text || text.trim() === '') return [];
+    
+    const richTextElements = [];
+    let currentIndex = 0;
+    
+    // Regex patterns for different formatting
+    const patterns = [
+      { type: 'bold_italic', regex: /\*\*\*(.*?)\*\*\*/g, annotations: { bold: true, italic: true } },
+      { type: 'bold', regex: /\*\*(.*?)\*\*/g, annotations: { bold: true } },
+      { type: 'italic', regex: /\*(.*?)\*/g, annotations: { italic: true } },
+      { type: 'code', regex: /`(.*?)`/g, annotations: { code: true } }
+    ];
+    
+    // Find all matches and their positions
+    const matches = [];
+    for (const pattern of patterns) {
+      let match;
+      const regex = new RegExp(pattern.regex.source, 'g');
+      while ((match = regex.exec(text)) !== null) {
+        matches.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          content: match[1] || '',
+          annotations: pattern.annotations,
+          type: pattern.type
+        });
+      }
+    }
+    
+    // Sort matches by start position
+    matches.sort((a, b) => a.start - b.start);
+    
+    // Remove overlapping matches (keep the first one)
+    const filteredMatches: Array<{
+      start: number;
+      end: number;
+      content: string;
+      annotations: any;
+      type: string;
+    }> = [];
+    for (const match of matches) {
+      const hasOverlap = filteredMatches.some(existing => 
+        (match.start < existing.end && match.end > existing.start)
+      );
+      if (!hasOverlap) {
+        filteredMatches.push(match);
+      }
+    }
+    
+    // Build rich text elements
+    for (const match of filteredMatches) {
+      // Add plain text before the match
+      if (currentIndex < match.start) {
+        const plainText = text.substring(currentIndex, match.start);
+        if (plainText) {
+          richTextElements.push({
+            type: 'text',
+            text: { content: plainText }
+          });
+        }
+      }
+      
+      // Add formatted text
+      richTextElements.push({
+        type: 'text',
+        text: { content: match.content },
+        annotations: match.annotations
+      });
+      
+      currentIndex = match.end;
+    }
+    
+    // Add remaining plain text
+    if (currentIndex < text.length) {
+      const plainText = text.substring(currentIndex);
+      if (plainText) {
+        richTextElements.push({
+          type: 'text',
+          text: { content: plainText }
+        });
+      }
+    }
+    
+    // If no formatting was found, return simple text
+    if (richTextElements.length === 0) {
+      return [{ type: 'text', text: { content: text } }];
+    }
+    
+    return richTextElements;
   }
 
   private extractRichText(richText: any[]): string {
