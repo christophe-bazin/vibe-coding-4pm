@@ -43,10 +43,28 @@ export class TaskService {
     return await this.taskProvider.createTask(title, taskType, description);
   }
 
-  async updateTask(taskId: string, updates: { title?: string; description?: string; taskType?: string }): Promise<void> {
+  async updateTask(taskId: string, updates: { title?: string; taskType?: string; status?: string }): Promise<void> {
     // Validate task type if provided
     if (updates.taskType && !this.workflowConfig.taskTypes.includes(updates.taskType)) {
       throw new Error(`Invalid task type. Available: ${this.workflowConfig.taskTypes.join(', ')}`);
+    }
+
+    // Validate status if provided (same logic as updateTaskStatus)
+    if (updates.status) {
+      const task = await this.getTask(taskId);
+      // Allow same status (no change)
+      if (task.status !== updates.status) {
+        // Convert Notion status names to internal keys for transition lookup
+        const currentStatusKey = this.getStatusKey(task.status);
+        const newStatusKey = this.getStatusKey(updates.status);
+        
+        const availableTransitions = this.workflowConfig.transitions[currentStatusKey] || [];
+        const availableNotionStatuses = availableTransitions.map(key => this.workflowConfig.statusMapping[key]).filter(Boolean) as string[];
+        
+        if (!availableNotionStatuses.includes(updates.status)) {
+          throw new Error(`Invalid transition from "${task.status}" to "${updates.status}". Available: ${availableNotionStatuses.join(', ')}`);
+        }
+      }
     }
 
     await this.taskProvider.updateTask(taskId, updates);
@@ -57,22 +75,25 @@ export class TaskService {
     const currentStatusKey = this.getStatusKey(task.status);
     const newStatusKey = this.getStatusKey(newStatus);
 
-    // Validate transition
-    const availableTransitions = this.workflowConfig.transitions[task.status] || [];
-    if (!availableTransitions.includes(newStatus)) {
-      throw new Error(`Invalid transition from "${task.status}" to "${newStatus}". Available: ${availableTransitions.join(', ')}`);
+    // Validate transition (use internal keys, not Notion status names)
+    const availableTransitions = this.workflowConfig.transitions[currentStatusKey] || [];
+    const availableNotionStatuses = availableTransitions.map(key => this.workflowConfig.statusMapping[key]).filter(Boolean) as string[];
+    
+    if (!availableNotionStatuses.includes(newStatus)) {
+      throw new Error(`Invalid transition from "${task.status}" to "${newStatus}". Available: ${availableNotionStatuses.join(', ')}`);
     }
 
     await this.taskProvider.updateTaskStatus(taskId, newStatus);
   }
 
   getTaskStatus(currentStatus: string): TaskStatus {
-    const availableTransitions = this.workflowConfig.transitions[currentStatus] || [];
     const statusKey = this.getStatusKey(currentStatus);
+    const availableTransitions = this.workflowConfig.transitions[statusKey] || [];
+    const availableNotionStatuses = availableTransitions.map(key => this.workflowConfig.statusMapping[key]).filter(Boolean) as string[];
 
     return {
       current: currentStatus,
-      available: availableTransitions,
+      available: availableNotionStatuses,
       recommended: this.getRecommendedStatus(currentStatus),
       shouldAutoProgress: false // Will be determined by ExecutionService
     };
@@ -86,16 +107,19 @@ export class TaskService {
   }
 
   private getRecommendedStatus(currentStatus: string): string | undefined {
-    const transitions = this.workflowConfig.transitions[currentStatus];
+    const statusKey = this.getStatusKey(currentStatus);
+    const transitions = this.workflowConfig.transitions[statusKey];
     if (!transitions || transitions.length === 0) return undefined;
     
     if (currentStatus === this.workflowConfig.statusMapping.notStarted && 
         this.workflowConfig.statusMapping.inProgress &&
-        transitions.includes(this.workflowConfig.statusMapping.inProgress)) {
+        transitions.includes('inProgress')) {
       return this.workflowConfig.statusMapping.inProgress;
     }
     
-    return transitions[0];
+    // Return the first available transition as Notion status name
+    const firstTransitionKey = transitions[0];
+    return firstTransitionKey ? this.workflowConfig.statusMapping[firstTransitionKey] : undefined;
   }
 
 }

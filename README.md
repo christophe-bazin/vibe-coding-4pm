@@ -54,7 +54,7 @@ You: Review and mark as "Done" when satisfied
 # Create tasks directly with JSON arguments
 node mcp.js create_task '{"title":"Add user authentication","taskType":"Feature","description":"Implement OAuth login"}'
 node mcp.js get_task '{"taskId":"<task-id>"}'
-node mcp.js update_task_status '{"taskId":"<task-id>","newStatus":"In progress"}'
+node mcp.js update_task '{"taskId":"<task-id>","status":"In Progress"}'
 node mcp.js update_todos '{"taskId":"<task-id>","updates":[{"todoText":"Setup OAuth provider","completed":true}]}'
 node mcp.js analyze_todos '{"taskId":"<task-id>"}'
 ```
@@ -70,13 +70,12 @@ node mcp.js analyze_todos '{"taskId":"<task-id>"}'
 
 ## Available Tools
 
-The MCP server provides 9 tools available both via Claude Desktop (MCP) and CLI wrapper:
+The MCP server provides 8 tools available both via Claude Desktop (MCP) and CLI wrapper:
 
 ### Task Management
 - `create_task` - Create tasks with AI-adapted content
 - `get_task` - Retrieve task information and metadata
-- `update_task` - Modify task content (title, type, description)
-- `update_task_status` - Change status with workflow validation
+- `update_task` - Update task title, type and/or status with validation
 - `execute_task` - Smart execution with step/auto/batch modes
 
 ### Template & Workflow

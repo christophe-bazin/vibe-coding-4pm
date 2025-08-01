@@ -243,7 +243,7 @@ node mcp.js create_task '{"title":"Test Task","taskType":"Feature","description"
 node mcp.js get_task '{"taskId":"test_id"}'
 
 # Test status updates
-node mcp.js update_task_status '{"taskId":"test_id","newStatus":"In Progress"}'
+node mcp.js update_task '{"taskId":"test_id","status":"In Progress"}'
 ```
 
 ### Integration Testing

@@ -18,7 +18,7 @@ This is a Model Context Protocol (MCP) server that enables AI assistants to mana
 - **Provider Pattern**: TaskProvider interface enables pluggable task management backends
 - **Current Implementation**: Direct Notion API integration via @notionhq/client
 - **Workflow Intelligence**: Template-driven task creation with type-specific structures  
-- **MCP Protocol**: 9 tools for comprehensive task and todo management
+- **MCP Protocol**: 8 tools for comprehensive task and todo management
 - **Extensible Design**: Ready for Linear, GitHub, Jira providers in future versions
 
 See detailed architecture in [docs/development.md](docs/development.md)
@@ -79,8 +79,7 @@ All configuration is centralized in your project's `.claude/mcp-config.json`:
 ### Task Management
 - `create_task`: Create new tasks in Notion database with AI-adapted content
 - `get_task`: Get task information with todo statistics and status
-- `update_task`: Update task content (title, description, type) without changing status
-- `update_task_status`: Change task status with validation
+- `update_task`: Update task title, type and/or status with validation
 - `execute_task`: Execute task workflow (auto/step/batch modes)
 
 ### Template & Workflow

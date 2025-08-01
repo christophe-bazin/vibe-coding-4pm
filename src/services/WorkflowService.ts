@@ -37,47 +37,59 @@ export class WorkflowService {
   }
 
   getWorkflowState(taskId: string, currentStatus: string): WorkflowState {
-    const availableTransitions = this.workflowConfig.transitions[currentStatus] || [];
+    const statusKey = this.getStatusKey(currentStatus);
+    const availableTransitions = this.workflowConfig.transitions[statusKey] || [];
+    const availableNotionStatuses = availableTransitions.map(key => this.workflowConfig.statusMapping[key]).filter(Boolean) as string[];
     const canAutoProgress = this.shouldAutoProgress(currentStatus);
 
     return {
       taskId,
       currentStatus,
-      availableTransitions,
+      availableTransitions: availableNotionStatuses,
       canAutoProgress
     };
   }
 
   validateTransition(fromStatus: string, toStatus: string): boolean {
-    const availableTransitions = this.workflowConfig.transitions[fromStatus] || [];
-    return availableTransitions.includes(toStatus);
+    const fromStatusKey = this.getStatusKey(fromStatus);
+    const toStatusKey = this.getStatusKey(toStatus);
+    const availableTransitions = this.workflowConfig.transitions[fromStatusKey] || [];
+    return availableTransitions.includes(toStatusKey);
   }
 
   getNextRecommendedStatus(currentStatus: string, progressPercentage: number): string | null {
-    const transitions = this.workflowConfig.transitions[currentStatus] || [];
+    const statusKey = this.getStatusKey(currentStatus);
+    const transitions = this.workflowConfig.transitions[statusKey] || [];
     
     if (transitions.length === 0) return null;
 
-    // Get status keys dynamically from config
-    const notStarted = this.workflowConfig.statusMapping.notStarted || 'Not started';
-    const inProgress = this.workflowConfig.statusMapping.inProgress || 'In progress';
-    const done = this.workflowConfig.statusMapping.done || 'Done';
-    const test = this.workflowConfig.statusMapping.test || 'Test';
+    // Get status names from config
+    const notStarted = this.workflowConfig.statusMapping.notStarted || null;
+    const inProgress = this.workflowConfig.statusMapping.inProgress || null;
+    const done = this.workflowConfig.statusMapping.done || null;
+    const test = this.workflowConfig.statusMapping.test || null;
 
-    // Logic for recommendations based on progress (using config values)
+    // Logic for recommendations based on progress (using Notion status names)
     if (currentStatus === notStarted && progressPercentage > 0) {
-      return transitions.includes(inProgress) ? inProgress : (transitions[0] || null);
+      return transitions.includes('inProgress') ? inProgress : (transitions[0] ? this.workflowConfig.statusMapping[transitions[0]] || null : null);
     }
     
     if (currentStatus === inProgress && progressPercentage >= 100) {
-      return transitions.includes(done) ? done : (transitions[0] || null);
+      return transitions.includes('done') ? done : (transitions[0] ? this.workflowConfig.statusMapping[transitions[0]] || null : null);
     }
 
     if (currentStatus === test && progressPercentage >= 100) {
-      return transitions.includes(done) ? done : null;
+      return transitions.includes('done') ? done : null;
     }
 
     return null;
+  }
+
+  private getStatusKey(status: string): string {
+    for (const [key, value] of Object.entries(this.workflowConfig.statusMapping)) {
+      if (value === status) return key;
+    }
+    return 'unknown';
   }
 
   private shouldAutoProgress(currentStatus: string): boolean {

@@ -104,7 +104,7 @@ export class NotionAPIAdapter implements TaskProvider {
     }
   }
 
-  async updateTask(taskId: string, updates: { title?: string; description?: string; taskType?: string }): Promise<void> {
+  async updateTask(taskId: string, updates: { title?: string; taskType?: string; status?: string }): Promise<void> {
     try {
       const properties: any = {};
       
@@ -117,20 +117,19 @@ export class NotionAPIAdapter implements TaskProvider {
         properties.Type = { select: { name: updates.taskType } };
       }
 
+      if (updates.status) {
+        properties.Status = { status: { name: updates.status } };
+      }
+
       await this.notion.pages.update({
         page_id: taskId,
         properties
       });
-
-      if (updates.description) {
-        // Note: Description updates require block-level operations 
-        // and are not implemented in current version
-        console.warn('Description updates not supported - requires block-level API calls');
-      }
     } catch (error) {
       throw new Error(`Failed to update task: ${error}`);
     }
   }
+
 
   async updateTaskStatus(taskId: string, status: string): Promise<void> {
     try {
@@ -212,7 +211,7 @@ export class NotionAPIAdapter implements TaskProvider {
   private mapNotionPageToTask(page: any): NotionTask {
     // Find the title property dynamically
     let title = 'Untitled';
-    for (const [name, property] of Object.entries(page.properties || {})) {
+    for (const [, property] of Object.entries(page.properties || {})) {
       if ((property as any).type === 'title') {
         title = (property as any).title?.[0]?.text?.content || 'Untitled';
         break;

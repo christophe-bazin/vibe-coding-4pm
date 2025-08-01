@@ -4,7 +4,7 @@ import { TodoAnalysisResult, TodoUpdateRequest } from '../models/Todo.js';
 export interface TaskProvider {
   getTask(taskId: string): Promise<NotionTask>;
   createTask(title: string, taskType: string, description: string): Promise<NotionTask>;
-  updateTask(taskId: string, updates: { title?: string; description?: string; taskType?: string }): Promise<void>;
+  updateTask(taskId: string, updates: { title?: string; taskType?: string; status?: string }): Promise<void>;
   updateTaskStatus(taskId: string, status: string): Promise<void>;
 
   analyzeTodos(taskId: string, includeHierarchy?: boolean): Promise<TodoAnalysisResult>;

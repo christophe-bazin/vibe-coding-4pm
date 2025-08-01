@@ -48,11 +48,10 @@ class MCPServer {
         { name: 'execute_task', description: 'Execute task (auto/step/batch)', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, mode: { type: 'string', enum: ['auto', 'step', 'batch'] } }, required: ['taskId', 'mode'] } },
         { name: 'create_task', description: 'Create new task', inputSchema: { type: 'object', properties: { title: { type: 'string' }, taskType: { type: 'string' }, description: { type: 'string' } }, required: ['title', 'taskType', 'description'] } },
         { name: 'get_task', description: 'Get task info', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
-        { name: 'update_task', description: 'Update task content', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, title: { type: 'string' }, description: { type: 'string' }, taskType: { type: 'string' } }, required: ['taskId'] } },
+        { name: 'update_task', description: 'Update task title, type and/or status', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, title: { type: 'string' }, taskType: { type: 'string' }, status: { type: 'string' } }, required: ['taskId'] } },
         { name: 'get_workflow_guidance', description: 'Get workflow guidance', inputSchema: { type: 'object', properties: { type: { type: 'string', enum: ['creation', 'update', 'execution'] } }, required: ['type'] } },
         { name: 'get_task_template', description: 'Get task template for AI adaptation', inputSchema: { type: 'object', properties: { taskType: { type: 'string' } }, required: ['taskType'] } },
         { name: 'analyze_todos', description: 'Analyze todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, includeHierarchy: { type: 'boolean' } }, required: ['taskId'] } },
-        { name: 'update_task_status', description: 'Update task status', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, newStatus: { type: 'string' } }, required: ['taskId', 'newStatus'] } },
         { name: 'update_todos', description: 'Batch update todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, updates: { type: 'array' } }, required: ['taskId', 'updates'] } },
       ]
     }));
@@ -98,10 +97,6 @@ class MCPServer {
       case 'analyze_todos':
         const analysis = await todo.analyzeTodos(args.taskId, args.includeHierarchy);
         return formatter.formatTodoAnalysis(analysis);
-
-      case 'update_task_status':
-        await task.updateTaskStatus(args.taskId, args.newStatus);
-        return formatter.formatStatusUpdated(args.taskId, args.newStatus);
 
       case 'update_todos':
         const updateResult = await todo.updateTodos(args.taskId, args.updates);

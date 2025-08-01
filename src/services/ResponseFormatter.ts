@@ -91,12 +91,6 @@ export class ResponseFormatter {
       `${analysis.blockers.length > 0 ? `## ⚠️ Blockers\n${analysis.blockers.map(b => `- ${b}`).join('\n')}` : ''}`;
   }
 
-  formatStatusUpdated(taskId: string, newStatus: string): string {
-    return `# ✅ Status Updated\n\n` +
-      `**Task ID:** ${taskId}\n` +
-      `**New Status:** ${newStatus}\n\n` +
-      `Status updated successfully.`;
-  }
 
   formatTodosUpdated(taskId: string, result: { updated: number, failed: number }): string {
     return `# ✅ Todos Updated\n\n` +

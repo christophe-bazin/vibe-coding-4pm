@@ -23,9 +23,9 @@ node mcp.js create_task '{"title":"Fix login bug","taskType":"Bug","description"
 # Get task information  
 node mcp.js get_task '{"taskId":"23e0da7a-7a07-8145-9611-e394062d8a55"}'
 
-# Update status
-node mcp.js update_task_status '{"taskId":"<task-id>","newStatus":"In progress"}'
-node mcp.js update_task_status '{"taskId":"<task-id>","newStatus":"Test","force":true}'
+# Update tasks
+node mcp.js update_task '{"taskId":"<task-id>","status":"In Progress"}'
+node mcp.js update_task '{"taskId":"<task-id>","title":"New Title","status":"Test"}'
 ```
 
 #### Todo Management
@@ -372,21 +372,21 @@ Create a new task in Notion database with workflow template.
 
 #### `update_task`
 
-Update task content (title, description, type) without changing status.
+Update task title, type and/or status with validation.
 
 **Parameters:**
 - `taskId` (string, required): The Notion task/page ID
 - `title` (string, optional): New task title
-- `content` (string, optional): New task content/description
 - `taskType` (string, optional): New task type ("Feature", "Bug", or "Refactoring")
+- `status` (string, optional): New status with workflow validation
 
 **Example:**
 ```json
 {
   "taskId": "abc123...",
   "title": "Enhanced user authentication",
-  "content": "Add JWT-based authentication with OAuth2 support",
-  "taskType": "Feature"
+  "taskType": "Feature",
+  "status": "In Progress"
 }
 ```
 
@@ -448,33 +448,6 @@ Get workflow guidance for task creation, update, or execution.
 **Response:**
 Returns the complete markdown content of the requested workflow file.
 
-#### `update_task_status`
-
-Update task status according to workflow rules.
-
-**Parameters:**
-- `taskId` (string, required): The Notion task/page ID
-- `newStatus` (string, required): New status to set
-- `force` (boolean, optional): Force update bypassing validation (default: false)
-
-**Example:**
-```json
-{
-  "taskId": "abc123...",
-  "newStatus": "In Progress"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "taskId": "abc123...",
-  "newStatus": "In Progress",
-  "nextStatuses": ["Test"],
-  "message": "Status updated to: In Progress"
-}
-```
 
 #### `get_task_info`
 

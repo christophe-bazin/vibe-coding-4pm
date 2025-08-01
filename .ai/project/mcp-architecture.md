@@ -27,7 +27,7 @@ The Notion Workflow MCP Server is built as a lightweight, configuration-driven s
 **Responsibility**: Handle MCP protocol and expose tools to AI clients
 
 - Implements MCP protocol specification
-- Provides 9 main tools for AI interaction
+- Provides 8 main tools for AI interaction
 - Handles tool parameter validation
 - Manages error responses and formatting
 - Routes requests to appropriate handlers
@@ -35,8 +35,7 @@ The Notion Workflow MCP Server is built as a lightweight, configuration-driven s
 **Key Tools**:
 - `create_task`: Create new tasks with AI-adapted content
 - `get_task`: Get task information with todo statistics
-- `update_task`: Update task content without changing status
-- `update_task_status`: Change status with validation
+- `update_task`: Update task title, type and/or status with validation
 - `execute_task`: Execute task workflow in various modes
 - `get_task_template`: Get task template for AI adaptation
 - `get_workflow_guidance`: Return markdown guidance for AI
@@ -124,14 +123,14 @@ MCP Client → start_task_workflow → URL Parser → Notion API → State Init
 4. Initializes workflow state in memory
 5. Returns guidance and current state
 
-### 2. Status Updates
+### 2. Task Updates
 ```
-MCP Client → update_task_status → Validation → Notion Update → State Sync
+MCP Client → update_task → Validation → Notion Update → State Sync
 ```
 
-1. AI requests status change
-2. Server validates transition against config
-3. Updates status in Notion if allowed
+1. AI requests task changes (title, type, status)
+2. Server validates transitions and types against config
+3. Updates task in Notion if allowed
 4. Syncs local state with Notion response
 5. Returns success confirmation
 
