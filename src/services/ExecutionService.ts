@@ -92,121 +92,53 @@ export class ExecutionService {
     // Get all uncompleted todos
     const uncompletedTodos = todoAnalysis.todos.filter(todo => !todo.completed);
 
-    // If no todos at all, provide general execution guidance
+    // If no todos at all, guide AI to work from task description
     if (todoAnalysis.stats.total === 0) {
-      // Update task to In Progress if not already
-      if (taskMetadata.status === 'Not Started') {
-        await this.taskService.updateTask(taskId, { status: 'In Progress' });
-        progression.push({
-          type: 'status_update',
-          message: 'Task status updated to "In Progress"',
-          completed: true,
-          timestamp: new Date()
-        });
-      }
+      const error = new Error(`WORKFLOW_EXECUTION_REQUIRED: Task "${taskMetadata.title}" has no structured todos but needs development work.
 
-      progression.push({
-        type: 'status_update',
-        message: `Auto execution guidance for task: ${taskMetadata.title}`,
-        completed: true,
-        timestamp: new Date()
-      });
+Phase 1: Analyze task description and requirements
+Phase 2: Break down work into implementation steps
+Phase 3: Use development tools (Read, Edit, Write, Bash) to implement
+Phase 4: Test and validate implementation
+Phase 5: Move task to "Test" status when complete
 
-      let guidanceMessage = `🚀 AUTO EXECUTION GUIDANCE for "${taskMetadata.title}"\n\n`;
-      guidanceMessage += `📋 Task Context Analysis\n`;
-      guidanceMessage += `- No structured todos found in task description\n`;
-      guidanceMessage += `- Analyze task requirements from description\n`;
-      guidanceMessage += `- Break down work into implementation steps\n\n`;
-      
-      guidanceMessage += `⚡ Implementation Process\n`;
-      guidanceMessage += `1. Read and understand the task description thoroughly\n`;
-      guidanceMessage += `2. Identify what needs to be built/fixed/improved\n`;
-      guidanceMessage += `3. Plan your approach and implementation steps\n`;
-      guidanceMessage += `4. Execute the work using development tools (Read, Edit, Write, Bash)\n`;
-      guidanceMessage += `5. Test and validate your implementation\n\n`;
-      
-      guidanceMessage += `🧪 Testing & Validation\n`;
-      guidanceMessage += `- Build/compile to check for errors\n`;
-      guidanceMessage += `- Test functionality if applicable\n`;
-      guidanceMessage += `- Validate against task requirements\n\n`;
-      
-      guidanceMessage += `✅ Completion\n`;
-      guidanceMessage += `- When work is complete, move task to "Test" status\n`;
-      guidanceMessage += `- Provide summary of work completed\n`;
-      guidanceMessage += `- List what should be tested/validated\n\n`;
-      
-      guidanceMessage += `📊 Current Status: Ready for implementation`;
+Analyze the task description to understand what needs to be implemented, then use the available development tools to complete the work.`);
 
-      return {
-        success: true,
-        taskId,
-        mode: mode.type,
-        finalStats: todoAnalysis.stats,
-        message: guidanceMessage
-      };
+      throw error;
     }
 
-    // If all todos completed
     if (uncompletedTodos.length === 0) {
       return {
-        success: true,
+        success: false,
         taskId,
         mode: mode.type,
         finalStats: todoAnalysis.stats,
-        message: 'All todos already completed'
+        message: 'No todos to complete'
       };
-    }
-
-    // Update task to In Progress if not already
-    if (taskMetadata.status === 'Not Started') {
-      await this.taskService.updateTask(taskId, { status: 'In Progress' });
-      progression.push({
-        type: 'status_update',
-        message: 'Task status updated to "In Progress"',
-        completed: true,
-        timestamp: new Date()
-      });
     }
 
     progression.push({
       type: 'status_update',
-      message: `Auto execution guidance for task: ${taskMetadata.title}`,
-      completed: true,
+      message: `Following workflow to execute ${uncompletedTodos.length} todos for task: ${taskMetadata.title}`,
+      completed: false,
       timestamp: new Date()
     });
 
-    // Provide structured guidance instead of throwing errors
-    let guidanceMessage = `🚀 AUTO EXECUTION GUIDANCE for "${taskMetadata.title}"\n\n`;
-    guidanceMessage += `📋 Phase 1: Understanding & Planning\n`;
-    guidanceMessage += `- Review task description and requirements\n`;
-    guidanceMessage += `- Understand the codebase context\n`;
-    guidanceMessage += `- Plan implementation approach\n\n`;
-    
-    guidanceMessage += `⚡ Phase 2: Implementation (${uncompletedTodos.length} todos)\n`;
-    uncompletedTodos.forEach((todo, index) => {
-      guidanceMessage += `${index + 1}. ${todo.text}\n`;
-    });
-    guidanceMessage += `\n`;
-    
-    guidanceMessage += `🧪 Phase 3: Testing & Validation\n`;
-    guidanceMessage += `- Run build/compile to check for errors\n`;
-    guidanceMessage += `- Test functionality if applicable\n`;
-    guidanceMessage += `- Validate against requirements\n\n`;
-    
-    guidanceMessage += `✅ Phase 4: Completion\n`;
-    guidanceMessage += `- Use update_todos to mark completed items\n`;
-    guidanceMessage += `- Task will auto-progress to "Test" when 100% complete\n`;
-    guidanceMessage += `- Provide summary of work completed\n\n`;
-    
-    guidanceMessage += `📊 Current Progress: ${todoAnalysis.stats.completed}/${todoAnalysis.stats.total} todos (${todoAnalysis.stats.percentage}%)`;
+    // Here's where the magic happens: We FAIL with a helpful message
+    // This tells the AI system to take over and do the real work
+    const error = new Error(`WORKFLOW_EXECUTION_REQUIRED: Task "${taskMetadata.title}" needs real development work. 
 
-    return {
-      success: true,
-      taskId,
-      mode: mode.type,
-      finalStats: todoAnalysis.stats,
-      message: guidanceMessage
-    };
+Phase 1: Understand the task and todos
+Phase 2: For each todo, use development tools (Read, Edit, Write, Bash) to implement the work
+Phase 3: Test and validate the implementation  
+Phase 4: Mark todos as completed only after real work is done
+
+Current todos to implement:
+${uncompletedTodos.map(todo => `- ${todo.text}`).join('\n')}
+
+Use the available tools to implement these todos step by step, following the workflow phases.`);
+
+    throw error;
   }
 
   /**
@@ -220,110 +152,40 @@ export class ExecutionService {
     const uncompletedTodos = todoAnalysis.todos.filter(todo => !todo.completed);
     const todosToComplete = uncompletedTodos.slice(0, 3);
 
-    // If no todos at all, provide general step guidance
-    if (todoAnalysis.stats.total === 0) {
-      // Update task to In Progress if not already
-      if (taskMetadata.status === 'Not Started') {
-        await this.taskService.updateTask(taskId, { status: 'In Progress' });
-        progression.push({
-          type: 'status_update',
-          message: 'Task status updated to "In Progress"',
-          completed: true,
-          timestamp: new Date()
-        });
-      }
-
-      progression.push({
-        type: 'status_update',
-        message: `Step mode: Focus on task context`,
-        completed: true,
-        timestamp: new Date()
-      });
-
-      let stepMessage = `🔄 STEP EXECUTION GUIDANCE for "${taskMetadata.title}"\n\n`;
-      stepMessage += `📋 Current Step: Context Analysis\n`;
-      stepMessage += `- No structured todos found in task description\n`;
-      stepMessage += `- Analyze task requirements and break into steps\n`;
-      stepMessage += `- Focus on understanding what needs to be implemented\n\n`;
-      
-      stepMessage += `📋 Step Process:\n`;
-      stepMessage += `1. Read task description thoroughly\n`;
-      stepMessage += `2. Identify 2-3 immediate next steps\n`;
-      stepMessage += `3. Implement using development tools (Read, Edit, Write, Bash)\n`;
-      stepMessage += `4. Test/validate your implementation\n`;
-      stepMessage += `5. Move to "Test" status when complete\n\n`;
-      
-      stepMessage += `📊 Progress Status:\n`;
-      stepMessage += `- Ready for implementation based on task context\n`;
-      stepMessage += `- Break work into manageable steps as you progress`;
-
-      return {
-        success: true,
-        taskId,
-        mode: mode.type,
-        finalStats: todoAnalysis.stats,
-        message: stepMessage
-      };
-    }
-
     if (todosToComplete.length === 0) {
       return {
-        success: true,
+        success: false,
         taskId,
         mode: mode.type,
         finalStats: todoAnalysis.stats,
-        message: 'No uncompleted todos found - task may be complete'
+        message: 'No uncompleted todos found'
       };
-    }
-
-    // Update task to In Progress if not already
-    if (taskMetadata.status === 'Not Started') {
-      await this.taskService.updateTask(taskId, { status: 'In Progress' });
-      progression.push({
-        type: 'status_update',
-        message: 'Task status updated to "In Progress"',
-        completed: true,
-        timestamp: new Date()
-      });
     }
 
     progression.push({
       type: 'status_update',
-      message: `Step mode: Focus on next ${todosToComplete.length} todos`,
-      completed: true,
+      message: `Step mode: Working on next ${todosToComplete.length} todos`,
+      completed: false,
       timestamp: new Date()
     });
 
-    // Provide structured step guidance
-    const remainingAfterStep = uncompletedTodos.length - todosToComplete.length;
-    let stepMessage = `🔄 STEP EXECUTION GUIDANCE for "${taskMetadata.title}"\n\n`;
-    stepMessage += `🎯 Current Step: Focus on these ${todosToComplete.length} todos:\n`;
-    todosToComplete.forEach((todo, index) => {
-      stepMessage += `${index + 1}. ${todo.text}\n`;
-    });
-    stepMessage += `\n`;
-    
-    stepMessage += `📋 Step Process:\n`;
-    stepMessage += `1. Implement each todo using development tools (Read, Edit, Write, Bash)\n`;
-    stepMessage += `2. Test/validate your implementation\n`;
-    stepMessage += `3. Use update_todos to mark completed todos\n`;
-    stepMessage += `4. Run this step mode again for remaining todos\n\n`;
-    
-    stepMessage += `📊 Progress Status:\n`;
-    stepMessage += `- Completed: ${todoAnalysis.stats.completed}/${todoAnalysis.stats.total} todos (${todoAnalysis.stats.percentage}%)\n`;
-    if (remainingAfterStep > 0) {
-      stepMessage += `- After this step: ${remainingAfterStep} todos remaining\n`;
-    } else {
-      stepMessage += `- This is the final step! Task will be ready for testing.\n`;
-    }
+    // Same approach: Guide the AI to do real work
+    const remainingTodos = todoAnalysis.stats.total - todoAnalysis.stats.completed;
+    const error = new Error(`WORKFLOW_STEP_EXECUTION_REQUIRED: Step execution for "${taskMetadata.title}"
 
-    return {
-      success: true,
-      taskId,
-      mode: mode.type,
-      finalStats: todoAnalysis.stats,
-      message: stepMessage
-    };
+Execute these ${todosToComplete.length} todos using development tools:
+
+${todosToComplete.map(todo => `- ${todo.text}`).join('\n')}
+
+After implementing each todo:
+1. Use update_todos tool to mark it as completed
+2. Verify your work with build/test commands
+3. Continue to next todo
+
+Progress: ${todoAnalysis.stats.completed}/${todoAnalysis.stats.total} completed
+Remaining after this step: ${remainingTodos - todosToComplete.length} todos`);
+
+    throw error;
   }
 
   /**
