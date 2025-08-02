@@ -40,30 +40,30 @@ echo "NOTION_API_KEY=your_secret_token" > .env
 ```bash
 git checkout main
 git pull origin main
-git checkout -b feature/workflow-guidance-improvements
+git checkout -b feature/execution-service-improvements
 ```
 
 2. **Development Loop**
 ```bash
-# Make changes
-npm run dev  # Watch mode for development
+# Make changes to services
+npm run build  # Compile TypeScript
 
-# Test changes
-npm run build
-npm start    # Test MCP server
+# Test with CLI wrapper
+node mcp.js create_task '{"title":"Test","taskType":"Feature","description":"Test task"}'
+node mcp.js execute_task '{"taskId":"test-id"}'
 
-# Test with actual Notion board
-# Use MCP client to verify functionality
+# Test auto-continuation system
+node mcp.js update_todos '{"taskId":"test-id","updates":[{"todoText":"Test todo","completed":true}]}'
 ```
 
 3. **Commit Changes**
 ```bash
 git add .
-git commit -m "feat(workflows): improve AI execution guidance
+git commit -m "feat(execution): implement auto-continuation system
 
-- Add context section for task resumption
-- Remove excessive bold formatting  
-- Add structured templates for summary generation"
+- Add callback system between UpdateService and ExecutionService
+- Implement todo-by-todo AI guidance with auto-progression
+- Add development summary generation with git integration"
 ```
 
 4. **Push and Create PR**
@@ -75,25 +75,28 @@ git push origin feature/workflow-guidance-improvements
 ### Testing Strategy
 
 #### Manual Testing
-- Test all MCP tools with real Notion pages
-- Verify status transitions work correctly
-- Test error handling with invalid inputs
-- Check workflow guidance loading
+- Test all 9 MCP tools with real Notion pages
+- Verify flexible status transitions work correctly
+- Test auto-continuation workflow with todo updates
+- Test template intelligence for different task types
+- Check error handling with invalid inputs
+- Verify git-based development summaries
 
-#### Configuration Testing
+#### Service Testing
 ```bash
-# Test config validation
+# Test service architecture
 node -e "
-const { ConfigLoader } = require('./dist/config-loader.js');
-const loader = new ConfigLoader('./config.json');
-console.log('Config valid:', loader.loadConfig());
+const { CreationService } = require('./dist/services/core/CreationService.js');
+const { UpdateService } = require('./dist/services/core/UpdateService.js');
+const { ExecutionService } = require('./dist/services/core/ExecutionService.js');
+console.log('Services loaded successfully');
 "
 
-# Test workflow loading
+# Test template loading
 node -e "
-const { ConfigLoader } = require('./dist/config-loader.js');
-const loader = new ConfigLoader('./config.json');
-console.log('Workflows:', loader.getAllWorkflows());
+const fs = require('fs');
+console.log('Feature template:', fs.readFileSync('./workflows/feature.md', 'utf8').substring(0, 100));
+console.log('Bug template:', fs.readFileSync('./workflows/bug.md', 'utf8').substring(0, 100));
 "
 ```
 

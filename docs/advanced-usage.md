@@ -1,10 +1,10 @@
 # Advanced Usage Guide
 
-This guide covers detailed tool usage, multi-project setup, CLI wrapper, and advanced workflows for the Notion Vibe Coding MCP server.
+Detailed tool usage, multi-project setup, CLI wrapper, and advanced workflows for the Notion Vibe Coding MCP server.
 
 ## CLI Wrapper Usage
 
-The CLI wrapper (`mcp.js`) provides direct command-line access to all MCP functions, perfect for Claude Code integration.
+The CLI wrapper (`mcp.js`) provides direct command-line access to all MCP functions.
 
 ### Usage
 
@@ -17,40 +17,41 @@ node mcp.js <tool> '<json_arguments>'
 
 #### Task Management
 ```bash
-# Create tasks
+# Create tasks with intelligent template adaptation
 node mcp.js create_task '{"title":"Fix login bug","taskType":"Bug","description":"Users cannot authenticate with OAuth"}'
 
-# Get task information  
+# Get task information with todo statistics
 node mcp.js get_task '{"taskId":"23e0da7a-7a07-8145-9611-e394062d8a55"}'
 
-# Update tasks
+# Update tasks with flexible validation
 node mcp.js update_task '{"taskId":"<task-id>","status":"In Progress"}'
-node mcp.js update_task '{"taskId":"<task-id>","title":"New Title","status":"Test"}'
+node mcp.js update_task '{"taskId":"<task-id>","title":"New Title","taskType":"Feature"}'
+
+# Execute tasks with auto-continuation
+node mcp.js execute_task '{"taskId":"<task-id>"}'
 ```
 
 #### Todo Management
 ```bash
-# Update todos
+# Batch update todos (triggers auto-continuation)
 node mcp.js update_todos '{"taskId":"<task-id>","updates":[{"todoText":"Setup OAuth provider","completed":true}]}'
-node mcp.js update_todos '{"taskId":"<task-id>","updates":[{"todoText":"Write unit tests","completed":false}]}'
 
-# Batch todo updates
-node mcp.js update_todos '{"taskId":"<task-id>","updates":[{"todoText":"Setup OAuth","completed":true},{"todoText":"Write tests","completed":true}]}'
-
-# Analyze all todos
+# Analyze all todos with completion statistics
 node mcp.js analyze_todos '{"taskId":"<task-id>"}'
+
+# Generate development summary with git changes
+node mcp.js generate_dev_summary '{"taskId":"<task-id>"}'
 ```
 
-#### Workflow Guidance
+#### Templates & Workflow
 ```bash
-# Get workflow templates
-node mcp.js get_workflow_guidance '{"type":"creation"}'
-node mcp.js get_workflow_guidance '{"type":"update"}'
-node mcp.js get_workflow_guidance '{"type":"execution"}'
-
-# Get task template for AI adaptation
+# Get specialized templates for each task type
 node mcp.js get_task_template '{"taskType":"Feature"}'
 node mcp.js get_task_template '{"taskType":"Bug"}'
+node mcp.js get_task_template '{"taskType":"Refactoring"}'
+
+# Get workflow guidance for creation
+node mcp.js get_workflow_guidance '{"type":"creation"}'
 ```
 
 ### Integration with Claude Code

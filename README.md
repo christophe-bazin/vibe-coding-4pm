@@ -57,6 +57,7 @@ node mcp.js get_task '{"taskId":"<task-id>"}'
 node mcp.js update_task '{"taskId":"<task-id>","status":"In Progress"}'
 node mcp.js update_todos '{"taskId":"<task-id>","updates":[{"todoText":"Setup OAuth provider","completed":true}]}'
 node mcp.js analyze_todos '{"taskId":"<task-id>"}'
+node mcp.js generate_dev_summary '{"taskId":"<task-id>"}'
 ```
 
 ## What You Get
@@ -70,28 +71,31 @@ node mcp.js analyze_todos '{"taskId":"<task-id>"}'
 
 ## Available Tools
 
-The MCP server provides 8 tools available both via Claude Desktop (MCP) and CLI wrapper:
+The MCP server provides 9 tools available via Claude Desktop (MCP) and CLI wrapper:
 
-### Task Management
-- `create_task` - Create tasks with AI-adapted content
-- `get_task` - Retrieve task information and metadata
-- `update_task` - Update task title, type and/or status with validation
-- `execute_task` - Smart execution with step/auto/batch modes
-
-### Template & Workflow
-- `get_task_template` - Get task template for AI adaptation
-- `get_workflow_guidance` - Get structured guidance for task workflows
-
-### Todo Management  
-- `analyze_todos` - Extract and analyze all todos with statistics
-- `update_todos` - Batch update multiple todos efficiently
+- `create_task` - Create tasks with intelligent template adaptation
+- `get_task` - Get task information with todo statistics  
+- `update_task` - Update task title, type and/or status
+- `execute_task` - Execute task with auto-continuation
+- `get_task_template` - Get specialized templates
+- `get_workflow_guidance` - Get workflow guidance
+- `analyze_todos` - Analyze todos with statistics
+- `update_todos` - Update todos (triggers auto-continuation)
+- `generate_dev_summary` - Generate git-based development summary
 
 ## How It Works
 
-1. **Intelligent Templates**: AI adapts task templates based on user context and requirements
-2. **Provider Integration**: Direct API integration with dynamic property resolution
-3. **Workflow Intelligence**: Status transitions and todo analysis drive smart execution
-4. **Extensible Architecture**: TaskProvider pattern ready for additional providers (Linear, GitHub, Jira)
+### 🔄 **Auto-Continuation Workflow**
+1. **AI implements** a todo using development tools
+2. **AI calls** `update_todos` to mark completion
+3. **System automatically** triggers `execute_task` for next todo
+4. **Seamless progression** through all todos until completion
+
+### 🎯 **Intelligent Features**
+- **Template Adaptation**: AI adapts templates based on task description context
+- **Flexible Transitions**: Move tasks freely between statuses for corrections
+- **Auto-Status Updates**: Automatic progression through task lifecycle
+- **Development Summaries**: Git-based summaries with testing todos
 
 ## Documentation
 

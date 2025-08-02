@@ -7,11 +7,12 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema, McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 
 import { NotionAPIAdapter } from './adapters/NotionAPIAdapter.js';
-import { TaskService } from './services/TaskService.js';
-import { TodoService } from './services/TodoService.js';
-import { ExecutionService } from './services/ExecutionService.js';
-import { WorkflowService } from './services/WorkflowService.js';
-import { ResponseFormatter } from './services/ResponseFormatter.js';
+import { CreationService } from './services/core/CreationService.js';
+import { UpdateService } from './services/core/UpdateService.js';
+import { ExecutionService } from './services/core/ExecutionService.js';
+import { StatusService } from './services/shared/StatusService.js';
+import { ValidationService } from './services/shared/ValidationService.js';
+import { ResponseFormatter } from './services/shared/ResponseFormatter.js';
 import { WorkflowConfig, ExecutionMode } from './models/Workflow.js';
 
 
@@ -30,17 +31,16 @@ class MCPServer {
     const databaseId = process.env.NOTION_DATABASE_ID!;
     const workflowConfig: WorkflowConfig = JSON.parse(process.env.WORKFLOW_CONFIG!);
 
-    // Initialize Notion API adapter
     const taskProvider = new NotionAPIAdapter(apiKey, databaseId);
     
-    // Initialize services with TaskProvider
-    const todo = new TodoService(taskProvider);
-    const workflow = new WorkflowService(workflowConfig);
-    const task = new TaskService(taskProvider, todo, workflowConfig);
-    const execution = new ExecutionService(task, todo, workflow);
+    const status = new StatusService(workflowConfig);
+    const validation = new ValidationService(workflowConfig, status);
+    const creation = new CreationService(taskProvider, workflowConfig, validation);
+    const update = new UpdateService(taskProvider, status, validation);
+    const execution = new ExecutionService(update, status);
     const formatter = new ResponseFormatter();
 
-    return { task, todo, execution, workflow, formatter };
+    return { creation, update, execution, formatter };
   }
 
   private setupRoutes() {
@@ -50,11 +50,10 @@ class MCPServer {
         { name: 'create_task', description: 'Create new task', inputSchema: { type: 'object', properties: { title: { type: 'string' }, taskType: { type: 'string' }, description: { type: 'string' } }, required: ['title', 'taskType', 'description'] } },
         { name: 'get_task', description: 'Get task info', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
         { name: 'update_task', description: 'Update task title, type and/or status', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, title: { type: 'string' }, taskType: { type: 'string' }, status: { type: 'string' } }, required: ['taskId'] } },
-        { name: 'get_workflow_guidance', description: 'Get workflow guidance', inputSchema: { type: 'object', properties: { type: { type: 'string', enum: ['creation', 'update', 'execution'] } }, required: ['type'] } },
         { name: 'get_task_template', description: 'Get task template for AI adaptation', inputSchema: { type: 'object', properties: { taskType: { type: 'string' } }, required: ['taskType'] } },
         { name: 'analyze_todos', description: 'Analyze todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, includeHierarchy: { type: 'boolean' } }, required: ['taskId'] } },
         { name: 'update_todos', description: 'Batch update todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, updates: { type: 'array' } }, required: ['taskId', 'updates'] } },
-        { name: 'generate_test_summary', description: 'Generate test summary based on git changes', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
+        { name: 'generate_dev_summary', description: 'Generate development summary with testing todos based on git changes', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
       ]
     }));
 
@@ -70,7 +69,7 @@ class MCPServer {
   }
 
   private async routeCall(name: string, args: any): Promise<string> {
-    const { task, todo, execution, workflow, formatter } = this.services;
+    const { creation, update, execution, formatter } = this.services;
 
     switch (name) {
       case 'execute_task':
@@ -79,102 +78,37 @@ class MCPServer {
         return formatter.formatExecutionResult(result);
 
       case 'create_task':
-        const newTask = await task.createTask(args.title, args.taskType, args.description);
+        const newTask = await creation.createTask(args.title, args.taskType, args.description);
         return formatter.formatTaskCreated(newTask);
 
       case 'get_task':
-        const metadata = await task.getTaskMetadata(args.taskId);
+        const metadata = await update.getTaskMetadata(args.taskId);
         return formatter.formatTaskInfo(metadata);
 
       case 'update_task':
-        await task.updateTask(args.taskId, args);
+        await update.updateTask(args.taskId, args);
         return formatter.formatTaskUpdated(args.taskId, args);
 
-      case 'get_workflow_guidance':
-        return await workflow.getWorkflowGuidance(args.type, args.context);
 
       case 'get_task_template':
-        return await this.getTaskTemplate(args.taskType);
+        return await creation.getTaskTemplate(args.taskType);
 
       case 'analyze_todos':
-        const analysis = await todo.analyzeTodos(args.taskId, args.includeHierarchy);
+        const analysis = await update.analyzeTodos(args.taskId, args.includeHierarchy);
         return formatter.formatTodoAnalysis(analysis);
 
       case 'update_todos':
-        const updateResult = await todo.updateTodos(args.taskId, args.updates);
+        const updateResult = await update.updateTodos(args.taskId, args.updates);
         return formatter.formatTodosUpdated(args.taskId, updateResult);
 
-      case 'generate_test_summary':
-        return await this.generateTestSummary(args.taskId);
+      case 'generate_dev_summary':
+        return await update.generateDevSummary(args.taskId);
 
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
   }
 
-  private async getTaskTemplate(taskType: string): Promise<string> {
-    const { workflow } = this.services;
-    const template = await workflow.getWorkflowGuidance('creation');
-    
-    // Extract template for specific task type
-    const typeSection = new RegExp(`#### ${taskType}\\s*\`\`\`([\\s\\S]*?)\`\`\``, 'i');
-    const match = template.match(typeSection);
-    
-    if (match && match[1]) {
-      return `Template for ${taskType}:\n\n${match[1].trim()}`;
-    }
-    
-    return `No template found for task type: ${taskType}`;
-  }
-
-  private async generateTestSummary(taskId: string): Promise<string> {
-    try {
-      const { exec } = await import('child_process');
-      const { promisify } = await import('util');
-      const execAsync = promisify(exec);
-
-      // Get detailed git diff
-      const { stdout: diff } = await execAsync('git diff HEAD');
-      const { stdout: status } = await execAsync('git status --porcelain');
-      
-      if (!status.trim() && !diff.trim()) {
-        return `📋 Test Summary for Task ${taskId}\n\nNo changes detected since last commit.\nTask appears to be up to date.`;
-      }
-
-      let summary = `📋 Test Summary for Task ${taskId}\n\n`;
-      
-      if (status.trim()) {
-        summary += `🔄 Modified Files:\n`;
-        const files = status.trim().split('\n');
-        files.forEach(file => {
-          const parts = file.trim().split(/\s+/);
-          const statusCode = parts[0] || '';
-          const fileName = parts[1] || 'unknown';
-          const statusText = statusCode.includes('M') ? 'Modified' : 
-                           statusCode.includes('A') ? 'Added' : 
-                           statusCode.includes('D') ? 'Deleted' : 'Changed';
-          summary += `• ${statusText}: ${fileName}\n`;
-        });
-        summary += '\n';
-      }
-
-      summary += `🧪 Testing Checklist:\n`;
-      summary += `• Run build: npm run build\n`;
-      summary += `• Run tests: npm test (if available)\n`;
-      summary += `• Manual testing of implemented features\n`;
-      summary += `• Verify all todos are completed\n`;
-      summary += `• Consider moving task to "Test" status\n\n`;
-      
-      summary += `📝 Next Actions:\n`;
-      summary += `• Use update_todos to mark completed todos\n`;
-      summary += `• Update task status when testing is complete\n`;
-      summary += `• Commit changes when satisfied`;
-
-      return summary;
-    } catch (error) {
-      return `📋 Test Summary for Task ${taskId}\n\nError generating summary: ${error}`;
-    }
-  }
 
   async run() {
     const transport = new StdioServerTransport();

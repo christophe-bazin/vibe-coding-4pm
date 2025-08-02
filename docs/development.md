@@ -7,33 +7,32 @@ Guide for contributing to and customizing the Notion Vibe Coding MCP server.
 ```
 notion-vibe-coding/
 ├── src/
-│   ├── server.ts                     # Main MCP server entry point
+│   ├── server.ts                    # Pure MCP router (< 100 lines)
 │   ├── interfaces/
-│   │   └── TaskProvider.ts           # Provider abstraction interface
+│   │   └── TaskProvider.ts          # Provider abstraction interface
 │   ├── adapters/
-│   │   └── NotionAPIAdapter.ts       # Notion API implementation
-│   ├── services/
-│   │   ├── TaskService.ts            # High-level task operations
-│   │   ├── TodoService.ts            # Todo management and analysis  
-│   │   ├── ExecutionService.ts       # Refactored task execution with sub-services
-│   │   ├── TaskAnalysisService.ts    # Task context and requirements analysis
-│   │   ├── TodoExecutionService.ts   # Individual todo execution with step logic
-│   │   ├── ContextExecutionService.ts # Execution context and progress tracking
-│   │   ├── StatusTransitionService.ts # Task status transitions and validation
-│   │   ├── SummaryService.ts         # Execution summaries with CLI formatting
-│   │   ├── WorkflowService.ts        # Template and guidance management
-│   │   └── ResponseFormatter.ts      # Standardized output formatting
+│   │   └── NotionAPIAdapter.ts      # Notion API implementation
+│   ├── services/core/               # Main business logic
+│   │   ├── CreationService.ts       # Task creation + intelligent templates
+│   │   ├── UpdateService.ts         # Updates + todos with callback system
+│   │   └── ExecutionService.ts      # Orchestration + auto-continuation
+│   ├── services/shared/             # Shared utilities
+│   │   ├── StatusService.ts         # Status management + flexible transitions
+│   │   ├── ValidationService.ts     # Input validation + error handling
+│   │   └── ResponseFormatter.ts     # MCP response formatting
 │   ├── models/
-│   │   ├── Task.ts                   # Task type definitions
-│   │   ├── Todo.ts                   # Todo type definitions
-│   │   └── Workflow.ts               # Workflow type definitions
-├── workflows/
-│   ├── task-creation.md              # Task type templates and AI guidance
-│   ├── task-update.md                # Update guidance
-│   └── task-execution.md             # Execution guidance
-├── docs/                             # Documentation
-├── mcp.js                            # CLI wrapper for testing
-├── mcp-config.example.json           # Example MCP configuration
+│   │   ├── Task.ts                  # Task type definitions
+│   │   ├── Todo.ts                  # Todo type definitions
+│   │   └── Workflow.ts              # Execution + configuration types
+│   └── types/
+│       └── Errors.ts                # Custom error types
+├── workflows/                       # Template files
+│   ├── feature.md                   # Feature task template
+│   ├── bug.md                       # Bug task template
+│   └── refactoring.md               # Refactoring task template
+├── docs/                            # Documentation
+├── mcp.js                           # CLI wrapper for testing
+├── mcp-config.example.json          # Example MCP configuration
 └── README.md
 ```
 
@@ -93,66 +92,62 @@ node mcp.js get_task '{"taskId":"<task-id>"}'
 
 ## Architecture Overview
 
-### Service Layer
+### 🏗️ **Clean Service Architecture**
 
-#### `TaskService.ts`
-- High-level task operations
-- Task creation, updates, and status management
-- Validation against workflow configuration
-- Status transition recommendations
+#### Core Services (`services/core/`)
 
-#### `TodoService.ts`
-- Todo extraction from Notion content
-- Completion statistics and progress analysis
-- Batch todo update operations
-- Progress insights and recommendations
+**`CreationService.ts`**
+- Task creation with intelligent template adaptation
+- Loads specialized templates (feature.md, bug.md, refactoring.md)
+- AI-driven template customization based on user description
+- Template placeholder processing and context adaptation
 
-#### `ExecutionService.ts` (Refactored)
-- **NEW**: Orchestrates execution using specialized sub-services
-- **NEW**: Step-by-step programmatic logic with 5 execution phases
-- Auto, step-by-step, and batch execution modes with improved architecture
-- Cleaner separation of concerns via sub-services
+**`UpdateService.ts`**
+- Task and todo updates with validation
+- Callback system for auto-execution triggering
+- Git-based development summary generation
+- Metadata retrieval and progress tracking
 
-#### `TaskAnalysisService.ts` (NEW)
-- Analyzes task context and requirements
-- Determines if task has work to do
-- Generates next action recommendations
-- Provides structured task analysis for execution decisions
+**`ExecutionService.ts`**
+- Task execution orchestration with auto-continuation
+- Todo-by-todo AI guidance system
+- Auto-status updates based on progress
+- Integration with UpdateService callback system
 
-#### `TodoExecutionService.ts` (NEW)
-- Executes individual todos with validation
-- Batch todo execution with step-by-step logic
-- Provides workflow guidance for real implementation work
-- Manages todo completion after actual development work
+#### Shared Services (`services/shared/`)
 
-#### `ContextExecutionService.ts` (NEW)
-- Manages execution context and progress tracking
-- Tracks execution phases (initialization, analysis, execution, validation, completion)
-- Creates guided error results with workflow instructions
-- Maintains execution metadata and timing information
+**`StatusService.ts`**
+- Flexible status transitions (all moves allowed)
+- Status recommendations based on progress
+- Workflow configuration interpretation
+- Status key mapping and validation
 
-#### `StatusTransitionService.ts` (NEW)
-- Handles task status transitions with validation
-- Provides status recommendations based on progress
-- Auto-updates status based on completion percentage
-- Validates transitions against workflow configuration
+**`ValidationService.ts`**
+- Input validation for all operations
+- Task type and status constraint checking
+- Error handling with clear messaging
+- Data integrity enforcement
 
-#### `SummaryService.ts` (NEW)
-- Generates comprehensive execution summaries
-- CLI-friendly formatting option for command-line usage
-- Progress reports with visual progress bars
-- Error summaries with workflow guidance
+**`ResponseFormatter.ts`**
+- Standardized MCP response formatting
+- Consistent CLI output styling
+- Progress visualization and statistics
+- Error and success message formatting
 
-#### `WorkflowService.ts`
-- Workflow template management
-- Markdown guidance loading and processing
-- Template variable substitution
-- File caching for performance
+### 🔄 **Auto-Continuation System**
 
-#### `ResponseFormatter.ts`
-- Standardized response formatting for MCP tools
-- Consistent error and success message formatting
-- Status and metadata display formatting
+1. **AI implements todo** using development tools
+2. **AI calls `update_todos`** to mark completion
+3. **UpdateService triggers callback** to ExecutionService
+4. **ExecutionService auto-launches** next execution round
+5. **System guides AI** to next uncompleted todo
+
+### 🎯 **Template Intelligence**
+
+- **Separate templates**: feature.md, bug.md, refactoring.md
+- **Context adaptation**: Analyzes description for patterns (files, APIs, etc.)
+- **Dynamic todos**: Generates specific todos based on detected requirements
+- **Structure preservation**: Maintains template sections while customizing content
 
 ### Provider Pattern
 
@@ -169,10 +164,12 @@ node mcp.js get_task '{"taskId":"<task-id>"}'
 
 ### Data Flow
 
-1. **MCP Request** → `server.ts` handles tool request
-2. **Service Layer** → Appropriate service processes request
-3. **Provider** → `NotionAPIAdapter` handles Notion API calls
-4. **Response** → `ResponseFormatter` creates standardized output
+1. **MCP Request** → `server.ts` routes to appropriate service
+2. **Core Service** → Business logic execution (Creation/Update/Execution)
+3. **Shared Services** → Status management, validation, formatting
+4. **Provider** → `NotionAPIAdapter` handles API calls
+5. **Auto-Continuation** → Callback system triggers next execution
+6. **Response** → Formatted output returned to client
 
 ## Adding New Features
 

@@ -33,56 +33,69 @@ The Notion Workflow MCP Server is built as a lightweight, configuration-driven s
 - Routes requests to appropriate handlers
 
 **Key Tools**:
-- `create_task`: Create new tasks with AI-adapted content
+- `create_task`: Create tasks with intelligent template adaptation
 - `get_task`: Get task information with todo statistics
-- `update_task`: Update task title, type and/or status with validation
-- `execute_task`: Execute task workflow in various modes
-- `get_task_template`: Get task template for AI adaptation
-- `get_workflow_guidance`: Return markdown guidance for AI
-- `analyze_todos`: Extract and analyze all todos
-- `update_todos`: Batch update multiple todos
+- `update_task`: Update task title, type and/or status with flexible validation
+- `execute_task`: Execute task with auto-continuation workflow
+- `get_task_template`: Get specialized templates for each task type
+- `get_workflow_guidance`: Return creation workflow guidance
+- `analyze_todos`: Extract and analyze todos with completion statistics
+- `update_todos`: Batch update todos (triggers auto-continuation)
+- `generate_dev_summary`: Generate development summary with git changes
 
-### Service Layer Architecture
+### Clean Service Architecture
 
-**TaskService** (`src/services/TaskService.ts`)
-**Responsibility**: High-level task operations
+#### Core Services (`src/services/core/`)
 
-- Task creation, updates, and status management
-- Task type validation against configuration
-- Status transition validation and recommendations
+**CreationService** (`src/services/core/CreationService.ts`)
+**Responsibility**: Task creation with intelligent template adaptation
+
+- Task creation with specialized templates (feature.md, bug.md, refactoring.md)
+- AI-driven template customization based on user description patterns
+- Template placeholder processing and context adaptation
 - Integration with workflow configuration
 
-**TodoService** (`src/services/TodoService.ts`)
-**Responsibility**: Todo analysis and updates
+**UpdateService** (`src/services/core/UpdateService.ts`)
+**Responsibility**: Task and todo updates with callback system
 
-- Extracts todos from Notion task content
-- Provides completion statistics and insights
-- Batch todo update operations
-- Progress tracking and recommendations
+- Task and todo updates with validation
+- Callback system for auto-execution triggering
+- Git-based development summary generation
+- Metadata retrieval and progress tracking
 
-**ExecutionService** (`src/services/ExecutionService.ts`)
-**Responsibility**: Task execution workflows
+**ExecutionService** (`src/services/core/ExecutionService.ts`)
+**Responsibility**: Task execution orchestration with auto-continuation
 
-- Auto, step-by-step, and batch execution modes
-- Progress tracking and status updates
-- Workflow state management
-- Integration with AI guidance
+- Todo-by-todo AI guidance system with auto-continuation
+- Auto-status updates based on progress
+- Integration with UpdateService callback system
+- Development summary generation after execution
 
-**WorkflowService** (`src/services/WorkflowService.ts`)
-**Responsibility**: Workflow guidance management
+#### Shared Services (`src/services/shared/`)
 
-- Loads workflow markdown templates
-- Provides structured guidance for AI
-- Template processing and context injection
-- Workflow file caching
+**StatusService** (`src/services/shared/StatusService.ts`)
+**Responsibility**: Flexible status transitions and workflow management
 
-**ResponseFormatter** (`src/services/ResponseFormatter.ts`)
-**Responsibility**: Standardized response formatting
+- Flexible status transitions (all moves allowed for corrections)
+- Status recommendations based on progress
+- Workflow configuration interpretation
+- Status key mapping and validation
+
+**ValidationService** (`src/services/shared/ValidationService.ts`)
+**Responsibility**: Input validation and data integrity
+
+- Input validation for all operations
+- Task type and status constraint checking
+- Error handling with clear messaging
+- No hardcoded fallbacks (strict configuration enforcement)
+
+**ResponseFormatter** (`src/services/shared/ResponseFormatter.ts`)
+**Responsibility**: Standardized MCP response formatting
 
 - Consistent response structures for MCP tools
-- Error message formatting
-- Success confirmation formatting
-- Status and metadata display
+- Progress visualization and statistics
+- Error and success message formatting
+- CLI output styling
 
 ### Provider Pattern
 
@@ -112,37 +125,38 @@ The Notion Workflow MCP Server is built as a lightweight, configuration-driven s
 
 ## Data Flow
 
-### 1. Workflow Initialization
+### 1. Auto-Continuation Workflow
 ```
-MCP Client → start_task_workflow → URL Parser → Notion API → State Init
+AI implements todo → update_todos → UpdateService callback → ExecutionService → next todo
 ```
 
-1. AI provides Notion URL and workflow type
-2. Server parses URL to extract page ID
-3. Fetches current status from Notion
-4. Initializes workflow state in memory
-5. Returns guidance and current state
+1. AI implements a todo using development tools
+2. AI calls update_todos to mark completion
+3. UpdateService triggers callback to ExecutionService
+4. ExecutionService auto-launches next execution round
+5. System guides AI to next uncompleted todo
 
-### 2. Task Updates
+### 2. Template Intelligence
 ```
-MCP Client → update_task → Validation → Notion Update → State Sync
+MCP Client → create_task → CreationService → Template Loading → Context Adaptation
+```
+
+1. AI requests task creation with description
+2. CreationService loads appropriate template (feature.md, bug.md, refactoring.md)
+3. Analyzes description for patterns (files, APIs, etc.)
+4. Generates specific todos based on detected requirements
+5. Returns task with intelligently adapted content
+
+### 3. Task Updates with Flexible Validation
+```
+MCP Client → update_task → ValidationService → StatusService → Notion Update
 ```
 
 1. AI requests task changes (title, type, status)
-2. Server validates transitions and types against config
-3. Updates task in Notion if allowed
-4. Syncs local state with Notion response
+2. ValidationService checks basic constraints
+3. StatusService allows all transitions for corrections
+4. Updates task in Notion if valid
 5. Returns success confirmation
-
-### 3. Workflow Guidance
-```
-MCP Client → get_workflow_guidance → Config Loader → Markdown Return
-```
-
-1. AI requests guidance for specific action
-2. Server loads appropriate markdown file
-3. Returns full workflow content as text
-4. AI uses content as structured prompt
 
 ## Configuration-Driven Design
 

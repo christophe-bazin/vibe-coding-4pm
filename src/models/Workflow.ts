@@ -8,20 +8,8 @@ export interface WorkflowConfig {
   taskTypes: string[];
   defaultStatus: string;
   requiresValidation: boolean;
-  workflowFiles: {
-    creation: string;
-    update: string;
-    execution: string;
-  };
 }
 
-export interface WorkflowState {
-  taskId: string;
-  currentStatus: string;
-  availableTransitions: string[];
-  canAutoProgress: boolean;
-  workflowGuidance?: string;
-}
 
 export interface ExecutionMode {
   type: 'auto' | 'step' | 'batch';

@@ -2,17 +2,38 @@
  * ExecutionService - THE MAIN SERVICE for task execution
  */
 
-import { TaskService } from './TaskService.js';
-import { TodoService } from './TodoService.js';
-import { WorkflowService } from './WorkflowService.js';
-import { ExecutionMode, ExecutionResult, ExecutionStep } from '../models/Workflow.js';
+import { UpdateService } from './UpdateService.js';
+import { StatusService } from '../shared/StatusService.js';
+import { ExecutionMode, ExecutionResult, ExecutionStep } from '../../models/Workflow.js';
 
 export class ExecutionService {
   constructor(
-    private taskService: TaskService,
-    private todoService: TodoService,
-    private workflowService: WorkflowService
-  ) {}
+    private updateService: UpdateService,
+    private statusService: StatusService
+  ) {
+    // Set up auto-continuation callback
+    this.updateService.setOnTodosUpdatedCallback(this.handleTodosUpdated.bind(this));
+  }
+
+  /**
+   * Handle todos updated - auto-continue execution if there are remaining todos
+   */
+  private async handleTodosUpdated(taskId: string): Promise<void> {
+    try {
+      // Check if there are remaining todos to execute
+      const todoAnalysis = await this.updateService.analyzeTodos(taskId);
+      const uncompletedTodos = todoAnalysis.todos.filter((todo: any) => !todo.completed);
+      
+      if (uncompletedTodos.length > 0) {
+        // Auto-trigger next execution round
+        const mode = { type: 'auto' as const, showProgress: true, autoUpdateStatus: true };
+        await this.executeTask(taskId, mode);
+      }
+    } catch (error) {
+      // Auto-continuation failure is not critical - todo update still succeeded
+      console.warn('Auto-continuation failed:', error);
+    }
+  }
 
   /**
    * Execute task - simplified single approach
@@ -21,7 +42,7 @@ export class ExecutionService {
     const progression: ExecutionStep[] = [];
 
     // Get initial task state
-    const taskMetadata = await this.taskService.getTaskMetadata(taskId);
+    const taskMetadata = await this.updateService.getTaskMetadata(taskId);
     
     progression.push({
       type: 'status_update',
@@ -33,8 +54,9 @@ export class ExecutionService {
     try {
       // Auto-update status to inProgress at start if enabled
       if (mode.autoUpdateStatus) {
-        const initialAnalysis = await this.todoService.analyzeTodos(taskId);
-        if (initialAnalysis.stats.percentage > 0 && taskMetadata.status === this.getNotStartedStatus()) {
+        const initialAnalysis = await this.updateService.analyzeTodos(taskId);
+        const notStartedStatus = this.statusService.getNotStartedStatus();
+        if (initialAnalysis.stats.percentage > 0 && notStartedStatus && taskMetadata.status === notStartedStatus) {
           await this.updateTaskStatusBasedOnProgress(taskId, initialAnalysis.stats.percentage);
           progression.push({
             type: 'status_update',
@@ -59,16 +81,14 @@ export class ExecutionService {
         });
       }
 
-      // Add automatic summary based on git changes
-      const summary = await this.generateExecutionSummary(taskId);
-      if (summary) {
-        progression.push({
-          type: 'status_update',
-          message: `\n📋 Execution Summary:\n${summary}`,
-          completed: true,
-          timestamp: new Date()
-        });
-      }
+      // Add development summary with testing todos
+      const devSummary = await this.updateService.generateDevSummary(taskId);
+      progression.push({
+        type: 'status_update',
+        message: `\n${devSummary}`,
+        completed: true,
+        timestamp: new Date()
+      });
 
       result.progression = progression;
       return result;
@@ -82,15 +102,13 @@ export class ExecutionService {
       });
 
       // Add dev summary even on error
-      const summary = await this.generateExecutionSummary(taskId);
-      if (summary) {
-        progression.push({
-          type: 'status_update',
-          message: `\n📋 Development Summary:\n${summary}`,
-          completed: true,
-          timestamp: new Date()
-        });
-      }
+      const devSummary = await this.updateService.generateDevSummary(taskId);
+      progression.push({
+        type: 'status_update',
+        message: `\n${devSummary}`,
+        completed: true,
+        timestamp: new Date()
+      });
 
       return {
         success: false,
@@ -107,11 +125,11 @@ export class ExecutionService {
    * Internal execution - simplified single approach
    */
   private async executeInternal(taskId: string, mode: ExecutionMode, progression: ExecutionStep[]): Promise<ExecutionResult> {
-    const todoAnalysis = await this.todoService.analyzeTodos(taskId);
-    const taskMetadata = await this.taskService.getTaskMetadata(taskId);
+    const todoAnalysis = await this.updateService.analyzeTodos(taskId);
+    const taskMetadata = await this.updateService.getTaskMetadata(taskId);
     
     // Get all uncompleted todos
-    const uncompletedTodos = todoAnalysis.todos.filter(todo => !todo.completed);
+    const uncompletedTodos = todoAnalysis.todos.filter((todo: any) => !todo.completed);
 
     // If no todos at all, guide AI to work from task description
     if (todoAnalysis.stats.total === 0) {
@@ -235,24 +253,18 @@ After implementing this todo, the system will automatically proceed to the next 
 
   private async updateTaskStatusBasedOnProgress(taskId: string, percentage: number): Promise<void> {
     try {
-      // Get status values from workflow service
-      const taskMetadata = await this.taskService.getTaskMetadata(taskId); 
-      const recommendedStatus = this.workflowService.getNextRecommendedStatus(
+      const taskMetadata = await this.updateService.getTaskMetadata(taskId); 
+      const recommendedStatus = this.statusService.getNextRecommendedStatus(
         taskMetadata.status, 
         percentage
       );
       
       if (recommendedStatus && recommendedStatus !== taskMetadata.status) {
-        await this.taskService.updateTask(taskId, { status: recommendedStatus });
+        await this.updateService.updateTask(taskId, { status: recommendedStatus });
       }
     } catch (error) {
-      // Status update failed, but execution continues
       console.warn('Failed to auto-update task status:', error);
     }
   }
 
-  private getNotStartedStatus(): string {
-    // This should match the workflow configuration
-    return 'Not Started'; // Or get from workflowService
-  }
 }

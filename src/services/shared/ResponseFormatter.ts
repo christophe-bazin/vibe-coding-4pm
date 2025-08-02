@@ -2,10 +2,10 @@
  * ResponseFormatter - Format MCP responses for CLI output
  */
 
-import { ExecutionResult } from '../models/Workflow.js';
-import { TaskMetadata } from '../models/Task.js';
-import { TodoAnalysisResult } from '../models/Todo.js';
-import { NotionTask } from '../models/Task.js';
+import { ExecutionResult } from '../../models/Workflow.js';
+import { TaskMetadata } from '../../models/Task.js';
+import { TodoAnalysisResult } from '../../models/Todo.js';
+import { NotionTask } from '../../models/Task.js';
 
 export class ResponseFormatter {
   
@@ -101,14 +101,14 @@ export class ResponseFormatter {
     text += `Progress: ${analysis.stats.percentage}%\n\n`;
     
     text += `💡 Insights\n`;
-    text += `${analysis.insights.map(i => `- ${i}`).join('\n')}\n\n`;
+    text += `${analysis.insights.map((i: string) => `- ${i}`).join('\n')}\n\n`;
     
     text += `🎯 Recommendations\n`;
-    text += `${analysis.recommendations.map(r => `- ${r}`).join('\n')}\n\n`;
+    text += `${analysis.recommendations.map((r: string) => `- ${r}`).join('\n')}\n\n`;
     
     if (analysis.blockers.length > 0) {
       text += `⚠️ Blockers\n`;
-      text += `${analysis.blockers.map(b => `- ${b}`).join('\n')}`;
+      text += `${analysis.blockers.map((b: string) => `- ${b}`).join('\n')}`;
     }
     
     return text;

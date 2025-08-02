@@ -15,13 +15,33 @@ This is a Model Context Protocol (MCP) server that enables AI assistants to mana
 
 ## Project Architecture
 
-- **Provider Pattern**: TaskProvider interface enables pluggable task management backends
-- **Current Implementation**: Direct Notion API integration via @notionhq/client
-- **Workflow Intelligence**: Template-driven task creation with type-specific structures  
-- **MCP Protocol**: 8 tools for comprehensive task and todo management
-- **Extensible Design**: Ready for Linear, GitHub, Jira providers in future versions
+### 🏗️ **Clean Service Architecture**
+```
+src/
+├── services/core/           # Main business logic
+│   ├── CreationService.ts   # Task creation + intelligent templates
+│   ├── UpdateService.ts     # Updates + todos with callback system
+│   └── ExecutionService.ts  # Orchestration + auto-continuation
+├── services/shared/         # Shared utilities
+│   ├── StatusService.ts     # Status management + flexible transitions
+│   ├── ValidationService.ts # Input validation + error handling
+│   └── ResponseFormatter.ts # MCP response formatting
+├── adapters/               # External system integrations
+│   └── NotionAPIAdapter.ts # Notion API implementation
+├── models/                 # Type definitions
+└── interfaces/             # Contracts and abstractions
+```
 
-See detailed architecture in [docs/development.md](docs/development.md)
+### 🔄 **Auto-Continuation System**
+- **UpdateService**: Callback system triggers ExecutionService after todo updates
+- **ExecutionService**: Auto-detects remaining todos and continues execution
+- **Seamless Flow**: AI implements → updates todos → system continues automatically
+
+### 🎯 **Key Features**
+- **Template Intelligence**: Adapts Feature/Bug/Refactoring templates based on context
+- **Flexible Transitions**: All status changes allowed for maximum flexibility
+- **Provider Pattern**: Ready for Linear, GitHub, Jira integration
+- **Git Integration**: Development summaries with testing todos
 
 ## Essential Commands
 
@@ -48,21 +68,25 @@ npm run build
 
 ```
 src/
-├── server.ts                 # MCP server entry point
+├── server.ts                    # Pure MCP router (< 100 lines)
 ├── adapters/
-│   └── NotionAPIAdapter.ts   # Notion API integration
+│   └── NotionAPIAdapter.ts      # Notion API integration
 ├── interfaces/
-│   └── TaskProvider.ts       # Provider interface
+│   └── TaskProvider.ts          # Provider abstraction
 ├── models/
-│   ├── Task.ts              # Task type definitions
-│   ├── Todo.ts              # Todo type definitions
-│   └── Workflow.ts          # Workflow type definitions
-└── services/
-    ├── ExecutionService.ts   # Task execution logic
-    ├── ResponseFormatter.ts  # Response formatting
-    ├── TaskService.ts        # Task management
-    ├── TodoService.ts        # Todo management
-    └── WorkflowService.ts    # Workflow management
+│   ├── Task.ts                  # Task type definitions
+│   ├── Todo.ts                  # Todo type definitions
+│   └── Workflow.ts              # Execution + configuration types
+├── services/core/               # Core business services
+│   ├── CreationService.ts       # Task creation + templates
+│   ├── UpdateService.ts         # Updates + auto-callback system
+│   └── ExecutionService.ts      # Orchestration + continuation
+├── services/shared/             # Shared utilities
+│   ├── StatusService.ts         # Status management
+│   ├── ValidationService.ts     # Input validation
+│   └── ResponseFormatter.ts     # MCP formatting
+└── types/
+    └── Errors.ts                # Custom error types
 ```
 
 ## Configuration System
@@ -77,18 +101,19 @@ All configuration is centralized in your project's `.claude/mcp-config.json`:
 ## MCP Tools Available
 
 ### Task Management
-- `create_task`: Create new tasks in Notion database with AI-adapted content
-- `get_task`: Get task information with todo statistics and status
-- `update_task`: Update task title, type and/or status with validation
-- `execute_task`: Execute task workflow (auto/step/batch modes)
+- `create_task`: Create tasks with intelligent template adaptation (Feature/Bug/Refactoring)
+- `get_task`: Get task information with todo statistics and flexible status info
+- `update_task`: Update task title, type and/or status with flexible validation
+- `execute_task`: Execute with auto-continuation workflow (guides AI step-by-step)
 
 ### Template & Workflow
-- `get_task_template`: Get task template for AI adaptation
-- `get_workflow_guidance`: Get markdown guidance for specific workflow
+- `get_task_template`: Get specialized templates for each task type
+- `get_workflow_guidance`: Get creation workflow guidance (update/execution deprecated)
 
 ### Todo Management  
-- `analyze_todos`: Extract and analyze all todos with completion statistics
-- `update_todos`: Batch update multiple todos efficiently in one operation
+- `analyze_todos`: Extract and analyze todos with completion statistics
+- `update_todos`: Batch update with automatic execution continuation
+- `generate_dev_summary`: Generate development summary with git changes + testing todos
 
 ## Development Workflow
 
@@ -100,22 +125,34 @@ All configuration is centralized in your project's `.claude/mcp-config.json`:
 
 ## Integration Strategy
 
-1. Clone MCP server in your project: `git clone https://github.com/christophe-bazin/notion-vibe-coding.git`
-2. Build the server: `cd notion-vibe-coding && npm install && npm run build`
-3. Copy `mcp-config.example.json` to your project's `.claude/mcp-config.json`
-4. Replace API key and database ID with your Notion credentials
-5. Customize statusMapping, transitions, taskTypes as needed
-6. Workflows remain in `./notion-vibe-coding/workflows/` (V1 approach)
+1. Clone and build: `git clone && npm install && npm run build`
+2. Configure: Copy `mcp-config.example.json` to `.claude/mcp-config.json`
+3. Setup Notion: Add API key and database ID to config
+4. Customize: Adjust statusMapping, transitions, taskTypes as needed
+5. Workflows: Feature/Bug/Refactoring templates in `./workflows/`
+6. Auto-execution: System handles todo progression automatically
 
 ## Key Implementation Notes
 
-- TaskProvider abstraction enables pluggable backend implementations
-- Current Notion implementation uses direct API integration for stability
-- Dynamic title property resolution via Notion database schema API
-- AI-driven template adaptation via get_task_template tool
-- Provider-specific formatting (Notion blocks, Linear markdown, etc.)
-- Status transitions and workflows configured per provider
-- Claude adapts templates contextually before task creation
+### 🔧 **Service Responsibilities**
+- **CreationService**: Template loading, AI adaptation, task creation
+- **UpdateService**: Todo/task updates, callback triggering, git summaries
+- **ExecutionService**: Auto-continuation, todo-by-todo guidance, orchestration
+- **StatusService**: Flexible transitions, status recommendations
+- **ValidationService**: Input validation, constraint checking
+
+### ⚡ **Auto-Continuation Flow**
+1. AI implements todo using development tools
+2. AI calls `update_todos` to mark completion
+3. UpdateService triggers callback to ExecutionService
+4. ExecutionService auto-launches next execution round
+5. System identifies next uncompleted todo and guides AI
+
+### 🎯 **Template Intelligence**
+- Separate workflow files: `feature.md`, `bug.md`, `refactoring.md`
+- AI adapts template sections based on user description context
+- Dynamic todo generation based on detected patterns (files, APIs, etc.)
+- Maintains template structure while customizing content
 
 ## Security and Best Practices
 
