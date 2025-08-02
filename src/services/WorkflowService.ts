@@ -75,7 +75,7 @@ export class WorkflowService {
     }
     
     if (currentStatus === inProgress && progressPercentage >= 100) {
-      return transitions.includes('done') ? done : (transitions[0] ? this.workflowConfig.statusMapping[transitions[0]] || null : null);
+      return transitions.includes('test') ? test : (transitions.includes('done') ? done : (transitions[0] ? this.workflowConfig.statusMapping[transitions[0]] || null : null));
     }
 
     if (currentStatus === test && progressPercentage >= 100) {

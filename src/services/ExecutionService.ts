@@ -6,7 +6,6 @@ import { TaskService } from './TaskService.js';
 import { TodoService } from './TodoService.js';
 import { WorkflowService } from './WorkflowService.js';
 import { ExecutionMode, ExecutionResult, ExecutionStep } from '../models/Workflow.js';
-import { TodoUpdateRequest } from '../models/Todo.js';
 
 export class ExecutionService {
   constructor(
@@ -16,7 +15,7 @@ export class ExecutionService {
   ) {}
 
   /**
-   * THE MAIN METHOD - Execute task with different modes
+   * Execute task - simplified single approach
    */
   async executeTask(taskId: string, mode: ExecutionMode): Promise<ExecutionResult> {
     const progression: ExecutionStep[] = [];
@@ -26,27 +25,27 @@ export class ExecutionService {
     
     progression.push({
       type: 'status_update',
-      message: `Starting execution in ${mode.type} mode`,
+      message: `Starting execution`,
       completed: true,
       timestamp: new Date()
     });
 
     try {
-      let result: ExecutionResult;
-
-      switch (mode.type) {
-        case 'auto':
-          result = await this.executeAuto(taskId, mode, progression);
-          break;
-        case 'step':
-          result = await this.executeStep(taskId, mode, progression);
-          break;
-        case 'batch':
-          result = await this.executeBatch(taskId, mode, progression);
-          break;
-        default:
-          throw new Error(`Unknown execution mode: ${mode.type}`);
+      // Auto-update status to inProgress at start if enabled
+      if (mode.autoUpdateStatus) {
+        const initialAnalysis = await this.todoService.analyzeTodos(taskId);
+        if (initialAnalysis.stats.percentage > 0 && taskMetadata.status === this.getNotStartedStatus()) {
+          await this.updateTaskStatusBasedOnProgress(taskId, initialAnalysis.stats.percentage);
+          progression.push({
+            type: 'status_update',
+            message: 'Task status updated to "In Progress" (work detected)',
+            completed: true,
+            timestamp: new Date()
+          });
+        }
       }
+
+      const result = await this.executeInternal(taskId, mode, progression);
 
       // Auto-update status if enabled
       if (mode.autoUpdateStatus && result.finalStats.percentage >= 100) {
@@ -55,6 +54,17 @@ export class ExecutionService {
         progression.push({
           type: 'status_update',
           message: 'Task status updated to "Done" (100% complete)',
+          completed: true,
+          timestamp: new Date()
+        });
+      }
+
+      // Add automatic summary based on git changes
+      const summary = await this.generateExecutionSummary(taskId);
+      if (summary) {
+        progression.push({
+          type: 'status_update',
+          message: `\n📋 Execution Summary:\n${summary}`,
           completed: true,
           timestamp: new Date()
         });
@@ -71,6 +81,17 @@ export class ExecutionService {
         timestamp: new Date()
       });
 
+      // Add dev summary even on error
+      const summary = await this.generateExecutionSummary(taskId);
+      if (summary) {
+        progression.push({
+          type: 'status_update',
+          message: `\n📋 Development Summary:\n${summary}`,
+          completed: true,
+          timestamp: new Date()
+        });
+      }
+
       return {
         success: false,
         taskId,
@@ -83,9 +104,9 @@ export class ExecutionService {
   }
 
   /**
-   * Auto mode - Execute all todos following workflow phases
+   * Internal execution - simplified single approach
    */
-  private async executeAuto(taskId: string, mode: ExecutionMode, progression: ExecutionStep[]): Promise<ExecutionResult> {
+  private async executeInternal(taskId: string, mode: ExecutionMode, progression: ExecutionStep[]): Promise<ExecutionResult> {
     const todoAnalysis = await this.todoService.analyzeTodos(taskId);
     const taskMetadata = await this.taskService.getTaskMetadata(taskId);
     
@@ -109,7 +130,7 @@ Analyze the task description to understand what needs to be implemented, then us
 
     if (uncompletedTodos.length === 0) {
       return {
-        success: false,
+        success: true,
         taskId,
         mode: mode.type,
         finalStats: todoAnalysis.stats,
@@ -124,127 +145,92 @@ Analyze the task description to understand what needs to be implemented, then us
       timestamp: new Date()
     });
 
-    // Here's where the magic happens: We FAIL with a helpful message
-    // This tells the AI system to take over and do the real work
-    const error = new Error(`WORKFLOW_EXECUTION_REQUIRED: Task "${taskMetadata.title}" needs real development work. 
-
-Phase 1: Understand the task and todos
-Phase 2: For each todo, use development tools (Read, Edit, Write, Bash) to implement the work
-Phase 3: Test and validate the implementation  
-Phase 4: Mark todos as completed only after real work is done
-
-Current todos to implement:
-${uncompletedTodos.map(todo => `- ${todo.text}`).join('\n')}
-
-Use the available tools to implement these todos step by step, following the workflow phases.`);
-
-    throw error;
-  }
-
-  /**
-   * Step mode - Execute next batch of todos following workflow
-   */
-  private async executeStep(taskId: string, mode: ExecutionMode, progression: ExecutionStep[]): Promise<ExecutionResult> {
-    const todoAnalysis = await this.todoService.analyzeTodos(taskId);
-    const taskMetadata = await this.taskService.getTaskMetadata(taskId);
-    
-    // Get next uncompleted todos (up to 3 for step mode)
-    const uncompletedTodos = todoAnalysis.todos.filter(todo => !todo.completed);
-    const todosToComplete = uncompletedTodos.slice(0, 3);
-
-    if (todosToComplete.length === 0) {
-      return {
-        success: false,
-        taskId,
-        mode: mode.type,
-        finalStats: todoAnalysis.stats,
-        message: 'No uncompleted todos found'
-      };
+    // Process the first uncompleted todo - AI must implement it
+    const firstTodo = uncompletedTodos[0];
+    if (!firstTodo) {
+      throw new Error('No uncompleted todos found but uncompletedTodos array was not empty');
     }
-
+    
     progression.push({
-      type: 'status_update',
-      message: `Step mode: Working on next ${todosToComplete.length} todos`,
+      type: 'todo',
+      message: `Next todo to implement: ${firstTodo.text}`,
+      todoText: firstTodo.text,
       completed: false,
       timestamp: new Date()
     });
 
-    // Same approach: Guide the AI to do real work
-    const remainingTodos = todoAnalysis.stats.total - todoAnalysis.stats.completed;
-    const error = new Error(`WORKFLOW_STEP_EXECUTION_REQUIRED: Step execution for "${taskMetadata.title}"
+    // Guide AI to implement this specific todo
+    const error = new Error(`TODO_IMPLEMENTATION_REQUIRED: Please implement the following todo and then mark it as completed:
 
-Execute these ${todosToComplete.length} todos using development tools:
+TODO: "${firstTodo.text}"
 
-${todosToComplete.map(todo => `- ${todo.text}`).join('\n')}
+Implementation steps:
+1. Analyze what this todo requires (read relevant files, understand context)
+2. Use development tools (Read, Edit, Write, Bash) to implement the functionality
+3. Test your implementation if possible
+4. Once implementation is complete, use update_todos to mark this todo as completed
+5. After marking completed, call execute_task again to proceed to the next todo
 
-After implementing each todo:
-1. Use update_todos tool to mark it as completed
-2. Verify your work with build/test commands
-3. Continue to next todo
+Current task context:
+- Task: ${taskMetadata.title}
+- Total todos: ${todoAnalysis.stats.total}
+- Completed: ${todoAnalysis.stats.completed}
+- Remaining: ${uncompletedTodos.length}
 
-Progress: ${todoAnalysis.stats.completed}/${todoAnalysis.stats.total} completed
-Remaining after this step: ${remainingTodos - todosToComplete.length} todos`);
+After implementing this todo, the system will automatically proceed to the next one.`);
 
     throw error;
   }
 
+
   /**
-   * Batch mode - Execute multiple specific todos
+   * Generate execution summary based on git changes since last commit
    */
-  private async executeBatch(taskId: string, mode: ExecutionMode, progression: ExecutionStep[]): Promise<ExecutionResult> {
-    const todoAnalysis = await this.todoService.analyzeTodos(taskId);
-    
-    // Get next uncompleted todos (up to 5)
-    const uncompletedTodos = todoAnalysis.todos.filter(todo => !todo.completed);
-    const todosToComplete = uncompletedTodos.slice(0, 5);
+  private async generateExecutionSummary(_taskId: string): Promise<string | null> {
+    try {
+      // Get git status and changes
+      const { exec } = await import('child_process');
+      const { promisify } = await import('util');
+      const execAsync = promisify(exec);
 
-    if (todosToComplete.length === 0) {
-      return {
-        success: false,
-        taskId,
-        mode: mode.type,
-        finalStats: todoAnalysis.stats,
-        message: 'No todos to complete'
+      // Check if there are any changes
+      const { stdout: status } = await execAsync('git status --porcelain');
+      if (!status.trim()) {
+        return null; // No changes
+      }
+
+      // Get diff of changes
+      const { stdout: diff } = await execAsync('git diff --name-status');
+      const { stdout: diffCached } = await execAsync('git diff --cached --name-status');
+      
+      const allChanges = (diff + diffCached).trim();
+      if (!allChanges) {
+        return null;
+      }
+
+      // Parse changes
+      const changes = allChanges.split('\n').filter(line => line.trim());
+      const summary = {
+        modified: changes.filter(line => line.startsWith('M')).length,
+        added: changes.filter(line => line.startsWith('A')).length,
+        deleted: changes.filter(line => line.startsWith('D')).length
       };
+
+      let summaryText = `Changes detected:\n`;
+      if (summary.added > 0) summaryText += `• ${summary.added} files added\n`;
+      if (summary.modified > 0) summaryText += `• ${summary.modified} files modified\n`;
+      if (summary.deleted > 0) summaryText += `• ${summary.deleted} files deleted\n`;
+      
+      summaryText += `\nNext steps:\n`;
+      summaryText += `• Review changes with: git diff\n`;
+      summaryText += `• Test implementation\n`;
+      summaryText += `• Use update_todos to mark completed todos\n`;
+      summaryText += `• Consider moving task to "Test" status when ready`;
+
+      return summaryText;
+    } catch (error) {
+      return null; // Git command failed, skip summary
     }
-
-    progression.push({
-      type: 'status_update',
-      message: `Processing batch of ${todosToComplete.length} todos`,
-      completed: false,
-      timestamp: new Date()
-    });
-
-    // Prepare batch updates
-    const updates: TodoUpdateRequest[] = todosToComplete.map(todo => ({
-      todoText: todo.text,
-      completed: true
-    }));
-
-    // Show progress for each todo
-    for (const todo of todosToComplete) {
-      progression.push({
-        type: 'todo',
-        message: `Completed: ${todo.text}`,
-        todoText: todo.text,
-        completed: true,
-        timestamp: new Date()
-      });
-    }
-
-    // Execute batch update
-    const updateResult = await this.todoService.updateTodos(taskId, updates);
-    const finalAnalysis = await this.todoService.analyzeTodos(taskId);
-
-    return {
-      success: true,
-      taskId,
-      mode: mode.type,
-      todosCompleted: updateResult.updated,
-      totalTodos: todoAnalysis.stats.total,
-      finalStats: finalAnalysis.stats,
-      message: `Batch execution completed: ${updateResult.updated}/${todosToComplete.length} todos updated`
-    };
   }
 
   private async updateTaskStatusBasedOnProgress(taskId: string, percentage: number): Promise<void> {
@@ -263,5 +249,10 @@ Remaining after this step: ${remainingTodos - todosToComplete.length} todos`);
       // Status update failed, but execution continues
       console.warn('Failed to auto-update task status:', error);
     }
+  }
+
+  private getNotStartedStatus(): string {
+    // This should match the workflow configuration
+    return 'Not Started'; // Or get from workflowService
   }
 }

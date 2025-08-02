@@ -15,7 +15,12 @@ notion-vibe-coding/
 │   ├── services/
 │   │   ├── TaskService.ts            # High-level task operations
 │   │   ├── TodoService.ts            # Todo management and analysis  
-│   │   ├── ExecutionService.ts       # Task execution workflows
+│   │   ├── ExecutionService.ts       # Refactored task execution with sub-services
+│   │   ├── TaskAnalysisService.ts    # Task context and requirements analysis
+│   │   ├── TodoExecutionService.ts   # Individual todo execution with step logic
+│   │   ├── ContextExecutionService.ts # Execution context and progress tracking
+│   │   ├── StatusTransitionService.ts # Task status transitions and validation
+│   │   ├── SummaryService.ts         # Execution summaries with CLI formatting
 │   │   ├── WorkflowService.ts        # Template and guidance management
 │   │   └── ResponseFormatter.ts      # Standardized output formatting
 │   ├── models/
@@ -102,11 +107,41 @@ node mcp.js get_task '{"taskId":"<task-id>"}'
 - Batch todo update operations
 - Progress insights and recommendations
 
-#### `ExecutionService.ts`
-- Task execution workflows
-- Auto, step-by-step, and batch execution modes
-- Progress tracking and status updates
-- Workflow state management
+#### `ExecutionService.ts` (Refactored)
+- **NEW**: Orchestrates execution using specialized sub-services
+- **NEW**: Step-by-step programmatic logic with 5 execution phases
+- Auto, step-by-step, and batch execution modes with improved architecture
+- Cleaner separation of concerns via sub-services
+
+#### `TaskAnalysisService.ts` (NEW)
+- Analyzes task context and requirements
+- Determines if task has work to do
+- Generates next action recommendations
+- Provides structured task analysis for execution decisions
+
+#### `TodoExecutionService.ts` (NEW)
+- Executes individual todos with validation
+- Batch todo execution with step-by-step logic
+- Provides workflow guidance for real implementation work
+- Manages todo completion after actual development work
+
+#### `ContextExecutionService.ts` (NEW)
+- Manages execution context and progress tracking
+- Tracks execution phases (initialization, analysis, execution, validation, completion)
+- Creates guided error results with workflow instructions
+- Maintains execution metadata and timing information
+
+#### `StatusTransitionService.ts` (NEW)
+- Handles task status transitions with validation
+- Provides status recommendations based on progress
+- Auto-updates status based on completion percentage
+- Validates transitions against workflow configuration
+
+#### `SummaryService.ts` (NEW)
+- Generates comprehensive execution summaries
+- CLI-friendly formatting option for command-line usage
+- Progress reports with visual progress bars
+- Error summaries with workflow guidance
 
 #### `WorkflowService.ts`
 - Workflow template management

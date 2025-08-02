@@ -10,7 +10,7 @@ import { NotionTask } from '../models/Task.js';
 export class ResponseFormatter {
   
   formatExecutionResult(result: ExecutionResult): string {
-    let text = `🚀 Task Execution (${result.mode.toUpperCase ? result.mode.toUpperCase() : result.mode} mode)\n\n`;
+    let text = `🚀 Task Execution\n\n`;
     
     text += `Task ID: ${result.taskId}\n`;
     text += `Success: ${result.success ? '✅' : '❌'}\n`;

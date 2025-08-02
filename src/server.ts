@@ -14,6 +14,7 @@ import { WorkflowService } from './services/WorkflowService.js';
 import { ResponseFormatter } from './services/ResponseFormatter.js';
 import { WorkflowConfig, ExecutionMode } from './models/Workflow.js';
 
+
 class MCPServer {
   private server: Server;
   private services: any;
@@ -45,7 +46,7 @@ class MCPServer {
   private setupRoutes() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
-        { name: 'execute_task', description: 'Execute task (auto/step/batch)', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, mode: { type: 'string', enum: ['auto', 'step', 'batch'] } }, required: ['taskId', 'mode'] } },
+        { name: 'execute_task', description: 'Execute task', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
         { name: 'create_task', description: 'Create new task', inputSchema: { type: 'object', properties: { title: { type: 'string' }, taskType: { type: 'string' }, description: { type: 'string' } }, required: ['title', 'taskType', 'description'] } },
         { name: 'get_task', description: 'Get task info', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
         { name: 'update_task', description: 'Update task title, type and/or status', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, title: { type: 'string' }, taskType: { type: 'string' }, status: { type: 'string' } }, required: ['taskId'] } },
@@ -53,6 +54,7 @@ class MCPServer {
         { name: 'get_task_template', description: 'Get task template for AI adaptation', inputSchema: { type: 'object', properties: { taskType: { type: 'string' } }, required: ['taskType'] } },
         { name: 'analyze_todos', description: 'Analyze todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, includeHierarchy: { type: 'boolean' } }, required: ['taskId'] } },
         { name: 'update_todos', description: 'Batch update todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, updates: { type: 'array' } }, required: ['taskId', 'updates'] } },
+        { name: 'generate_test_summary', description: 'Generate test summary based on git changes', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
       ]
     }));
 
@@ -72,7 +74,7 @@ class MCPServer {
 
     switch (name) {
       case 'execute_task':
-        const mode: ExecutionMode = { type: args.mode, showProgress: true, autoUpdateStatus: true };
+        const mode: ExecutionMode = { type: 'auto', showProgress: true, autoUpdateStatus: true };
         const result = await execution.executeTask(args.taskId, mode);
         return formatter.formatExecutionResult(result);
 
@@ -102,6 +104,9 @@ class MCPServer {
         const updateResult = await todo.updateTodos(args.taskId, args.updates);
         return formatter.formatTodosUpdated(args.taskId, updateResult);
 
+      case 'generate_test_summary':
+        return await this.generateTestSummary(args.taskId);
+
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
@@ -120,6 +125,55 @@ class MCPServer {
     }
     
     return `No template found for task type: ${taskType}`;
+  }
+
+  private async generateTestSummary(taskId: string): Promise<string> {
+    try {
+      const { exec } = await import('child_process');
+      const { promisify } = await import('util');
+      const execAsync = promisify(exec);
+
+      // Get detailed git diff
+      const { stdout: diff } = await execAsync('git diff HEAD');
+      const { stdout: status } = await execAsync('git status --porcelain');
+      
+      if (!status.trim() && !diff.trim()) {
+        return `📋 Test Summary for Task ${taskId}\n\nNo changes detected since last commit.\nTask appears to be up to date.`;
+      }
+
+      let summary = `📋 Test Summary for Task ${taskId}\n\n`;
+      
+      if (status.trim()) {
+        summary += `🔄 Modified Files:\n`;
+        const files = status.trim().split('\n');
+        files.forEach(file => {
+          const parts = file.trim().split(/\s+/);
+          const statusCode = parts[0] || '';
+          const fileName = parts[1] || 'unknown';
+          const statusText = statusCode.includes('M') ? 'Modified' : 
+                           statusCode.includes('A') ? 'Added' : 
+                           statusCode.includes('D') ? 'Deleted' : 'Changed';
+          summary += `• ${statusText}: ${fileName}\n`;
+        });
+        summary += '\n';
+      }
+
+      summary += `🧪 Testing Checklist:\n`;
+      summary += `• Run build: npm run build\n`;
+      summary += `• Run tests: npm test (if available)\n`;
+      summary += `• Manual testing of implemented features\n`;
+      summary += `• Verify all todos are completed\n`;
+      summary += `• Consider moving task to "Test" status\n\n`;
+      
+      summary += `📝 Next Actions:\n`;
+      summary += `• Use update_todos to mark completed todos\n`;
+      summary += `• Update task status when testing is complete\n`;
+      summary += `• Commit changes when satisfied`;
+
+      return summary;
+    } catch (error) {
+      return `📋 Test Summary for Task ${taskId}\n\nError generating summary: ${error}`;
+    }
   }
 
   async run() {
