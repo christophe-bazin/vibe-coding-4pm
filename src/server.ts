@@ -47,10 +47,10 @@ class MCPServer {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
         { name: 'execute_task', description: 'Execute task', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
-        { name: 'create_task', description: 'Create new task', inputSchema: { type: 'object', properties: { title: { type: 'string' }, taskType: { type: 'string' }, description: { type: 'string' } }, required: ['title', 'taskType', 'description'] } },
+        { name: 'create_task', description: 'Create new task with workflow adaptation', inputSchema: { type: 'object', properties: { title: { type: 'string' }, taskType: { type: 'string' }, description: { type: 'string' }, adaptedWorkflow: { type: 'string' } }, required: ['title', 'taskType', 'description', 'adaptedWorkflow'] } },
         { name: 'get_task', description: 'Get task info', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
         { name: 'update_task', description: 'Update task title, type and/or status', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, title: { type: 'string' }, taskType: { type: 'string' }, status: { type: 'string' } }, required: ['taskId'] } },
-        { name: 'get_task_template', description: 'Get task template for AI adaptation', inputSchema: { type: 'object', properties: { taskType: { type: 'string' } }, required: ['taskType'] } },
+        { name: 'get_task_template', description: 'Get raw task template. IMPORTANT: You must adapt the template to your specific context by replacing bracketed placeholders, contextualizing todos/steps/criteria, using specific terminology, and passing the adapted result in adaptedWorkflow when calling create_task.', inputSchema: { type: 'object', properties: { taskType: { type: 'string' } }, required: ['taskType'] } },
         { name: 'analyze_todos', description: 'Analyze todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, includeHierarchy: { type: 'boolean' } }, required: ['taskId'] } },
         { name: 'update_todos', description: 'Batch update todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, updates: { type: 'array' } }, required: ['taskId', 'updates'] } },
         { name: 'generate_dev_summary', description: 'Generate development summary with testing todos based on git changes', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
@@ -78,7 +78,7 @@ class MCPServer {
         return formatter.formatExecutionResult(result);
 
       case 'create_task':
-        const newTask = await creation.createTask(args.title, args.taskType, args.description);
+        const newTask = await creation.createTask(args.title, args.taskType, args.adaptedWorkflow);
         return formatter.formatTaskCreated(newTask);
 
       case 'get_task':
