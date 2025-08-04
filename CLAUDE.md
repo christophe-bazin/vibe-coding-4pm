@@ -8,40 +8,21 @@ This is a Model Context Protocol (MCP) server that enables AI assistants to mana
 
 ## Development Guidelines
 
-- Follow established coding standards (see [docs/development.md](docs/development.md))
-- Use semantic commit messages with conventional format
-- Maintain clear documentation style with examples
-- Test all MCP functions via Claude Desktop MCP integration
+- Follow established coding standards in [.ai/development/coding-standards.md](.ai/development/coding-standards.md)
+- Adhere to commit conventions in [.ai/development/commit-conventions.md](.ai/development/commit-conventions.md)
+- Maintain clear documentation style per [.ai/development/documentation-style.md](.ai/development/documentation-style.md)
+- Follow the release process defined in [.ai/development/release-process.md](.ai/development/release-process.md)
 
 ## Project Architecture
 
-### 🏗️ **Clean Service Architecture**
-```
-src/
-├── services/core/           # Main business logic
-│   ├── CreationService.ts   # Task creation + intelligent templates
-│   ├── UpdateService.ts     # Updates + todos with callback system
-│   └── ExecutionService.ts  # Orchestration + auto-continuation
-├── services/shared/         # Shared utilities
-│   ├── StatusService.ts     # Status management + flexible transitions
-│   ├── ValidationService.ts # Input validation + error handling
-│   └── ResponseFormatter.ts # MCP response formatting
-├── adapters/               # External system integrations
-│   └── NotionAPIAdapter.ts # Notion API implementation
-├── models/                 # Type definitions
-└── interfaces/             # Contracts and abstractions
-```
+- **Configuration-driven**: All behavior defined in MCP configuration and `workflows/*.md`
+- **Service-oriented**: Clean separation between core services and shared utilities
+- **Workflow adaptation**: AI adapts templates contextually using `adaptedWorkflow` parameter
+- **Auto-continuation**: System automatically proceeds to next todos after completion
+- **Provider pattern**: Ready for Linear, GitHub, Jira integration via TaskProvider interface
+- **camelCase convention**: Consistent naming for internal configuration
 
-### 🔄 **Auto-Continuation System**
-- **UpdateService**: Callback system triggers ExecutionService after todo updates
-- **ExecutionService**: Auto-detects remaining todos and continues execution
-- **Seamless Flow**: AI implements → updates todos → system continues automatically
-
-### 🎯 **Key Features**
-- **Template Intelligence**: Adapts Feature/Bug/Refactoring templates based on context
-- **Flexible Transitions**: All status changes allowed for maximum flexibility
-- **Provider Pattern**: Ready for Linear, GitHub, Jira integration
-- **Git Integration**: Development summaries with testing todos
+See detailed architecture in [.ai/project/mcp-architecture.md](.ai/project/mcp-architecture.md)
 
 ## Essential Commands
 
@@ -60,9 +41,8 @@ npm run build
 
 **Via Claude Code CLI (Development/Testing):**
 - Use `node mcp.js <tool> '<json_args>'` to call MCP tools directly
-- Example: `node mcp.js create_task '{"title":"test","taskType":"Bug","description":"desc"}'`
+- Example: `node mcp.js create_task '{"title":"test","taskType":"Bug","description":"desc","adaptedWorkflow":"..."}'`
 - The wrapper handles server startup and MCP protocol automatically
-
 
 ## Codebase Structure
 
@@ -84,7 +64,7 @@ src/
 ├── services/shared/             # Shared utilities
 │   ├── StatusService.ts         # Status management
 │   ├── ValidationService.ts     # Input validation
-│   └── ResponseFormatter.ts     # MCP formatting
+│   └── ResponseFormatter.ts     # MCP response formatting
 └── types/
     └── Errors.ts                # Custom error types
 ```
@@ -101,14 +81,13 @@ All configuration is centralized in your project's `.claude/mcp-config.json`:
 ## MCP Tools Available
 
 ### Task Management
-- `create_task`: Create tasks with intelligent template adaptation (Feature/Bug/Refactoring)
+- `create_task`: Create tasks with workflow adaptation (requires adaptedWorkflow parameter)
 - `get_task`: Get task information with todo statistics and flexible status info
 - `update_task`: Update task title, type and/or status with flexible validation
 - `execute_task`: Execute with auto-continuation workflow (guides AI step-by-step)
 
 ### Template & Workflow
-- `get_task_template`: Get specialized templates for each task type
-- `get_workflow_guidance`: Get creation workflow guidance (update/execution deprecated)
+- `get_task_template`: Get raw templates for AI adaptation (Feature/Bug/Refactoring)
 
 ### Todo Management  
 - `analyze_todos`: Extract and analyze todos with completion statistics
@@ -134,25 +113,12 @@ All configuration is centralized in your project's `.claude/mcp-config.json`:
 
 ## Key Implementation Notes
 
-### 🔧 **Service Responsibilities**
-- **CreationService**: Template loading, AI adaptation, task creation
-- **UpdateService**: Todo/task updates, callback triggering, git summaries
-- **ExecutionService**: Auto-continuation, todo-by-todo guidance, orchestration
-- **StatusService**: Flexible transitions, status recommendations
-- **ValidationService**: Input validation, constraint checking
-
-### ⚡ **Auto-Continuation Flow**
-1. AI implements todo using development tools
-2. AI calls `update_todos` to mark completion
-3. UpdateService triggers callback to ExecutionService
-4. ExecutionService auto-launches next execution round
-5. System identifies next uncompleted todo and guides AI
-
-### 🎯 **Template Intelligence**
-- Separate workflow files: `feature.md`, `bug.md`, `refactoring.md`
-- AI adapts template sections based on user description context
-- Dynamic todo generation based on detected patterns (files, APIs, etc.)
-- Maintains template structure while customizing content
+- Workflow adaptation: AI must call `get_task_template` then adapt template contextually
+- `create_task` requires `adaptedWorkflow` parameter with contextualized template
+- Status transitions enforced by configuration, flexible by default
+- Auto-continuation: UpdateService triggers ExecutionService after todo updates
+- Template system supports clean separation between raw templates and adapted workflows
+- Environment variables use SCREAMING_CASE, config uses camelCase
 
 ## Security and Best Practices
 
