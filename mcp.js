@@ -40,8 +40,19 @@ let mcpArgs;
 try {
   mcpArgs = JSON.parse(jsonArgs);
 } catch (e) {
-  console.error('Invalid JSON arguments:', jsonArgs);
-  process.exit(1);
+  // Try with JSON sanitization for common bash escaping issues
+  const sanitized = jsonArgs
+    .replace(/\\!/g, '!')     // Fix escaped exclamation marks
+    .replace(/\\"/g, '"')     // Fix escaped quotes  
+    .replace(/\\\\/g, '\\')   // Fix double backslashes
+    .replace(/\\'/g, "'");    // Fix escaped single quotes
+    
+  try {
+    mcpArgs = JSON.parse(sanitized);
+  } catch (e2) {
+    console.error('Invalid JSON arguments:', jsonArgs);
+    process.exit(1);
+  }
 }
 
 // Start MCP server
