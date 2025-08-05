@@ -69,7 +69,7 @@ Configuration via `.claude/mcp-config.json` with:
 - Task management: `create_task`, `get_task`, `update_task`, `execute_task`
 - Templates: `get_task_template` (Feature/Bug/Refactoring templates)
 - Todos: `analyze_todos`, `update_todos` 
-- Dev summaries: `generate_dev_summary`, `get_dev_summary_template`, `append_dev_summary`
+- Summaries: `generate_summary`, `get_summary_template`, `append_summary`
 
 **→ Complete tool reference in [docs/advanced-usage.md](docs/advanced-usage.md)**
 

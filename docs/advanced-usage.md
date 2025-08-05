@@ -28,7 +28,7 @@ node mcp.js update_task '{"taskId":"<task-id>","status":"In Progress"}'
 node mcp.js update_task '{"taskId":"<task-id>","title":"New Title","taskType":"Feature"}'
 
 # Execute tasks with provider-aware batch workflow
-node mcp.js execute_task '{"taskId":"<task-id>"}'\n\n# Get templates for AI adaptation\nnode mcp.js get_task_template '{"taskType":"Feature"}'\n\n# Generate development summary workflow\nnode mcp.js generate_dev_summary '{"taskId":"<task-id>"}'\nnode mcp.js get_dev_summary_template '{"taskId":"<task-id>"}'\nnode mcp.js append_dev_summary '{"taskId":"<task-id>","adaptedSummary":"# Development Summary\\n\\nCompleted the task..."}'
+node mcp.js execute_task '{"taskId":"<task-id>"}'\n\n# Get templates for AI adaptation\nnode mcp.js get_task_template '{"taskType":"Feature"}'\n\n# Generate development summary workflow\nnode mcp.js generate_summary '{"taskId":"<task-id>"}'\nnode mcp.js get_summary_template '{"taskId":"<task-id>"}'\nnode mcp.js append_summary '{"taskId":"<task-id>","adaptedSummary":"# Development Summary\\n\\nCompleted the task..."}'
 ```
 
 #### Todo Management
@@ -40,7 +40,7 @@ node mcp.js update_todos '{"taskId":"<task-id>","updates":[{"todoText":"Setup OA
 node mcp.js analyze_todos '{"taskId":"<task-id>"}'
 
 # Generate development summary with testing todos
-node mcp.js generate_dev_summary '{"taskId":"<task-id>"}'
+node mcp.js generate_summary '{"taskId":"<task-id>"}'
 ```
 
 #### Templates & Workflow

@@ -152,8 +152,8 @@ templates/
 │   ├── feature.md               # Feature task template
 │   ├── bug.md                   # Bug task template
 │   └── refactoring.md           # Refactoring task template
-└── dev_summary/                 # Development summary templates
-    └── dev_summary.md           # Dev summary template
+└── summary/                     # Summary templates
+    └── summary.md               # Summary template
 ```
 
 **Templates are:**

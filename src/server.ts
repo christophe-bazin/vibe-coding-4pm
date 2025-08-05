@@ -50,12 +50,12 @@ class MCPServer {
         { name: 'create_task', description: 'Create new task with workflow adaptation', inputSchema: { type: 'object', properties: { title: { type: 'string' }, taskType: { type: 'string' }, description: { type: 'string' }, adaptedWorkflow: { type: 'string' } }, required: ['title', 'taskType', 'description', 'adaptedWorkflow'] } },
         { name: 'get_task', description: 'Get task info', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
         { name: 'update_task', description: 'Update task title, type and/or status', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, title: { type: 'string' }, taskType: { type: 'string' }, status: { type: 'string' } }, required: ['taskId'] } },
-        { name: 'get_task_template', description: 'Get raw task template. IMPORTANT: You must adapt the template to your specific context by replacing bracketed placeholders, contextualizing todos/steps/criteria, using specific terminology, and passing the adapted result in adaptedWorkflow when calling create_task.', inputSchema: { type: 'object', properties: { taskType: { type: 'string' } }, required: ['taskType'] } },
+        { name: 'get_task_template', description: 'Get task template for adaptation', inputSchema: { type: 'object', properties: { taskType: { type: 'string' } }, required: ['taskType'] } },
         { name: 'analyze_todos', description: 'Analyze todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, includeHierarchy: { type: 'boolean' } }, required: ['taskId'] } },
         { name: 'update_todos', description: 'Batch update todos. Format: {"taskId":"xxx","updates":[{"todoText":"todo text","completed":true}]}', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, updates: { type: 'array' } }, required: ['taskId', 'updates'] } },
-        { name: 'generate_dev_summary', description: 'Generate development summary with testing todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
-        { name: 'get_dev_summary_template', description: 'Get raw template for AI adaptation', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
-        { name: 'append_dev_summary', description: 'Append AI-adapted dev summary to Notion task', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, adaptedSummary: { type: 'string' } }, required: ['taskId', 'adaptedSummary'] } },
+        { name: 'generate_summary', description: 'Generate summary', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
+        { name: 'get_summary_template', description: 'Get summary template', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
+        { name: 'append_summary', description: 'Append AI-adapted summary to Notion task', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, adaptedSummary: { type: 'string' } }, required: ['taskId', 'adaptedSummary'] } },
       ]
     }));
 
@@ -103,15 +103,15 @@ class MCPServer {
         const updateResult = await update.updateTodos(args.taskId, args.updates);
         return formatter.formatTodosUpdated(args.taskId, updateResult);
 
-      case 'generate_dev_summary':
-        return await update.generateDevSummary(args.taskId);
+      case 'generate_summary':
+        return await update.generateSummary(args.taskId);
 
-      case 'get_dev_summary_template':
-        return await update.getDevSummaryTemplate(args.taskId);
+      case 'get_summary_template':
+        return await update.getSummaryTemplate(args.taskId);
 
-      case 'append_dev_summary':
-        await update.appendDevSummary(args.taskId, args.adaptedSummary);
-        return 'Development summary appended to Notion task successfully.';
+      case 'append_summary':
+        await update.appendSummary(args.taskId, args.adaptedSummary);
+        return 'Summary appended to Notion task successfully.';
 
 
       default:

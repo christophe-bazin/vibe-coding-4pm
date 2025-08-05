@@ -40,9 +40,9 @@ The Notion Workflow MCP Server is built as a lightweight, configuration-driven s
 - `get_task_template`: Get raw templates for AI adaptation (Feature/Bug/Refactoring)
 - `analyze_todos`: Extract and analyze todos with completion statistics
 - `update_todos`: Batch update with automatic execution continuation
-- `generate_dev_summary`: Generate development summary instructions
-- `get_dev_summary_template`: Get raw template for AI adaptation
-- `append_dev_summary`: Append AI-adapted dev summary to Notion task
+- `generate_summary`: Generate summary instructions
+- `get_summary_template`: Get raw template for AI adaptation
+- `append_summary`: Append AI-adapted summary to Notion task
 
 ### Clean Service Architecture
 

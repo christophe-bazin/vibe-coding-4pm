@@ -91,8 +91,8 @@ export class UpdateService {
             await this.updateTaskStatus(taskId, testStatus);
           }
           
-          // Generate dev summary instructions for AI
-          devSummary = await this.generateDevSummary(taskId);
+          // Generate summary instructions for AI
+          devSummary = await this.generateSummary(taskId);
         }
       } catch (error) {
         console.warn('Next action analysis failed:', error);
@@ -106,36 +106,36 @@ export class UpdateService {
     return await this.taskProvider.updateSingleTodo(taskId, todoText, completed);
   }
 
-  async generateDevSummary(taskId: string): Promise<string> {
+  async generateSummary(taskId: string): Promise<string> {
     // This should NOT append anything to Notion - just return instructions for the AI
-    // The AI will call get_dev_summary_template, adapt it, then we append
+    // The AI will call get_summary_template, adapt it, then we append
     const taskMetadata = await this.getTaskMetadata(taskId);
     
-    return `Task "${taskMetadata.title}" completed! Please generate a development summary by:\n\n1. Call get_dev_summary_template to get the raw template\n2. Adapt the template with specific details of what you accomplished\n3. Call this tool again with your adapted summary to append it to Notion`;
+    return `Task "${taskMetadata.title}" completed! Please generate a summary by:\n\n1. Call get_summary_template to get the raw template\n2. Adapt the template with specific details of what you accomplished\n3. Call this tool again with your adapted summary to append it to Notion`;
   }
   
-  async getDevSummaryTemplate(taskId: string): Promise<string> {
+  async getSummaryTemplate(taskId: string): Promise<string> {
     // Return raw template for AI adaptation - same pattern as CreationService
-    return await this.loadDevSummaryTemplate();
+    return await this.loadSummaryTemplate();
   }
   
   
-  private async loadDevSummaryTemplate(): Promise<string> {
-    const templateFile = 'templates/dev_summary/dev_summary.md';
+  private async loadSummaryTemplate(): Promise<string> {
+    const templateFile = 'templates/summary/summary.md';
     const filePath = resolve(templateFile);
     
     if (!existsSync(filePath)) {
-      throw new Error(`Dev summary template not found: ${templateFile}`);
+      throw new Error(`Summary template not found: ${templateFile}`);
     }
 
     try {
       return readFileSync(filePath, 'utf-8');
     } catch (error) {
-      throw new Error(`Error reading dev summary template ${templateFile}: ${error}`);
+      throw new Error(`Error reading summary template ${templateFile}: ${error}`);
     }
   }
   
-  async appendDevSummary(taskId: string, adaptedSummary: string): Promise<void> {
+  async appendSummary(taskId: string, adaptedSummary: string): Promise<void> {
     // Append the AI-adapted summary to Notion
     const formattedSummary = `\n\n---\n\n${adaptedSummary}`;
     await this.appendToNotionTask(taskId, formattedSummary);
