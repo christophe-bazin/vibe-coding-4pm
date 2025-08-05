@@ -1,8 +1,16 @@
-# Notion Vibe Coding
+# AI Project Manager
 
-Provider-aware MCP server that transforms AI assistants (Claude, Cursor, Copilot) into intelligent project managers, optimizing for each AI's strengths with batch execution and rich context.
+**Transform your AI assistant into an autonomous development project manager.**
 
-**Current Provider:** Notion (extensible architecture supports future Linear, GitHub, Jira integration)
+Say *"Add user authentication to this React app"* and watch your AI:
+
+## 🚀 **Key Features & Workflow**
+
+- **🎯 Autonomous Project Management**: AI creates structured tasks, implements features, and tracks progress automatically
+- **📋 Intelligent Task Creation**: Smart templates adapt to your requirements - fully customizable or use defaults (Feature, Bug, Refactoring)  
+- **⚡ Complete Development Automation**: From task creation → implementation → testing checklist → status management
+- **🔄 Multi-AI Support**: Works with Claude, Cursor, Copilot through natural language interface
+- **🏗️ Multi-Provider Ready**: Currently supports task management systems (Notion first, Linear/GitHub/Jira coming)
 
 ## Quick Start
 
@@ -14,9 +22,10 @@ cd notion-vibe-coding
 npm install && npm run build
 ```
 
-### 2. Setup Your Task Provider
+### 2. Setup Your Task Management System
 
-**For Notion:**
+**Currently Supported: Notion** (Linear, GitHub, Jira coming soon)
+
 1. Create a [Notion integration](https://www.notion.so/my-integrations)
 2. Copy your integration token
 3. Create a database with these properties:
@@ -31,17 +40,17 @@ cp mcp-config.example.json your-project/.claude/mcp-config.json
 ```
 
 Then edit `.claude/mcp-config.json` and replace:
-- `your_notion_integration_token_here` with your Notion API key
-- `your_notion_database_id_here` with your database ID
+
+- `your_notion_integration_token_here` with your task provider API key
+- `your_notion_database_id_here` with your task board/database ID
 
 ### 4. Start Using
 
-#### Option A: Claude Desktop (MCP)
 ```
 You: "Add user authentication to this React app"
 
-Claude: 
-→ Creates task with adapted template in Notion
+AI Assistant: 
+→ Creates task with adapted template in your task board
 → Gets full task context with execute_task
 → Implements entire feature using rich context
 → Marks all todos complete in batch
@@ -50,34 +59,25 @@ Claude:
 You: Review and mark as "Done" when satisfied
 ```
 
-#### Option B: Claude Code CLI (Wrapper)
-```bash
-# Create tasks directly with JSON arguments
-node mcp.js create_task '{"title":"Add user authentication","taskType":"Feature","description":"Implement OAuth login"}'
-node mcp.js get_task '{"taskId":"<task-id>"}'
-node mcp.js update_task '{"taskId":"<task-id>","status":"In Progress"}'
-node mcp.js update_todos '{"taskId":"<task-id>","updates":[{"todoText":"Setup OAuth provider","completed":true}]}'
-node mcp.js analyze_todos '{"taskId":"<task-id>"}'
-node mcp.js generate_dev_summary '{"taskId":"<task-id>"}'
-```
+The MCP server provides 10 tools that your AI assistant can use seamlessly through natural language or direct CLI access.
 
 ## What You Get
 
-✅ **Automatic Task Tracking** - Claude creates and updates Notion tasks as you work  
-✅ **CLI Integration** - Direct command-line access to all MCP functions  
-✅ **Progress Visualization** - Real-time status updates in your Notion workspace  
+✅ **AI Project Management** - Your AI assistant becomes an autonomous project manager handling task creation, implementation, and tracking  
+✅ **Automatic Workflow** - From "implement feature X" to completed task with testing checklist - fully automated  
+✅ **Intelligent Task Creation** - Smart templates adapt to your specific requirements and project context  
+✅ **Progress Visualization** - Real-time status updates in your task management workspace for team visibility  
 ✅ **Quality Gates** - Built-in testing phase prevents rushing to production  
-✅ **Team Collaboration** - Shared visibility across your development team  
-✅ **Multi-Project Support** - Use across different codebases with separate configs  
+✅ **Multi-Project Support** - Use across different codebases with separate configurations  
 
 ## Available Tools
 
-The MCP server provides 10 tools available via Claude Desktop (MCP) and CLI wrapper:
+The MCP server provides 10 tools available to MCP clients:
 
 - `create_task` - Create tasks with workflow adaptation (requires adaptedWorkflow)
 - `get_task` - Get task information with todo statistics and status info
 - `update_task` - Update task title, type and/or status with validation
-- `execute_task` - Execute with provider-aware batch workflow
+- `execute_task` - Execute task with automated workflow
 - `get_task_template` - Get raw templates for AI adaptation
 - `analyze_todos` - Extract and analyze todos with completion statistics
 - `update_todos` - Batch update with automatic execution continuation
@@ -87,20 +87,13 @@ The MCP server provides 10 tools available via Claude Desktop (MCP) and CLI wrap
 
 ## How It Works
 
-### 🔄 **Provider-Aware Batch Execution**
-1. **AI calls** `execute_task` to get rich task context
-2. **AI receives** full context with headings, todos, and task hierarchy
-3. **AI implements** entire task using development tools
-4. **AI calls** `update_todos` to mark all completed todos at once
-5. **System automatically** updates status and generates dev summary
+### 🔄 **Automated Task Execution**
+1. **AI calls** `execute_task` to start working on a task
+2. **AI receives** complete task context with all requirements
+3. **AI implements** the task using development tools
+4. **AI updates** todos to track progress
+5. **System automatically** updates task status and creates summary
 
-### 🎯 **Provider-Aware Features**
-- **AI Provider Optimization**: Leverages strengths of Claude, Cursor, Copilot individually
-- **Batch Processing**: Reduces API calls from 50+ to 2 per task execution
-- **Rich Context**: Hierarchical todos with headings and related context
-- **Template Adaptation**: AI adapts raw templates with specific project context
-- **Intelligent Summaries**: Direct summary generation with relevant testing todos
-- **Flexible Status Flow**: Automatic transitions through Not Started → In Progress → Test → Done
 
 ## Documentation
 

@@ -120,12 +120,7 @@ Each project gets its own configuration:
           },
           "taskTypes": ["Feature", "Bug", "Refactoring"],
           "defaultStatus": "notStarted",
-          "requiresValidation": ["done"],
-          "workflowFiles": {
-            "creation": "./notion-vibe-coding/workflows/task-creation.md",
-            "update": "./notion-vibe-coding/workflows/task-update.md",
-            "execution": "./notion-vibe-coding/workflows/task-execution.md"
-          }
+          "requiresValidation": ["done"]
         }
       }
     }

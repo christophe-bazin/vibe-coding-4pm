@@ -4,16 +4,7 @@ Complete reference for configuring the provider-aware Notion Vibe Coding MCP ser
 
 ## Quick Setup
 
-### Claude Desktop
-Use the installation script to generate the correct configuration:
-
-```bash
-./install-claude-desktop.sh
-```
-
-This automatically converts the object format to the JSON string format required by Claude Desktop.
-
-### Claude Code
+### MCP Configuration
 Copy the example configuration:
 
 ```bash
@@ -22,9 +13,8 @@ cp mcp-config.example.json .claude/mcp-config.json
 
 ## MCP Configuration Structure
 
-The configuration differs between Claude Desktop and Claude Code:
+Standard MCP server configuration format:
 
-### Claude Code Format (Object)
 ```json
 {
   "mcpServers": {
@@ -32,35 +22,16 @@ The configuration differs between Claude Desktop and Claude Code:
       "command": "node",
       "args": ["./notion-vibe-coding/dist/server.js"],
       "env": {
-        "NOTION_API_KEY": "secret_your_notion_integration_token_here",
+        "NOTION_API_KEY": "your_notion_integration_token_here",
         "NOTION_DATABASE_ID": "your_notion_database_id_here",
         "WORKFLOW_CONFIG": {
-          // Configuration object
+          // Configuration object (see example file)
         }
       }
     }
   }
 }
 ```
-
-### Claude Desktop Format (JSON String)
-```json
-{
-  "mcpServers": {
-    "notion-vibe-coding": {
-      "command": "node",
-      "args": ["./notion-vibe-coding/dist/server.js"],
-      "env": {
-        "NOTION_API_KEY": "secret_your_notion_integration_token_here",
-        "NOTION_DATABASE_ID": "your_notion_database_id_here",
-        "WORKFLOW_CONFIG": "{\"statusMapping\":{...},\"transitions\":{...}}"
-      }
-    }
-  }
-}
-```
-
-💡 **Use the installation script** to avoid manual JSON string conversion errors.
 
 ## Environment Variables
 
@@ -79,9 +50,9 @@ The configuration differs between Claude Desktop and Claude Code:
 - **Example**: `"abc123def456ghi789jkl012mno345pq"`
 
 #### `WORKFLOW_CONFIG`
-- **Type**: JSON String (for Claude Desktop) or Object (for CLI/development)
-- **Description**: Complete workflow configuration  
-- **Note**: Claude Desktop MCP requires JSON string format, CLI wrapper accepts both
+- **Type**: JSON Object 
+- **Description**: Complete workflow configuration
+- **Note**: See example configuration file for complete structure
 
 ## Workflow Configuration Object
 
@@ -171,28 +142,28 @@ Statuses that require human approval:
 - AI cannot transition tasks to these statuses
 - Typically includes "done"
 
-### `workflowFiles`
-
-Paths to workflow guidance files:
-
-```json
-{
-  "workflowFiles": {
-    "creation": "./notion-vibe-coding/workflows/task-creation.md",
-    "update": "./notion-vibe-coding/workflows/task-update.md",
-    "execution": "./notion-vibe-coding/workflows/task-execution.md"
-  }
-}
-```
-
-**Rules:**
-- Relative paths from the working directory
-- All three workflow types are required
-- Files must exist and be readable
-
 ## Template System
 
-Workflow files support template variables that get replaced with actual status labels:
+The system uses templates stored in the `templates/` directory:
+
+```
+templates/
+├── task/                        # Task creation templates
+│   ├── feature.md               # Feature task template
+│   ├── bug.md                   # Bug task template
+│   └── refactoring.md           # Refactoring task template
+└── dev_summary/                 # Development summary templates
+    └── dev_summary.md           # Dev summary template
+```
+
+**Templates are:**
+- Intelligently adapted by AI based on task description
+- Fully customizable - create your own templates
+- Stored as markdown files for easy editing
+
+### Template Variables
+
+Templates support variables that get replaced with actual status labels:
 
 ### Available Templates
 
@@ -250,52 +221,41 @@ You can add additional properties as needed:
 
 **Note**: `WORKFLOW_CONFIG` is mandatory. No defaults are provided.
 
-#### Claude Desktop Format (JSON String)
+#### MCP Configuration Example
 
 ```json
 {
   "mcpServers": {
     "notion-vibe-coding": {
       "command": "node", 
-      "args": ["path/to/notion-vibe-coding/dist/server.js"],
+      "args": ["./notion-vibe-coding/dist/server.js"],
       "env": {
         "NOTION_API_KEY": "secret_your_key_here",
         "NOTION_DATABASE_ID": "your_database_id_here",
-        "WORKFLOW_CONFIG": "{\"statusMapping\":{\"notStarted\":\"Not Started\",\"inProgress\":\"In Progress\",\"test\":\"Test\",\"done\":\"Done\"},\"transitions\":{\"notStarted\":[\"inProgress\"],\"inProgress\":[\"test\"],\"test\":[\"done\",\"inProgress\"],\"done\":[\"test\"]},\"taskTypes\":[\"Feature\",\"Bug\",\"Refactoring\"],\"defaultStatus\":\"notStarted\",\"requiresValidation\":[\"done\"],\"workflowFiles\":{\"creation\":\"path/to/workflows/task-creation.md\",\"update\":\"path/to/workflows/task-update.md\",\"execution\":\"path/to/workflows/task-execution.md\"}}"
+        "WORKFLOW_CONFIG": {
+          "statusMapping": {
+            "notStarted": "Not Started",
+            "inProgress": "In Progress",
+            "test": "Test",
+            "done": "Done"
+          },
+          "transitions": {
+            "notStarted": ["inProgress"],
+            "inProgress": ["test"],
+            "test": ["done", "inProgress"],
+            "done": ["test"]
+          },
+          "taskTypes": ["Feature", "Bug", "Refactoring"],
+          "defaultStatus": "notStarted",
+          "requiresValidation": ["done"]
+        }
       }
     }
   }
 }
 ```
 
-#### CLI/Development Format (Object)
-
-For reference, the equivalent object structure:
-
-```json
-{
-  "statusMapping": {
-    "notStarted": "Not Started",
-    "inProgress": "In Progress", 
-    "test": "Test",
-    "done": "Done"
-  },
-  "transitions": {
-    "notStarted": ["inProgress"],
-    "inProgress": ["test"],
-    "test": ["done", "inProgress"],
-    "done": ["test"]
-  },
-  "taskTypes": ["Feature", "Bug", "Refactoring"],
-  "defaultStatus": "notStarted",
-  "requiresValidation": ["done"],
-  "workflowFiles": {
-    "creation": "path/to/workflows/task-creation.md",
-    "update": "path/to/workflows/task-update.md",
-    "execution": "path/to/workflows/task-execution.md"
-  }
-}
-```
+The `WORKFLOW_CONFIG` object structure (see example file for complete configuration).
 
 ### Custom Status Names
 
@@ -316,12 +276,7 @@ For reference, the equivalent object structure:
     },
     "taskTypes": ["Feature", "Bug", "Refactoring"],
     "defaultStatus": "notStarted",
-    "requiresValidation": ["done"],
-    "workflowFiles": {
-      "creation": "./notion-vibe-coding/workflows/task-creation.md",
-      "update": "./notion-vibe-coding/workflows/task-update.md",
-      "execution": "./notion-vibe-coding/workflows/task-execution.md"
-    }
+    "requiresValidation": ["done"]
   }
 }
 ```
@@ -345,12 +300,7 @@ For reference, the equivalent object structure:
       "done": ["test"]
     },
     "defaultStatus": "notStarted",
-    "requiresValidation": ["done"],
-    "workflowFiles": {
-      "creation": "./notion-vibe-coding/workflows/task-creation.md",
-      "update": "./notion-vibe-coding/workflows/task-update.md",
-      "execution": "./notion-vibe-coding/workflows/task-execution.md"
-    }
+    "requiresValidation": ["done"]
   }
 }
 ```
@@ -429,7 +379,6 @@ Before starting the server, verify:
 - `taskTypes` - Array of available task types
 - `defaultStatus` - Initial status for new tasks
 - `requiresValidation` - Statuses requiring human approval
-- `workflowFiles` - Paths to all three workflow guidance files
 
 ## Best Practices
 

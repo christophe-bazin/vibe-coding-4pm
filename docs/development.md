@@ -1,39 +1,20 @@
-# Development Guide
+# Contributing Guide
 
-Guide for contributing to and customizing the provider-aware Notion Vibe Coding MCP server.
+Guide for contributing to and customizing the Notion Vibe Coding MCP server.
 
 ## Project Structure
 
 ```
 notion-vibe-coding/
-├── src/
-│   ├── server.ts                    # Pure MCP router (< 100 lines)
-│   ├── interfaces/
-│   │   └── TaskProvider.ts          # Provider abstraction interface
-│   ├── adapters/
-│   │   └── NotionAPIAdapter.ts      # Notion API implementation
-│   ├── services/core/               # Main business logic
-│   │   ├── CreationService.ts       # Task creation + intelligent templates
-│   │   ├── UpdateService.ts         # Updates + todos with callback system
-│   │   └── ExecutionService.ts      # Orchestration + auto-continuation
-│   ├── services/shared/             # Shared utilities
-│   │   ├── StatusService.ts         # Status management + flexible transitions
-│   │   ├── ValidationService.ts     # Input validation + error handling
-│   │   └── ResponseFormatter.ts     # MCP response formatting
-│   ├── models/
-│   │   ├── Task.ts                  # Task type definitions
-│   │   ├── Todo.ts                  # Todo type definitions
-│   │   └── Workflow.ts              # Execution + configuration types
-│   └── types/
-│       └── Errors.ts                # Custom error types
-├── templates/                       # Template files
+├── src/                             # TypeScript source code
+├── templates/                       # Task and summary templates
 │   ├── task/                        # Task creation templates
 │   │   ├── feature.md               # Feature task template
 │   │   ├── bug.md                   # Bug task template
 │   │   └── refactoring.md           # Refactoring task template
 │   └── dev_summary/                 # Development summary templates
 │       └── dev_summary.md           # Dev summary template
-├── docs/                            # Documentation
+├── docs/                            # User documentation
 ├── mcp.js                           # CLI wrapper for testing
 ├── mcp-config.example.json          # Example MCP configuration
 └── README.md
@@ -90,144 +71,42 @@ node mcp.js get_task '{"taskId":"<task-id>"}'
 1. Make changes to TypeScript source
 2. Run `npm run build` to compile
 3. Test via CLI wrapper
-4. Test via Claude Desktop MCP integration
+4. Test via MCP client integration
 5. Update documentation if needed
 
-## Architecture Overview
+## How It Works
 
-### 🏗️ **Clean Service Architecture**
+The MCP server provides 10 tools that AI assistants can use to manage tasks in your Notion workspace:
 
-#### Core Services (`services/core/`)
+- **Task Management**: Create, read, update tasks with automatic status tracking
+- **Template System**: Intelligent templates adapt to your specific requirements
+- **Todo Processing**: Batch todo updates with progress tracking
+- **Development Summaries**: Automatic summary generation with testing checklists
 
-**`CreationService.ts`**
-- Task creation with intelligent template adaptation
-- Loads specialized templates (feature.md, bug.md, refactoring.md)
-- AI-driven template customization based on user description
-- Template placeholder processing and context adaptation
+### Template Customization
 
-**`UpdateService.ts`**
-- Task and todo updates with validation
-- Automatic status updates on todo completion
-- Direct development summary generation with testing todos
-- Metadata retrieval and progress tracking
+You can customize templates in the `templates/` directory:
 
-**`ExecutionService.ts`**
-- Provider-aware task execution orchestration
-- Batch execution with rich context (leverages AI provider strengths)
-- Automatic status transitions based on workflow configuration
-- Single execution call with full task context instead of sequential todos
+- `templates/task/feature.md` - For new features
+- `templates/task/bug.md` - For bug fixes  
+- `templates/task/refactoring.md` - For code improvements
+- `templates/dev_summary/dev_summary.md` - For development summaries
 
-#### Shared Services (`services/shared/`)
+Templates use markdown format and support intelligent adaptation by AI assistants.
 
-**`StatusService.ts`**
-- Flexible status transitions (all moves allowed)
-- Status recommendations based on progress
-- Workflow configuration interpretation
-- Status key mapping and validation
-
-**`ValidationService.ts`**
-- Input validation for all operations
-- Task type and status constraint checking
-- Error handling with clear messaging
-- Data integrity enforcement
-
-**`ResponseFormatter.ts`**
-- Standardized MCP response formatting
-- Consistent CLI output styling
-- Progress visualization and statistics
-- Error and success message formatting
-
-### 🔄 **Provider-Aware Batch Execution**
-
-1. **execute_task provides** full task context with hierarchical todos
-2. **AI receives** rich context (headings, related todos, task metadata)
-3. **AI implements** entire task using development tools
-4. **AI calls update_todos** to mark all completed todos at once
-5. **System automatically** updates status and generates dev summary
-
-### 🎯 **Template Intelligence**
-
-- **Separate templates**: feature.md, bug.md, refactoring.md
-- **Context adaptation**: Analyzes description for patterns (files, APIs, etc.)
-- **Dynamic todos**: Generates specific todos based on detected requirements
-- **Structure preservation**: Maintains template sections while customizing content
-
-### Provider Pattern
-
-#### `TaskProvider.ts`
-- Abstract interface for task management backends
-- Enables pluggable provider implementations
-- Standardized API surface for different services
-
-#### `NotionAPIAdapter.ts`
-- Direct Notion API integration
-- Dynamic title property resolution
-- Markdown to Notion blocks conversion
-- API error handling and retry logic
-
-### Data Flow
-
-1. **MCP Request** → `server.ts` routes to appropriate service
-2. **Core Service** → Business logic execution (Creation/Update/Execution)
-3. **Shared Services** → Status management, validation, formatting
-4. **Provider** → `NotionAPIAdapter` handles API calls
-5. **Auto-Continuation** → Callback system triggers next execution
-6. **Response** → Formatted output returned to client
-
-## Adding New Features
-
-### Adding a New MCP Tool
-
-1. **Define the tool schema** in `server.ts`:
-```typescript
-{
-  name: 'my_new_tool',
-  description: 'Description of what the tool does',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      param1: { type: 'string', description: 'Parameter description' },
-    },
-    required: ['param1']
-  }
-}
-```
-
-2. **Add request handler**:
-```typescript
-case 'my_new_tool':
-  return await this.handleMyNewTool(args.param1);
-```
-
-3. **Implement handler method**:
-```typescript
-private async handleMyNewTool(param: string): Promise<string> {
-  const result = await this.services.task.myNewFeature(param);
-  return this.services.formatter.formatResult(result);
-}
-```
-
-4. **Add business logic** to appropriate service:
-```typescript
-// In TaskService.ts, TodoService.ts, etc.
-async myNewFeature(param: string): Promise<any> {
-  // Implementation
-}
-```
+## Customization
 
 ### Adding New Task Types
 
-1. **Update workflow configuration**:
+1. **Update your MCP configuration** (`.claude/mcp-config.json`):
 ```json
 {
   "taskTypes": ["Feature", "Bug", "Refactoring", "Documentation"]
 }
 ```
 
-2. **Add template** in `templates/task/[tasktype].md`:
+2. **Create a template** in `templates/task/documentation.md`:
 ```markdown
-#### Documentation
-\`\`\`
 ## Documentation Objective
 [What needs to be documented]
 
@@ -238,141 +117,101 @@ async myNewFeature(param: string): Promise<any> {
 - [ ] Documentation written
 - [ ] Examples provided
 - [ ] Review completed
-\`\`\`
 ```
 
-### Adding New Providers
+### Customizing Templates
 
-1. **Implement TaskProvider interface**:
-```typescript
-export class LinearAdapter implements TaskProvider {
-  getProviderName(): string { return 'Linear'; }
-  getProviderType(): string { return 'linear'; }
-  
-  async createTask(title: string, taskType: string, description: string): Promise<Task> {
-    // Linear API implementation
-  }
-  
-  // Implement other required methods
-}
-```
+Templates support markdown formatting and will be intelligently adapted by AI assistants based on your task description. You can modify existing templates or create new ones following the same structure.
 
-2. **Add provider initialization** in `server.ts`:
-```typescript
-const provider = process.env.PROVIDER_TYPE === 'linear' 
-  ? new LinearAdapter(apiKey, teamId)
-  : new NotionAPIAdapter(apiKey, databaseId);
-```
+### Future Provider Support
 
-## Testing
+The server is designed to support multiple task providers beyond Notion (Linear, GitHub, Jira). Provider support will be added based on community demand.
+
+## Testing Your Setup
 
 ### Manual Testing
 
-1. **Create test workspace** in your provider (Notion database, Linear team, etc.)
-2. **Test each tool** systematically:
+1. **Create a test workspace** in Notion with the required database structure
+2. **Test basic functionality**:
 ```bash
 # Test task creation
 node mcp.js create_task '{"title":"Test Task","taskType":"Feature","description":"Test"}'
 
 # Test task retrieval
-node mcp.js get_task '{"taskId":"test_id"}'
+node mcp.js get_task '{"taskId":"your-task-id"}'
 
 # Test status updates
-node mcp.js update_task '{"taskId":"test_id","status":"In Progress"}'
+node mcp.js update_task '{"taskId":"your-task-id","status":"In Progress"}'
 ```
 
-### Integration Testing
+### Verifying Integration
 
-1. **Test with real workspace**
-2. **Verify status transitions work correctly**
-3. **Test error handling with invalid inputs**
-4. **Check template processing**
+1. Test with your actual Notion workspace
+2. Verify task creation and updates work correctly  
+3. Test template customizations
+4. Check that AI assistants can access all tools through MCP
 
-## Code Standards
+## Development Standards
 
-### TypeScript
-
-- Use strict type checking
-- Define interfaces for all data structures
-- Use async/await for promises
-- Handle errors explicitly
-
-### Error Handling
-
-```typescript
-try {
-  const result = await this.taskProvider.getTask(taskId);
-  return result;
-} catch (error) {
-  if (error.code === 'object_not_found') {
-    throw new Error(`Task not found: ${taskId}`);
-  }
-  throw new Error(`Failed to retrieve task: ${error.message}`);
-}
-```
-
-### Service Design
-
-- Keep services focused on single responsibilities
-- Use dependency injection for testability
-- Maintain clear interfaces between layers
-- Handle provider-specific logic in adapters
+- Follow TypeScript best practices
+- Test changes with real Notion workspaces
+- Update documentation when adding features
+- Maintain backward compatibility with existing configurations
 
 ## Contributing
+
+We welcome contributions! Here's how to get started:
 
 ### Pull Request Process
 
 1. **Fork the repository**
 2. **Create feature branch**: `git checkout -b feature/my-new-feature`
-3. **Make changes** following code standards
-4. **Test thoroughly** with your setup
-5. **Update documentation** if needed
-6. **Submit pull request** with clear description
+3. **Make your changes** and test with your Notion workspace
+4. **Update documentation** if you add new features
+5. **Submit pull request** with clear description of changes
+
+### What We're Looking For
+
+- Bug fixes and improvements
+- New task templates for different use cases
+- Better error handling and user experience
+- Documentation improvements
+- Support for additional task providers (Linear, GitHub, Jira)
 
 ### Commit Messages
 
-Follow conventional commit format:
-- `feat: add new MCP tool for task archiving`
-- `fix: resolve todo matching case sensitivity issue`
-- `docs: update configuration reference`
-- `refactor: simplify status transition logic`
+Use clear, descriptive commit messages:
 
-### Code Review Guidelines
+- `feat: add documentation task template`
+- `fix: resolve todo matching issue`
+- `docs: improve setup instructions`
 
-- Review for TypeScript type safety
-- Check error handling completeness  
-- Verify provider API usage is correct
-- Ensure backward compatibility
-- Test with different configurations
+## Troubleshooting
 
-## Troubleshooting Development Issues
+### Common Issues
 
-### Common Problems
+**Setup Problems:**
 
-**TypeScript compilation errors:**
-- Check import paths use `.js` extension
-- Verify all types are properly defined
-- Ensure async functions return Promise types
+- Verify your Notion integration has access to your database
+- Check that your API key and database ID are correct in the config
+- Ensure your database has the required Status and Type properties
 
-**MCP registration issues:**
-- Verify tool schemas are valid JSON Schema
-- Check parameter names match between schema and handler
-- Ensure all required parameters are marked in schema
+**MCP Integration Issues:**
 
-**Provider API errors:**
-- Verify integration permissions
-- Check provider schema matches expectations
-- Test API calls with manual requests
+- Restart your MCP client after updating configuration
+- Check that your `.claude/mcp-config.json` file has valid JSON syntax
+- Verify the server builds successfully with `npm run build`
 
-**Configuration problems:**
-- Validate JSON syntax in config files
-- Check file paths are relative to correct directory
-- Ensure all required configuration fields are present
+**Template Issues:**
 
-### Debugging Tips
+- Templates should use standard markdown formatting
+- Check that your template files are in the correct directories
+- Test template changes by creating new tasks
 
-1. **Add logging** to trace execution flow
-2. **Use TypeScript strict mode** to catch type errors early  
-3. **Test configuration** with minimal setup first
-4. **Check provider integration** permissions in workspace
-5. **Verify file paths** are correct for workflow files
+### Getting Help
+
+For additional support:
+
+- Open an issue on GitHub with detailed error information
+- Include your configuration (without API keys) and steps to reproduce
+- Check existing issues for similar problems and solutions

@@ -1,6 +1,6 @@
 # Notion Workflow MCP Server - Claude Instructions
 
-MCP server providing AI-guided development workflows for Notion tasks with configuration-driven approach. Available via MCP protocol for Claude Desktop integration.
+MCP server providing AI-guided development workflows for task management with configuration-driven approach. Available via MCP protocol.
 
 ## Project Overview
 
@@ -35,11 +35,10 @@ npm run build
 
 ### Usage Options
 
-**Via Claude Desktop (MCP Protocol):**
-- The server runs as an MCP server via Claude's configuration
-- All 9 MCP tools available through natural language interface
-- Uses `.claude/mcp-config.json` automatically
+**Via MCP Protocol:**
+- The server runs as an MCP server 
 - All 10 MCP tools available through natural language interface
+- Uses `.claude/mcp-config.json` configuration
 
 **Via Claude Code CLI (Development/Testing):**
 - Use `node mcp.js <tool> '<json_args>'` to call MCP tools directly
@@ -48,72 +47,89 @@ npm run build
 
 ## Codebase Structure
 
-```
-src/
-├── server.ts                    # Pure MCP router (< 100 lines)
-├── adapters/
-│   └── NotionAPIAdapter.ts      # Notion API integration
-├── interfaces/
-│   └── TaskProvider.ts          # Provider abstraction
-├── models/
-│   ├── Task.ts                  # Task type definitions
-│   ├── Todo.ts                  # Todo type definitions
-│   └── Workflow.ts              # Execution + configuration types
-├── services/core/               # Core business services
-│   ├── CreationService.ts       # Task creation + templates
-│   ├── UpdateService.ts         # Updates + auto-callback system
-│   └── ExecutionService.ts      # Orchestration + continuation
-├── services/shared/             # Shared utilities
-│   ├── StatusService.ts         # Status management
-│   ├── ValidationService.ts     # Input validation
-│   └── ResponseFormatter.ts     # MCP response formatting
-└── types/
-    └── Errors.ts                # Custom error types
-```
+Service-oriented architecture with clean separation:
+- **Core services**: CreationService, UpdateService, ExecutionService  
+- **Shared utilities**: StatusService, ValidationService, ResponseFormatter
+- **Provider pattern**: NotionAPIAdapter with TaskProvider interface
+- **Template system**: Intelligent adaptation in `templates/` directory
+
+**→ Complete architecture details in [.ai/project/mcp-architecture.md](.ai/project/mcp-architecture.md)**
 
 ## Configuration System
 
-All configuration is centralized in your project's `.claude/mcp-config.json`:
-- **Board configuration**: statusMapping (camelCase), transitions, taskTypes
-- **Workflow guidance**: AI guidance in separate .md files with template processing
-- **Notion integration**: API key and database ID via environment variables
-- **Workflow files**: Referenced by path, kept in MCP server directory
-- **camelCase convention**: notStarted, inProgress, test, done
+Configuration via `.claude/mcp-config.json` with:
+- statusMapping (camelCase), transitions, taskTypes
+- Environment variables: NOTION_API_KEY, NOTION_DATABASE_ID, WORKFLOW_CONFIG
+
+**→ Complete configuration reference in [docs/configuration.md](docs/configuration.md)**
 
 ## MCP Tools Available
 
-### Task Management
-- `create_task`: Create tasks with workflow adaptation (requires adaptedWorkflow parameter)
-- `get_task`: Get task information with todo statistics and flexible status info
-- `update_task`: Update task title, type and/or status with flexible validation
-- `execute_task`: Execute with auto-continuation workflow (guides AI step-by-step)
+**10 tools for task management:**
+- Task management: `create_task`, `get_task`, `update_task`, `execute_task`
+- Templates: `get_task_template` (Feature/Bug/Refactoring templates)
+- Todos: `analyze_todos`, `update_todos` 
+- Dev summaries: `generate_dev_summary`, `get_dev_summary_template`, `append_dev_summary`
 
-### Template & Workflow
-- `get_task_template`: Get raw templates for AI adaptation (Feature/Bug/Refactoring)
+**→ Complete tool reference in [docs/advanced-usage.md](docs/advanced-usage.md)**
 
-### Todo Management  
-- `analyze_todos`: Extract and analyze todos with completion statistics
-- `update_todos`: Batch update with automatic execution continuation
-- `generate_dev_summary`: Generate development summary instructions
-- `get_dev_summary_template`: Get raw template for AI adaptation
-- `append_dev_summary`: Append AI-adapted dev summary to Notion task
+## Key Implementation Notes
 
-## Development Workflow
+- **Template adaptation**: AI calls `get_task_template` then adapts contextually
+- **create_task**: Requires `adaptedWorkflow` parameter with contextualized template  
+- **Auto-continuation**: UpdateService triggers ExecutionService after todo updates
+- **Environment**: SCREAMING_CASE variables, camelCase config
+- **Status transitions**: Flexible by default, configurable constraints
+- **Never mention AI assistance in commits**
 
-1. Always work on feature branches
-2. Update relevant documentation when making changes
-3. Test configuration changes against real Notion boards
-4. Ensure AI restrictions remain in place
-5. **Never mention AI assistance in commits**
+**→ Complete development workflow in [.ai/project/development-workflow.md](.ai/project/development-workflow.md)**
 
-## Integration Strategy
+## Documentation Structure
 
-1. Clone and build: `git clone && npm install && npm run build`
-2. Configure: Copy `mcp-config.example.json` to `.claude/mcp-config.json`
-3. Setup Notion: Add API key and database ID to config
-4. Customize: Adjust statusMapping, transitions, taskTypes as needed
-5. Templates: Feature/Bug/Refactoring templates in `./templates/task/`
-6. Auto-execution: System handles todo progression automatically
+**IMPORTANT: Two distinct documentation systems with different roles:**
+
+### User Documentation (README.md + docs/)
+- **Purpose**: For external users who want to use/install the MCP server  
+- **Audience**: Developers installing and configuring the system
+- **Content**: Installation, configuration, usage examples, API reference
+- **Files**: README.md, docs/configuration.md, docs/development.md, docs/advanced-usage.md
+
+### Development Guidelines (CLAUDE.md + .ai/)
+- **Purpose**: For AI assistant development and project contributions
+- **Audience**: Claude and contributors working on the codebase
+- **Content**: Architecture, coding standards, development workflow, commit conventions
+- **Files**: CLAUDE.md, .ai/development/, .ai/project/
+
+**When updating documentation:**
+- User-facing changes → Update README.md and docs/ 
+- Development/architecture changes → Update CLAUDE.md and .ai/
+- Never mix user documentation with development guidelines
+
+**Detailed technical information belongs in .ai/project/:**
+- Complete architecture details → .ai/project/mcp-architecture.md
+- Development workflow specifics → .ai/project/development-workflow.md  
+- Notion integration technical details → .ai/project/notion-integration.md
+- Keep user docs/ simple and focused on usage, not implementation
+
+## Documentation Update Strategy
+
+**For each type of change, update the appropriate documentation layer:**
+
+### User-Facing Changes
+- New MCP tools → README.md (tool list) + docs/advanced-usage.md (examples)
+- Configuration options → docs/configuration.md (user reference)
+- Installation steps → README.md (quick start) + docs/development.md (contribution guide)
+
+### Technical/Architecture Changes  
+- Service architecture → .ai/project/mcp-architecture.md (complete technical details)
+- Development patterns → .ai/development/coding-standards.md
+- Integration details → .ai/project/notion-integration.md
+- Internal workflows → .ai/project/development-workflow.md
+
+### Avoid Duplication
+- Technical implementation details belong ONLY in .ai/project/
+- User documentation should reference .ai/ for technical details if needed
+- Keep README.md and docs/ focused on practical usage, not internal architecture
 
 ## Security and Best Practices
 
