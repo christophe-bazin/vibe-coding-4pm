@@ -19,6 +19,7 @@ This is a Model Context Protocol (MCP) server that enables AI assistants to mana
 - **Service-oriented**: Clean separation between core services and shared utilities
 - **Workflow adaptation**: AI adapts templates contextually using `adaptedWorkflow` parameter
 - **Auto-continuation**: System automatically proceeds to next todos after completion
+- **Provider-aware**: Optimized for different AI providers (Claude, Cursor, Copilot) by leveraging their individual strengths
 - **Provider pattern**: Ready for Linear, GitHub, Jira integration via TaskProvider interface
 - **camelCase convention**: Consistent naming for internal configuration
 
@@ -38,6 +39,7 @@ npm run build
 - The server runs as an MCP server via Claude's configuration
 - All 9 MCP tools available through natural language interface
 - Uses `.claude/mcp-config.json` automatically
+- All 10 MCP tools available through natural language interface
 
 **Via Claude Code CLI (Development/Testing):**
 - Use `node mcp.js <tool> '<json_args>'` to call MCP tools directly
@@ -92,7 +94,9 @@ All configuration is centralized in your project's `.claude/mcp-config.json`:
 ### Todo Management  
 - `analyze_todos`: Extract and analyze todos with completion statistics
 - `update_todos`: Batch update with automatic execution continuation
-- `generate_dev_summary`: Generate development summary with git changes + testing todos
+- `generate_dev_summary`: Generate development summary with testing todos based on task completion
+- `get_dev_summary_template`: Get template for writing intelligent dev summary
+- `append_dev_summary`: Append completed dev summary to Notion task
 
 ## Development Workflow
 
@@ -110,15 +114,6 @@ All configuration is centralized in your project's `.claude/mcp-config.json`:
 4. Customize: Adjust statusMapping, transitions, taskTypes as needed
 5. Workflows: Feature/Bug/Refactoring templates in `./workflows/`
 6. Auto-execution: System handles todo progression automatically
-
-## Key Implementation Notes
-
-- Workflow adaptation: AI must call `get_task_template` then adapt template contextually
-- `create_task` requires `adaptedWorkflow` parameter with contextualized template
-- Status transitions enforced by configuration, flexible by default
-- Auto-continuation: UpdateService triggers ExecutionService after todo updates
-- Template system supports clean separation between raw templates and adapted workflows
-- Environment variables use SCREAMING_CASE, config uses camelCase
 
 ## Security and Best Practices
 

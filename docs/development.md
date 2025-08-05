@@ -1,6 +1,6 @@
 # Development Guide
 
-Guide for contributing to and customizing the Notion Vibe Coding MCP server.
+Guide for contributing to and customizing the provider-aware Notion Vibe Coding MCP server.
 
 ## Project Structure
 
@@ -104,15 +104,15 @@ node mcp.js get_task '{"taskId":"<task-id>"}'
 
 **`UpdateService.ts`**
 - Task and todo updates with validation
-- Callback system for auto-execution triggering
-- Git-based development summary generation
+- Automatic status updates on todo completion
+- Direct development summary generation with testing todos
 - Metadata retrieval and progress tracking
 
 **`ExecutionService.ts`**
-- Task execution orchestration with auto-continuation
-- Todo-by-todo AI guidance system
-- Auto-status updates based on progress
-- Integration with UpdateService callback system
+- Provider-aware task execution orchestration
+- Batch execution with rich context (leverages AI provider strengths)
+- Automatic status transitions based on workflow configuration
+- Single execution call with full task context instead of sequential todos
 
 #### Shared Services (`services/shared/`)
 
@@ -134,13 +134,13 @@ node mcp.js get_task '{"taskId":"<task-id>"}'
 - Progress visualization and statistics
 - Error and success message formatting
 
-### 🔄 **Auto-Continuation System**
+### 🔄 **Provider-Aware Batch Execution**
 
-1. **AI implements todo** using development tools
-2. **AI calls `update_todos`** to mark completion
-3. **UpdateService triggers callback** to ExecutionService
-4. **ExecutionService auto-launches** next execution round
-5. **System guides AI** to next uncompleted todo
+1. **execute_task provides** full task context with hierarchical todos
+2. **AI receives** rich context (headings, related todos, task metadata)
+3. **AI implements** entire task using development tools
+4. **AI calls update_todos** to mark all completed todos at once
+5. **System automatically** updates status and generates dev summary
 
 ### 🎯 **Template Intelligence**
 

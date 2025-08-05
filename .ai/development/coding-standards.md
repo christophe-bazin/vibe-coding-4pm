@@ -125,21 +125,25 @@ console.log('API Key:', apiKey); // Never log secrets
 ### Directory Structure
 ```
 src/
-├── server.ts                 # MCP server entry point
+├── server.ts                    # Pure MCP router (< 100 lines)
 ├── adapters/
-│   └── NotionAPIAdapter.ts   # Notion API integration
+│   └── NotionAPIAdapter.ts      # Notion API integration
 ├── interfaces/
-│   └── TaskProvider.ts       # Provider interface
+│   └── TaskProvider.ts          # Provider abstraction
 ├── models/
-│   ├── Task.ts              # Task type definitions
-│   ├── Todo.ts              # Todo type definitions
-│   └── Workflow.ts          # Workflow type definitions
-└── services/
-    ├── ExecutionService.ts   # Task execution logic
-    ├── ResponseFormatter.ts  # Response formatting
-    ├── TaskService.ts        # Task management
-    ├── TodoService.ts        # Todo management
-    └── WorkflowService.ts    # Workflow management
+│   ├── Task.ts                  # Task type definitions
+│   ├── Todo.ts                  # Todo type definitions
+│   └── Workflow.ts              # Execution + configuration types
+├── services/core/               # Core business services
+│   ├── CreationService.ts       # Task creation + templates
+│   ├── UpdateService.ts         # Updates + auto-callback system
+│   └── ExecutionService.ts      # Orchestration + continuation
+├── services/shared/             # Shared utilities
+│   ├── StatusService.ts         # Status management
+│   ├── ValidationService.ts     # Input validation
+│   └── ResponseFormatter.ts     # MCP response formatting
+└── types/
+    └── Errors.ts                # Custom error types
 ```
 
 ### File Naming

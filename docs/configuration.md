@@ -1,6 +1,6 @@
 # Configuration Reference
 
-Complete reference for configuring the Notion Vibe Coding MCP server.
+Complete reference for configuring the provider-aware Notion Vibe Coding MCP server.
 
 ## Quick Setup
 

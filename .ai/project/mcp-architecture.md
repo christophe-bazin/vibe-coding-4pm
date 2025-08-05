@@ -33,15 +33,16 @@ The Notion Workflow MCP Server is built as a lightweight, configuration-driven s
 - Routes requests to appropriate handlers
 
 **Key Tools**:
-- `create_task`: Create tasks with intelligent template adaptation
-- `get_task`: Get task information with todo statistics
+- `create_task`: Create tasks with workflow adaptation (requires adaptedWorkflow parameter)
+- `get_task`: Get task information with todo statistics and flexible status info
 - `update_task`: Update task title, type and/or status with flexible validation
-- `execute_task`: Execute task with auto-continuation workflow
-- `get_task_template`: Get specialized templates for each task type
-- `get_workflow_guidance`: Return creation workflow guidance
+- `execute_task`: Execute with provider-aware batch workflow
+- `get_task_template`: Get raw templates for AI adaptation (Feature/Bug/Refactoring)
 - `analyze_todos`: Extract and analyze todos with completion statistics
-- `update_todos`: Batch update todos (triggers auto-continuation)
-- `generate_dev_summary`: Generate development summary with git changes
+- `update_todos`: Batch update with automatic execution continuation
+- `generate_dev_summary`: Generate development summary with testing todos
+- `get_dev_summary_template`: Get template for writing intelligent dev summary
+- `append_dev_summary`: Append completed dev summary to Notion task
 
 ### Clean Service Architecture
 
@@ -64,12 +65,12 @@ The Notion Workflow MCP Server is built as a lightweight, configuration-driven s
 - Metadata retrieval and progress tracking
 
 **ExecutionService** (`src/services/core/ExecutionService.ts`)
-**Responsibility**: Task execution orchestration with auto-continuation
+**Responsibility**: Provider-aware task execution orchestration
 
-- Todo-by-todo AI guidance system with auto-continuation
-- Auto-status updates based on progress
-- Integration with UpdateService callback system
-- Development summary generation after execution
+- Provider-aware batch execution (leverages AI provider strengths)
+- Rich context formatting with headings and task hierarchy
+- Automatic status transitions based on workflow configuration
+- Single execution call with full context instead of sequential todos
 
 #### Shared Services (`src/services/shared/`)
 
@@ -125,16 +126,16 @@ The Notion Workflow MCP Server is built as a lightweight, configuration-driven s
 
 ## Data Flow
 
-### 1. Auto-Continuation Workflow
+### 1. Provider-Aware Batch Execution
 ```
-AI implements todo → update_todos → UpdateService callback → ExecutionService → next todo
+execute_task → Rich Context → AI implements all → update_todos → Status Update
 ```
 
-1. AI implements a todo using development tools
-2. AI calls update_todos to mark completion
-3. UpdateService triggers callback to ExecutionService
-4. ExecutionService auto-launches next execution round
-5. System guides AI to next uncompleted todo
+1. execute_task provides full task context with hierarchical todos
+2. AI receives rich context (headings, related todos, task metadata)
+3. AI implements entire task using development tools
+4. AI calls update_todos to mark all completed todos at once
+5. System automatically updates task status and generates dev summary
 
 ### 2. Template Intelligence
 ```
