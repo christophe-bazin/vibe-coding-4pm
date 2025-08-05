@@ -19,9 +19,11 @@ import { WorkflowConfig, ExecutionMode } from './models/Workflow.js';
 class MCPServer {
   private server: Server;
   private services: any;
+  private workflowConfig: WorkflowConfig;
 
   constructor() {
     this.server = new Server({ name: 'notion-vibe-coding', version: '2.0.0' }, { capabilities: { tools: {} } });
+    this.workflowConfig = JSON.parse(process.env.WORKFLOW_CONFIG!);
     this.services = this.initServices();
     this.setupRoutes();
   }
@@ -29,12 +31,11 @@ class MCPServer {
   private initServices() {
     const apiKey = process.env.NOTION_API_KEY!;
     const databaseId = process.env.NOTION_DATABASE_ID!;
-    const workflowConfig: WorkflowConfig = JSON.parse(process.env.WORKFLOW_CONFIG!);
 
     const taskProvider = new NotionAPIAdapter(apiKey, databaseId);
     
-    const status = new StatusService(workflowConfig);
-    const validation = new ValidationService(workflowConfig, status);
+    const status = new StatusService(this.workflowConfig);
+    const validation = new ValidationService(this.workflowConfig, status);
     const creation = new CreationService(taskProvider, validation);
     const update = new UpdateService(taskProvider, status, validation);
     const execution = new ExecutionService(update, status);
@@ -47,15 +48,15 @@ class MCPServer {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
         { name: 'execute_task', description: 'Execute task', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
-        { name: 'create_task', description: 'Create new task with workflow adaptation', inputSchema: { type: 'object', properties: { title: { type: 'string' }, taskType: { type: 'string' }, description: { type: 'string' }, adaptedWorkflow: { type: 'string' } }, required: ['title', 'taskType', 'description', 'adaptedWorkflow'] } },
+        { name: 'create_task', description: 'Create new task using appropriate workflow template', inputSchema: { type: 'object', properties: { title: { type: 'string' }, taskType: { type: 'string' }, description: { type: 'string' }, adaptedWorkflow: { type: 'string', description: 'Optional: custom workflow template' } }, required: ['title', 'taskType', 'description'] } },
         { name: 'get_task', description: 'Get task info', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
         { name: 'update_task', description: 'Update task title, type and/or status', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, title: { type: 'string' }, taskType: { type: 'string' }, status: { type: 'string' } }, required: ['taskId'] } },
         { name: 'get_task_template', description: 'Get task template for adaptation', inputSchema: { type: 'object', properties: { taskType: { type: 'string' } }, required: ['taskType'] } },
         { name: 'analyze_todos', description: 'Analyze todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, includeHierarchy: { type: 'boolean' } }, required: ['taskId'] } },
-        { name: 'update_todos', description: 'Batch update todos. Format: {"taskId":"xxx","updates":[{"todoText":"todo text","completed":true}]}', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, updates: { type: 'array' } }, required: ['taskId', 'updates'] } },
+        { name: 'update_todos', description: 'Batch update todos.', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, updates: { type: 'array' } }, required: ['taskId', 'updates'] } },
         { name: 'generate_summary', description: 'Generate summary', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
         { name: 'get_summary_template', description: 'Get summary template', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
-        { name: 'append_summary', description: 'Append AI-adapted summary to Notion task', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, adaptedSummary: { type: 'string' } }, required: ['taskId', 'adaptedSummary'] } },
+        { name: 'append_summary', description: 'Append AI-adapted summary to Notion task.', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, adaptedSummary: { type: 'string' } }, required: ['taskId', 'adaptedSummary'] } },
       ]
     }));
 
@@ -80,8 +81,14 @@ class MCPServer {
         return formatter.formatExecutionResult(result);
 
       case 'create_task':
-        const newTask = await creation.createTask(args.title, args.taskType, args.adaptedWorkflow);
-        return formatter.formatTaskCreated(newTask);
+        const taskResult = await creation.createTask(args.title, args.taskType, args.description, args.adaptedWorkflow);
+        if (typeof taskResult === 'string') {
+          // Return template adaptation instructions
+          return taskResult;
+        } else {
+          // Format the created task
+          return formatter.formatTaskCreated(taskResult);
+        }
 
       case 'get_task':
         const metadata = await update.getTaskMetadata(args.taskId);
@@ -110,6 +117,9 @@ class MCPServer {
         return await update.getSummaryTemplate(args.taskId);
 
       case 'append_summary':
+        if (!args.adaptedSummary) {
+          throw new Error('Missing required parameter: adaptedSummary. Use "adaptedSummary", not "summary".');
+        }
         await update.appendSummary(args.taskId, args.adaptedSummary);
         return 'Summary appended to Notion task successfully.';
 

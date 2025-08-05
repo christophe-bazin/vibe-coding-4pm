@@ -98,6 +98,34 @@ The Notion Workflow MCP Server is built as a lightweight, configuration-driven s
 - Error and success message formatting
 - CLI output styling
 
+### MCP Tool Parameter Formats
+
+**Critical Format Requirements** for proper tool usage:
+
+**`append_summary`**:
+```json
+{
+  "taskId": "task-uuid-here", 
+  "adaptedSummary": "your adapted summary text"
+}
+```
+⚠️ **IMPORTANT**: Use `adaptedSummary` parameter, NOT `summary`
+⚠️ **Testing checkboxes**: Use unchecked format `- [ ] item` in Testing Checklist
+
+**`update_todos`**:
+```json
+{
+  "taskId": "task-uuid-here",
+  "updates": [
+    {
+      "todoText": "exact todo text from Notion",
+      "completed": true
+    }
+  ]
+}
+```
+⚠️ **IMPORTANT**: Use `todoText` parameter, NOT `content`
+
 ### Provider Pattern
 
 **TaskProvider Interface** (`src/interfaces/TaskProvider.ts`)

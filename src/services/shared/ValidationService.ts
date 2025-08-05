@@ -65,17 +65,44 @@ export class ValidationService {
 
   validateTodoUpdateData(updates: Array<{ todoText: string; completed: boolean }>): void {
     if (!Array.isArray(updates)) {
-      throw new Error('Updates must be an array');
+      throw new Error('Updates must be an array of todo updates. Expected format: [{"todoText": "...", "completed": true}]');
     }
 
-    for (const update of updates) {
+    if (updates.length === 0) {
+      throw new Error('Updates array cannot be empty');
+    }
+
+    for (const [index, update] of updates.entries()) {
+      if (typeof update !== 'object' || update === null) {
+        throw new Error(`Update at index ${index} must be an object with todoText and completed properties`);
+      }
+
       if (!update.todoText || typeof update.todoText !== 'string') {
-        throw new Error('Each update must have a todoText string');
+        throw new Error(`Update at index ${index} must have a todoText string. Got: ${JSON.stringify(update)}`);
       }
 
       if (typeof update.completed !== 'boolean') {
-        throw new Error('Each update must have a completed boolean');
+        throw new Error(`Update at index ${index} must have a completed boolean. Got: ${JSON.stringify(update)}`);
       }
+
+      // Check for common wrong property names
+      if ('content' in update) {
+        throw new Error(`Update at index ${index} uses 'content' but should use 'todoText'. Correct format: {"todoText": "...", "completed": true}`);
+      }
+    }
+  }
+
+  validateSummaryData(adaptedSummary: string): void {
+    if (!adaptedSummary || typeof adaptedSummary !== 'string') {
+      throw new Error('adaptedSummary parameter is required and must be a non-empty string. Did you use "summary" instead of "adaptedSummary"?');
+    }
+
+    if (adaptedSummary.trim().length === 0) {
+      throw new Error('adaptedSummary cannot be empty or just whitespace');
+    }
+
+    if (adaptedSummary === 'undefined' || adaptedSummary === 'null') {
+      throw new Error('adaptedSummary appears to be undefined/null as string. Check your parameter passing.');
     }
   }
 }

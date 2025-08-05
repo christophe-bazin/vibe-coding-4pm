@@ -81,7 +81,7 @@ export class ExecutionService {
       }
 
       // Add development summary
-      const devSummary = await this.updateService.generateDevSummary(taskId);
+      const devSummary = await this.updateService.generateSummary(taskId);
       progression.push({
         type: 'status_update',
         message: `\n${devSummary}`,
@@ -192,6 +192,8 @@ export class ExecutionService {
     instructions += `2. Test your implementation\n`;
     instructions += `3. VALIDATE each requirement is truly satisfied (read files, run tests, verify outputs)\n`;
     instructions += `4. Only use update_todos to mark todos as completed AFTER you have verified they are done\n`;
+    instructions += `   Format: {"taskId":"your_task_id","updates":[{"todoText":"exact todo text","completed":true}]}\n`;
+    instructions += `   ⚠️  Use "todoText" not "content"\n`;
     instructions += `5. The system will generate a dev summary for final validation\n\n`;
     
     return instructions;

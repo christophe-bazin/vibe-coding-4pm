@@ -111,7 +111,17 @@ export class UpdateService {
     // The AI will call get_summary_template, adapt it, then we append
     const taskMetadata = await this.getTaskMetadata(taskId);
     
-    return `Task "${taskMetadata.title}" completed! Please generate a summary by:\n\n1. Call get_summary_template to get the raw template\n2. Adapt the template with specific details of what you accomplished\n3. Call this tool again with your adapted summary to append it to Notion`;
+    return `Task "${taskMetadata.title}" completed! Please generate a summary by:
+
+1. Call get_summary_template to get the raw template
+2. Adapt the template with specific details of what you accomplished  
+3. Call append_summary with these parameters:
+   - taskId: "${taskId}"
+   - adaptedSummary: "your adapted text here"
+   
+⚠️  IMPORTANT: Use "adaptedSummary" parameter, NOT "summary"
+⚠️  DO NOT check testing checkboxes - use unchecked format: - [ ] item
+   Format: {"taskId":"${taskId}","adaptedSummary":"your adapted summary text"}`;
   }
   
   async getSummaryTemplate(taskId: string): Promise<string> {
@@ -136,6 +146,9 @@ export class UpdateService {
   }
   
   async appendSummary(taskId: string, adaptedSummary: string): Promise<void> {
+    // Validate the summary data with detailed error messages
+    this.validationService.validateSummaryData(adaptedSummary);
+    
     // Append the AI-adapted summary to Notion
     const formattedSummary = `\n\n---\n\n${adaptedSummary}`;
     await this.appendToNotionTask(taskId, formattedSummary);

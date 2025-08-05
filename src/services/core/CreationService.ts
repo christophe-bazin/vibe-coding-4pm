@@ -14,10 +14,40 @@ export class CreationService {
     private validationService: ValidationService
   ) {}
 
-  async createTask(title: string, taskType: string, adaptedWorkflow: string): Promise<NotionTask> {
-    this.validationService.validateTaskCreationData(title, taskType, adaptedWorkflow);
+  async createTask(title: string, taskType: string, description: string, adaptedWorkflow?: string): Promise<NotionTask | string> {
+    this.validationService.validateTaskType(taskType);
     
-    const structuredDescription = await this.applyTaskTemplate(taskType, adaptedWorkflow, title);
+    // Check if we have a valid adaptedWorkflow
+    let workflow = adaptedWorkflow;
+    if (adaptedWorkflow) {
+      const hasTemplateStructure = adaptedWorkflow.includes('##') || adaptedWorkflow.includes('# ');
+      const hasCheckboxes = adaptedWorkflow.includes('- [ ]');
+      const isLongEnough = adaptedWorkflow.length > 50;
+      
+      // If adaptedWorkflow is provided but invalid, treat as if no adaptedWorkflow
+      if (!hasTemplateStructure || !hasCheckboxes || !isLongEnough) {
+        console.log('Invalid adaptedWorkflow detected:', {
+          hasTemplateStructure,
+          hasCheckboxes,
+          isLongEnough,
+          length: adaptedWorkflow.length,
+          preview: adaptedWorkflow.substring(0, 100)
+        });
+        workflow = undefined;
+      }
+    }
+    
+    if (!workflow) {
+      // Auto-fetch template and guide AI to adapt it
+      const baseTemplate = await this.getTaskTemplate(taskType);
+      return `Please adapt the template below to your specific context ("${title}") and call create_task again with adaptedWorkflow parameter:
+
+${baseTemplate}
+
+Adapt this template by keeping the ## headers structure but customizing the implementation steps and acceptance criteria to match the specific task: "${description}". Keep the checkbox format (- [ ]) but make the todos relevant to this specific task.`;
+    }
+    
+    const structuredDescription = await this.applyTaskTemplate(taskType, workflow, title);
     return await this.taskProvider.createTask(title, taskType, structuredDescription);
   }
 
@@ -41,7 +71,7 @@ export class CreationService {
     const filePath = resolve(templateFile);
     
     if (!existsSync(filePath)) {
-      throw new Error(`Template file not found: ${templateFile}. Expected templates: feature.md, bug.md, refactoring.md in templates/task/ directory`);
+      throw new Error(`Template file not found: ${templateFile} in templates/task/ directory`);
     }
 
     try {
