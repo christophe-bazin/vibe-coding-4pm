@@ -3,17 +3,17 @@
 ## Description
 [Description of the feature]
 
-## Acceptance Criteria
-- [ ] Criterion 1
-- [ ] Criterion 2
-- [ ] Unit tests added
-- [ ] Documentation updated
-
 ## Implementation Steps
 - [ ] Step 1
 - [ ] Step 2
 - [ ] Tests
 - [ ] Review
+
+## Acceptance Criteria
+- [ ] Criterion 1
+- [ ] Criterion 2
+- [ ] Unit tests added
+- [ ] Documentation updated
 
 ## Technical Notes
 [Technical information, dependencies, etc.]

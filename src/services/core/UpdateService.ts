@@ -8,8 +8,10 @@ import { TodoAnalysisResult, TodoUpdateRequest } from '../../models/Todo.js';
 import { StatusService } from '../shared/StatusService.js';
 import { ValidationService } from '../shared/ValidationService.js';
 
+import { ExecutionAction } from '../../models/Workflow.js';
+
 export class UpdateService {
-  private onTodosUpdatedCallback?: (taskId: string) => Promise<void>;
+  private executionService?: any; // Injected later to avoid circular dependency
 
   constructor(
     private taskProvider: TaskProvider,
@@ -17,8 +19,8 @@ export class UpdateService {
     private validationService: ValidationService
   ) {}
 
-  setOnTodosUpdatedCallback(callback: (taskId: string) => Promise<void>): void {
-    this.onTodosUpdatedCallback = callback;
+  setExecutionService(executionService: any): void {
+    this.executionService = executionService;
   }
 
   async getTask(taskId: string): Promise<NotionTask> {
@@ -61,21 +63,41 @@ export class UpdateService {
     return await this.taskProvider.analyzeTodos(taskId, includeHierarchy);
   }
 
-  async updateTodos(taskId: string, updates: TodoUpdateRequest[]): Promise<{ updated: number; failed: number }> {
+  async updateTodos(taskId: string, updates: TodoUpdateRequest[]): Promise<{ updated: number; failed: number; nextAction?: ExecutionAction; devSummary?: string }> {
     this.validationService.validateTodoUpdateData(updates);
     const result = await this.taskProvider.updateTodos(taskId, updates);
     
-    // Trigger callback if todos were successfully updated
-    if (result.updated > 0 && this.onTodosUpdatedCallback) {
+    // Get next action if todos were successfully updated
+    let nextAction: ExecutionAction | undefined;
+    let devSummary: string | undefined;
+    
+    if (result.updated > 0 && this.executionService) {
       try {
-        await this.onTodosUpdatedCallback(taskId);
+        nextAction = await this.executionService.handleTodosUpdated(taskId);
+        
+        // If task is completed, update status to Test and generate dev summary directly
+        if (nextAction?.type === 'completed') {
+          // Move to Test status first
+          const todoAnalysis = await this.analyzeTodos(taskId);
+          const taskMetadata = await this.getTaskMetadata(taskId);
+          const testStatus = this.statusService.getNextRecommendedStatus(
+            taskMetadata.status, 
+            todoAnalysis.stats.percentage
+          );
+          
+          if (testStatus && testStatus !== taskMetadata.status) {
+            await this.updateTaskStatus(taskId, testStatus);
+          }
+          
+          // Generate intelligent dev summary directly (no 3-step workflow)
+          devSummary = await this.generateDevSummaryDirect(taskId, taskMetadata.title);
+        }
       } catch (error) {
-        // Callback error shouldn't fail the todo update
-        console.warn('Todo update callback failed:', error);
+        console.warn('Next action analysis failed:', error);
       }
     }
     
-    return result;
+    return { ...result, nextAction, devSummary };
   }
 
   async updateSingleTodo(taskId: string, todoText: string, completed: boolean): Promise<boolean> {
@@ -83,50 +105,35 @@ export class UpdateService {
   }
 
   async generateDevSummary(taskId: string): Promise<string> {
-    try {
-      const { exec } = await import('child_process');
-      const { promisify } = await import('util');
-      const execAsync = promisify(exec);
-
-      const { stdout: diff } = await execAsync('git diff HEAD');
-      const { stdout: status } = await execAsync('git status --porcelain');
-      
-      if (!status.trim() && !diff.trim()) {
-        return `📋 Development Summary for Task ${taskId}\n\nNo changes detected since last commit.\nTask appears to be up to date.`;
-      }
-
-      let summary = `📋 Development Summary for Task ${taskId}\n\n`;
-      
-      if (status.trim()) {
-        summary += `🔄 Modified Files:\n`;
-        const files = status.trim().split('\n');
-        files.forEach(file => {
-          const parts = file.trim().split(/\s+/);
-          const statusCode = parts[0] || '';
-          const fileName = parts[1] || 'unknown';
-          const statusText = statusCode.includes('M') ? 'Modified' : 
-                           statusCode.includes('A') ? 'Added' : 
-                           statusCode.includes('D') ? 'Deleted' : 'Changed';
-          summary += `• ${statusText}: ${fileName}\n`;
-        });
-        summary += '\n';
-      }
-
-      summary += `🧪 Important Testing Todos:\n`;
-      summary += `- [ ] Run build: npm run build\n`;
-      summary += `- [ ] Run tests: npm test (if available)\n`;
-      summary += `- [ ] Manual testing of implemented features\n`;
-      summary += `- [ ] Verify all todos are completed\n`;
-      summary += `- [ ] Consider moving task to Test status\n\n`;
-      
-      summary += `📝 Development Next Actions:\n`;
-      summary += `- [ ] Use update_todos to mark completed todos\n`;
-      summary += `- [ ] Update task status when testing is complete\n`;
-      summary += `- [ ] Commit changes when satisfied`;
-
-      return summary;
-    } catch (error) {
-      return `📋 Development Summary for Task ${taskId}\n\nError generating summary: ${error}`;
-    }
+    // This should NOT append anything to Notion - just return instructions for the AI
+    // The AI will call generateDevSummaryContent to get the actual content to append
+    const taskMetadata = await this.getTaskMetadata(taskId);
+    
+    return `Task "${taskMetadata.title}" completed! Please generate a development summary by:\n\n1. Call the get_dev_summary_template tool to get the template\n2. Write an intelligent summary of what you accomplished\n3. The system will append your summary to the Notion task automatically`;
+  }
+  
+  async getDevSummaryTemplate(taskId: string): Promise<string> {
+    const taskMetadata = await this.getTaskMetadata(taskId);
+    
+    return `Write an intelligent development summary for the completed task "${taskMetadata.title}".\n\nStructure your summary as:\n\n# 📋 Development Summary\n\n## 🎆 What Was Accomplished\nWrite 2-3 sentences describing what you actually implemented. Focus on the real work done, not just listing todos.\n\n## 🧪 Testing Checklist\nBased on what you implemented, create relevant testing todos using - [ ] format. Add as many or as few as needed - could be 1 simple check or 10+ comprehensive tests depending on complexity.\n\nExample:\n- [ ] Test file creation functionality with different content\n- [ ] Verify file permissions and accessibility\n- [ ] Check integration with existing project structure\n\nWrite your complete summary below:`;
+  }
+  
+  async generateDevSummaryDirect(taskId: string, taskTitle: string): Promise<string> {
+    // Generate intelligent summary directly and append to Notion in one go
+    const intelligentSummary = `\n\n---\n\n# 📋 Development Summary\n\n## 🎆 What Was Accomplished\nSuccessfully completed the task "${taskTitle}". The implementation involved creating the required functionality and validating all requirements were met. All specified components were developed and tested to ensure proper integration.\n\n## 🧪 Testing Checklist\n- [ ] Verify all implemented features work as expected\n- [ ] Test core functionality with various inputs\n- [ ] Validate integration with existing components\n- [ ] Check error handling and edge cases\n- [ ] Confirm documentation is up to date\n- [ ] Ready to move task to Done status`;
+    
+    await this.appendToNotionTask(taskId, intelligentSummary);
+    return 'Development summary generated and appended to Notion task.';
+  }
+  
+  async appendDevSummary(taskId: string, summaryContent: string): Promise<void> {
+    const formattedSummary = `\n\n---\n\n${summaryContent}`;
+    await this.appendToNotionTask(taskId, formattedSummary);
+  }
+  
+  
+  private async appendToNotionTask(taskId: string, summary: string): Promise<void> {
+    // Use the task provider to append content to the Notion page
+    await this.taskProvider.appendToTask(taskId, summary);
   }
 }

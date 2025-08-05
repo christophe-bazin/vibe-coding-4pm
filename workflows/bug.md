@@ -8,15 +8,15 @@
 2. Step 2
 3. Observed result vs expected result
 
-## Correction Criteria
-- [ ] Bug fixed
-- [ ] Non-regression tests added
-- [ ] Verification in test environment
-
 ## Investigation
 - [ ] Identify root cause
 - [ ] Analyze impact
 - [ ] Propose solution
+
+## Correction Criteria
+- [ ] Bug fixed
+- [ ] Non-regression tests added
+- [ ] Verification in test environment
 
 ## Notes
 [Additional information]

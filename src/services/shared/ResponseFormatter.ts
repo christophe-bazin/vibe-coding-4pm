@@ -2,7 +2,7 @@
  * ResponseFormatter - Format MCP responses for CLI output
  */
 
-import { ExecutionResult } from '../../models/Workflow.js';
+import { ExecutionResult, ExecutionAction } from '../../models/Workflow.js';
 import { TaskMetadata } from '../../models/Task.js';
 import { TodoAnalysisResult } from '../../models/Todo.js';
 import { NotionTask } from '../../models/Task.js';
@@ -44,6 +44,11 @@ export class ResponseFormatter {
     }
 
     text += `📊 Summary\n${result.message}`;
+    
+    // Show next action if available
+    if (result.nextAction) {
+      text += `\n\n${this.formatNextAction(result.nextAction)}`;
+    }
     return text;
   }
 
@@ -114,7 +119,7 @@ export class ResponseFormatter {
     return text;
   }
 
-  formatTodosUpdated(taskId: string, result: { updated: number, failed: number }): string {
+  formatTodosUpdated(taskId: string, result: { updated: number, failed: number, nextAction?: ExecutionAction, devSummary?: string }): string {
     let text = `✅ Todos Updated\n\n`;
     
     text += `Task ID: ${taskId}\n`;
@@ -122,6 +127,35 @@ export class ResponseFormatter {
     text += `Failed: ${result.failed}\n\n`;
     text += `Batch todo update completed.`;
     
+    // Show next action if available
+    if (result.nextAction) {
+      text += `\n\n${this.formatNextAction(result.nextAction)}`;
+    }
+    
+    // Show dev summary for completed tasks (validation)
+    if (result.devSummary) {
+      text += `\n\n📋 Development Summary & Validation\n${result.devSummary}`;
+    }
+    
     return text;
+  }
+  
+  private formatNextAction(action: ExecutionAction): string {
+    switch (action.type) {
+      case 'completed':
+        return `🎉 Task Completed!\n${action.message}\nProgress: ${action.stats.percentage}%`;
+      
+      case 'needs_implementation':
+        return `🔧 Next Implementation Required\n\nTodo: ${action.todo}\n\n${action.instructions}`;
+      
+      case 'needs_analysis':
+        return `🔍 Analysis Required\n\n${action.message}\n\nPlease analyze the task description and break down the work into implementation steps.`;
+      
+      case 'continue':
+        return `➡️ Continue\n${action.message}`;
+      
+      default:
+        return `📋 Next Action Available`;
+    }
   }
 }

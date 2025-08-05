@@ -4,49 +4,45 @@
 
 import { UpdateService } from './UpdateService.js';
 import { StatusService } from '../shared/StatusService.js';
-import { ExecutionMode, ExecutionResult, ExecutionStep } from '../../models/Workflow.js';
+import { ExecutionMode, ExecutionResult, ExecutionStep, ExecutionAction, ExecutionContext } from '../../models/Workflow.js';
 
 export class ExecutionService {
   constructor(
     private updateService: UpdateService,
     private statusService: StatusService
   ) {
-    // Set up auto-continuation callback
-    this.updateService.setOnTodosUpdatedCallback(this.handleTodosUpdated.bind(this));
+    // Set up circular dependency for execution service
+    this.updateService.setExecutionService(this);
   }
 
   /**
-   * Handle todos updated - auto-continue execution if there are remaining todos
+   * Handle todos updated - return next action instead of throwing
    */
-  private async handleTodosUpdated(taskId: string): Promise<void> {
+  async handleTodosUpdated(taskId: string): Promise<ExecutionAction | null> {
     try {
-      // Check if there are remaining todos to execute
       const todoAnalysis = await this.updateService.analyzeTodos(taskId);
-      const uncompletedTodos = todoAnalysis.todos.filter((todo: any) => !todo.completed);
+      const taskMetadata = await this.updateService.getTaskMetadata(taskId);
       
-      if (uncompletedTodos.length > 0) {
-        // Auto-trigger next execution round
-        const mode = { type: 'auto' as const, showProgress: true, autoUpdateStatus: true };
-        await this.executeTask(taskId, mode);
-      }
+      return await this.analyzeAndPlanNext(taskId, taskMetadata, todoAnalysis);
     } catch (error) {
-      // Auto-continuation failure is not critical - todo update still succeeded
-      console.warn('Auto-continuation failed:', error);
+      console.warn('Auto-continuation analysis failed:', error);
+      return null;
     }
   }
 
   /**
-   * Execute task - simplified single approach
+   * Execute task - returns action guidance instead of throwing errors
    */
   async executeTask(taskId: string, mode: ExecutionMode): Promise<ExecutionResult> {
     const progression: ExecutionStep[] = [];
 
     // Get initial task state
     const taskMetadata = await this.updateService.getTaskMetadata(taskId);
+    const todoAnalysis = await this.updateService.analyzeTodos(taskId);
     
     progression.push({
       type: 'status_update',
-      message: `Starting execution`,
+      message: `Starting execution for: ${taskMetadata.title}`,
       completed: true,
       timestamp: new Date()
     });
@@ -54,25 +50,28 @@ export class ExecutionService {
     try {
       // Auto-update status to inProgress at start if enabled
       if (mode.autoUpdateStatus) {
-        const initialAnalysis = await this.updateService.analyzeTodos(taskId);
         const notStartedStatus = this.statusService.getNotStartedStatus();
-        if (initialAnalysis.stats.percentage > 0 && notStartedStatus && taskMetadata.status === notStartedStatus) {
-          await this.updateTaskStatusBasedOnProgress(taskId, initialAnalysis.stats.percentage);
-          progression.push({
-            type: 'status_update',
-            message: 'Task status updated to "In Progress" (work detected)',
-            completed: true,
-            timestamp: new Date()
-          });
+        if (taskMetadata.status === notStartedStatus) {
+          // Always move to In Progress when starting execution
+          const inProgressStatus = this.statusService.getNextRecommendedStatus(taskMetadata.status, 1);
+          if (inProgressStatus) {
+            await this.updateTaskStatusBasedOnProgress(taskId, 1);
+            progression.push({
+              type: 'status_update',
+              message: `Task status updated to "${inProgressStatus}" (execution started)`,
+              completed: true,
+              timestamp: new Date()
+            });
+          }
         }
       }
 
-      const result = await this.executeInternal(taskId, mode, progression);
+      // Analyze and plan next action
+      const nextAction = await this.analyzeAndPlanNext(taskId, taskMetadata, todoAnalysis);
 
-      // Auto-update status if enabled
-      if (mode.autoUpdateStatus && result.finalStats.percentage >= 100) {
-        await this.updateTaskStatusBasedOnProgress(taskId, result.finalStats.percentage);
-        
+      // Auto-update status if completed
+      if (mode.autoUpdateStatus && nextAction.type === 'completed') {
+        await this.updateTaskStatusBasedOnProgress(taskId, nextAction.stats.percentage);
         progression.push({
           type: 'status_update',
           message: 'Task status updated to "Done" (100% complete)',
@@ -81,7 +80,7 @@ export class ExecutionService {
         });
       }
 
-      // Add development summary with testing todos
+      // Add development summary
       const devSummary = await this.updateService.generateDevSummary(taskId);
       progression.push({
         type: 'status_update',
@@ -90,8 +89,14 @@ export class ExecutionService {
         timestamp: new Date()
       });
 
-      result.progression = progression;
-      return result;
+      return {
+        success: true,
+        taskId,
+        finalStats: todoAnalysis.stats,
+        progression,
+        nextAction,
+        message: this.formatActionMessage(nextAction)
+      };
 
     } catch (error) {
       progression.push({
@@ -101,19 +106,9 @@ export class ExecutionService {
         timestamp: new Date()
       });
 
-      // Add dev summary even on error
-      const devSummary = await this.updateService.generateDevSummary(taskId);
-      progression.push({
-        type: 'status_update',
-        message: `\n${devSummary}`,
-        completed: true,
-        timestamp: new Date()
-      });
-
       return {
         success: false,
         taskId,
-        mode: mode.type,
         finalStats: taskMetadata.todoStats,
         progression,
         message: `Execution failed: ${error}`
@@ -122,134 +117,122 @@ export class ExecutionService {
   }
 
   /**
-   * Internal execution - simplified single approach
+   * Provider-aware execution: Give full context and let AI do everything
    */
-  private async executeInternal(taskId: string, mode: ExecutionMode, progression: ExecutionStep[]): Promise<ExecutionResult> {
-    const todoAnalysis = await this.updateService.analyzeTodos(taskId);
-    const taskMetadata = await this.updateService.getTaskMetadata(taskId);
-    
-    // Get all uncompleted todos
+  private async analyzeAndPlanNext(taskId: string, taskMetadata: any, todoAnalysis: any): Promise<ExecutionAction> {
     const uncompletedTodos = todoAnalysis.todos.filter((todo: any) => !todo.completed);
+    
+    const context: ExecutionContext = {
+      taskId,
+      taskTitle: taskMetadata.title,
+      todoStats: todoAnalysis.stats
+    };
 
     // If no todos at all, guide AI to work from task description
     if (todoAnalysis.stats.total === 0) {
-      const error = new Error(`WORKFLOW_EXECUTION_REQUIRED: Task "${taskMetadata.title}" has no structured todos but needs development work.
-
-Phase 1: Analyze task description and requirements
-Phase 2: Break down work into implementation steps
-Phase 3: Use development tools (Read, Edit, Write, Bash) to implement
-Phase 4: Test and validate implementation
-Phase 5: Move task to "Test" status when complete
-
-Analyze the task description to understand what needs to be implemented, then use the available development tools to complete the work.`);
-
-      throw error;
-    }
-
-    if (uncompletedTodos.length === 0) {
       return {
-        success: true,
-        taskId,
-        mode: mode.type,
-        finalStats: todoAnalysis.stats,
-        message: 'No todos to complete'
+        type: 'needs_analysis',
+        message: `Task "${taskMetadata.title}" has no structured todos but needs development work.`,
+        context: {
+          ...context,
+          currentTodo: 'Analyze task and break down work'
+        }
       };
     }
 
-    progression.push({
-      type: 'status_update',
-      message: `Following workflow to execute ${uncompletedTodos.length} todos for task: ${taskMetadata.title}`,
-      completed: false,
-      timestamp: new Date()
-    });
+    // All todos completed
+    if (uncompletedTodos.length === 0) {
+      return {
+        type: 'completed',
+        message: 'All todos completed successfully!',
+        stats: todoAnalysis.stats
+      };
+    }
 
-    // Process the first uncompleted todo - AI must implement it
-    const firstTodo = uncompletedTodos[0];
-    if (!firstTodo) {
-      throw new Error('No uncompleted todos found but uncompletedTodos array was not empty');
+    // PROVIDER-AWARE: Give full context and let AI implement everything at once
+    return {
+      type: 'needs_implementation',
+      todo: 'Complete entire task',
+      instructions: this.formatFullTaskInstructions(taskMetadata, todoAnalysis),
+      context
+    };
+  }
+
+  /**
+   * Format full task with rich context for provider-aware execution
+   */
+  private formatFullTaskInstructions(taskMetadata: any, todoAnalysis: any): string {
+    let instructions = `# ${taskMetadata.title}\n\n`;
+    
+    instructions += `## Task Overview\n`;
+    instructions += `You need to implement this entire task. Use your development tools (Read, Edit, Write, Bash) to complete ALL requirements.\n\n`;
+    
+    // Group todos by heading with context
+    const todosByHeading = this.groupTodosByHeading(todoAnalysis.todos);
+    
+    for (const [heading, todos] of Object.entries(todosByHeading)) {
+      instructions += `## ${heading}\n`;
+      
+      // Add context if available
+      const firstTodo = todos[0] as any;
+      if (firstTodo.contextText) {
+        instructions += `${firstTodo.contextText}\n\n`;
+      }
+      
+      instructions += `Requirements:\n`;
+      for (const todo of todos) {
+        const status = (todo as any).completed ? '✅' : '❌';
+        instructions += `- ${status} ${(todo as any).text.replace(/^.*?: /, '')}\n`;
+      }
+      instructions += `\n`;
     }
     
-    progression.push({
-      type: 'todo',
-      message: `Next todo to implement: ${firstTodo.text}`,
-      todoText: firstTodo.text,
-      completed: false,
-      timestamp: new Date()
-    });
+    instructions += `## Next Steps\n`;
+    instructions += `1. Implement ALL requirements above using development tools\n`;
+    instructions += `2. Test your implementation\n`;
+    instructions += `3. VALIDATE each requirement is truly satisfied (read files, run tests, verify outputs)\n`;
+    instructions += `4. Only use update_todos to mark todos as completed AFTER you have verified they are done\n`;
+    instructions += `5. The system will generate a dev summary for final validation\n\n`;
+    
+    return instructions;
+  }
 
-    // Guide AI to implement this specific todo
-    const error = new Error(`TODO_IMPLEMENTATION_REQUIRED: Please implement the following todo and then mark it as completed:
-
-TODO: "${firstTodo.text}"
-
-Implementation steps:
-1. Analyze what this todo requires (read relevant files, understand context)
-2. Use development tools (Read, Edit, Write, Bash) to implement the functionality
-3. Test your implementation if possible
-4. Once implementation is complete, use update_todos to mark this todo as completed
-5. After marking completed, call execute_task again to proceed to the next todo
-
-Current task context:
-- Task: ${taskMetadata.title}
-- Total todos: ${todoAnalysis.stats.total}
-- Completed: ${todoAnalysis.stats.completed}
-- Remaining: ${uncompletedTodos.length}
-
-After implementing this todo, the system will automatically proceed to the next one.`);
-
-    throw error;
+  /**
+   * Group todos by their heading for better organization
+   */
+  private groupTodosByHeading(todos: any[]): Record<string, any[]> {
+    const grouped: Record<string, any[]> = {};
+    
+    for (const todo of todos) {
+      const heading = todo.heading || 'General';
+      if (!grouped[heading]) {
+        grouped[heading] = [];
+      }
+      grouped[heading].push(todo);
+    }
+    
+    return grouped;
   }
 
 
   /**
-   * Generate execution summary based on git changes since last commit
+   * Format action message for ExecutionResult
    */
-  private async generateExecutionSummary(_taskId: string): Promise<string | null> {
-    try {
-      // Get git status and changes
-      const { exec } = await import('child_process');
-      const { promisify } = await import('util');
-      const execAsync = promisify(exec);
-
-      // Check if there are any changes
-      const { stdout: status } = await execAsync('git status --porcelain');
-      if (!status.trim()) {
-        return null; // No changes
-      }
-
-      // Get diff of changes
-      const { stdout: diff } = await execAsync('git diff --name-status');
-      const { stdout: diffCached } = await execAsync('git diff --cached --name-status');
-      
-      const allChanges = (diff + diffCached).trim();
-      if (!allChanges) {
-        return null;
-      }
-
-      // Parse changes
-      const changes = allChanges.split('\n').filter(line => line.trim());
-      const summary = {
-        modified: changes.filter(line => line.startsWith('M')).length,
-        added: changes.filter(line => line.startsWith('A')).length,
-        deleted: changes.filter(line => line.startsWith('D')).length
-      };
-
-      let summaryText = `Changes detected:\n`;
-      if (summary.added > 0) summaryText += `• ${summary.added} files added\n`;
-      if (summary.modified > 0) summaryText += `• ${summary.modified} files modified\n`;
-      if (summary.deleted > 0) summaryText += `• ${summary.deleted} files deleted\n`;
-      
-      summaryText += `\nNext steps:\n`;
-      summaryText += `• Review changes with: git diff\n`;
-      summaryText += `• Test implementation\n`;
-      summaryText += `• Use update_todos to mark completed todos\n`;
-      summaryText += `• Consider moving task to "Test" status when ready`;
-
-      return summaryText;
-    } catch (error) {
-      return null; // Git command failed, skip summary
+  private formatActionMessage(action: ExecutionAction): string {
+    switch (action.type) {
+      case 'completed':
+        return action.message;
+      case 'needs_implementation':
+        return `Next todo: ${action.todo}`;
+      case 'needs_analysis':
+        return action.message;
+      case 'continue':
+        return action.message;
+      default:
+        return 'Ready to proceed';
     }
   }
+
 
   private async updateTaskStatusBasedOnProgress(taskId: string, percentage: number): Promise<void> {
     try {

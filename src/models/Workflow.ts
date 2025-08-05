@@ -12,7 +12,6 @@ export interface WorkflowConfig {
 
 
 export interface ExecutionMode {
-  type: 'auto' | 'step' | 'batch';
   showProgress: boolean;
   autoUpdateStatus: boolean;
 }
@@ -20,7 +19,6 @@ export interface ExecutionMode {
 export interface ExecutionResult {
   success: boolean;
   taskId: string;
-  mode: ExecutionMode['type'];
   sectionsProcessed?: number;
   totalSections?: number;
   todosCompleted?: number;
@@ -28,6 +26,20 @@ export interface ExecutionResult {
   finalStats: TodoStats;
   progression?: ExecutionStep[];
   message: string;
+  nextAction?: ExecutionAction;
+}
+
+export type ExecutionAction = 
+  | { type: 'completed'; message: string; stats: TodoStats }
+  | { type: 'needs_implementation'; todo: string; instructions: string; context: ExecutionContext }
+  | { type: 'needs_analysis'; message: string; context: ExecutionContext }
+  | { type: 'continue'; message: string };
+
+export interface ExecutionContext {
+  taskId: string;
+  taskTitle: string;
+  todoStats: TodoStats;
+  currentTodo?: string;
 }
 
 export interface ExecutionStep {

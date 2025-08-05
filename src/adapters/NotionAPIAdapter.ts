@@ -33,6 +33,92 @@ export class NotionAPIAdapter implements TaskProvider {
     }
   }
 
+  async appendToTask(taskId: string, content: string): Promise<void> {
+    try {
+      // Convert markdown content to Notion blocks
+      const blocks = this.markdownToNotionBlocks(content);
+      
+      // Append blocks to the Notion page
+      await this.notion.blocks.children.append({
+        block_id: taskId,
+        children: blocks
+      });
+    } catch (error) {
+      throw new Error(`Failed to append content to task: ${error}`);
+    }
+  }
+
+  private markdownToNotionBlocks(markdown: string): any[] {
+    const blocks: any[] = [];
+    const lines = markdown.split('\n');
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      
+      if (!trimmed) {
+        continue;
+      }
+      
+      if (trimmed.startsWith('# ')) {
+        blocks.push({
+          object: 'block',
+          type: 'heading_1',
+          heading_1: { rich_text: [{ type: 'text', text: { content: trimmed.slice(2) } }] }
+        });
+      } else if (trimmed.startsWith('## ')) {
+        blocks.push({
+          object: 'block',
+          type: 'heading_2',
+          heading_2: { rich_text: [{ type: 'text', text: { content: trimmed.slice(3) } }] }
+        });
+      } else if (trimmed.startsWith('- [ ] ')) {
+        blocks.push({
+          object: 'block',
+          type: 'to_do',
+          to_do: {
+            rich_text: [{ type: 'text', text: { content: trimmed.slice(6) } }],
+            checked: false
+          }
+        });
+      } else if (trimmed.startsWith('- ✅ ')) {
+        blocks.push({
+          object: 'block',
+          type: 'to_do',
+          to_do: {
+            rich_text: [{ type: 'text', text: { content: trimmed.slice(4) } }],
+            checked: true
+          }
+        });
+      } else if (trimmed.startsWith('- ')) {
+        blocks.push({
+          object: 'block',
+          type: 'bulleted_list_item',
+          bulleted_list_item: { rich_text: [{ type: 'text', text: { content: trimmed.slice(2) } }] }
+        });
+      } else if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
+        blocks.push({
+          object: 'block',
+          type: 'paragraph',
+          paragraph: {
+            rich_text: [{ 
+              type: 'text', 
+              text: { content: trimmed.slice(2, -2) },
+              annotations: { bold: true }
+            }]
+          }
+        });
+      } else {
+        blocks.push({
+          object: 'block',
+          type: 'paragraph',
+          paragraph: { rich_text: [{ type: 'text', text: { content: trimmed } }] }
+        });
+      }
+    }
+    
+    return blocks;
+  }
+
   getProviderName(): string {
     return 'Notion (Direct API)';
   }
@@ -144,14 +230,17 @@ export class NotionAPIAdapter implements TaskProvider {
     }
   }
 
-  async analyzeTodos(taskId: string, _includeHierarchy: boolean = false): Promise<TodoAnalysisResult> {
+  async analyzeTodos(taskId: string, includeHierarchy: boolean = false): Promise<TodoAnalysisResult> {
     try {
-      const response = await this.notion.blocks.children.list({ 
-        block_id: taskId 
-      });
-      const blocks = response.results;
+      const [blocksResponse, taskResponse] = await Promise.all([
+        this.notion.blocks.children.list({ block_id: taskId }),
+        this.notion.pages.retrieve({ page_id: taskId })
+      ]);
+      
+      const blocks = blocksResponse.results;
+      const taskTitle = this.extractTaskTitle(taskResponse);
 
-      const todos = this.parseNotionBlocksToTodos(blocks);
+      const todos = this.parseNotionBlocksToTodos(blocks, includeHierarchy, taskTitle);
       const stats = this.calculateStats(todos);
 
       return {
@@ -354,23 +443,61 @@ export class NotionAPIAdapter implements TaskProvider {
     return blocks;
   }
 
-  private parseNotionBlocksToTodos(blocks: any[]): TodoItem[] {
+  private parseNotionBlocksToTodos(blocks: any[], includeHierarchy: boolean = false, taskTitle?: string): TodoItem[] {
     const todos: TodoItem[] = [];
     let todoIndex = 0;
+    let currentHeading: string | null = null;
+    let currentLevel = 0;
+    let currentContextText: string | null = null;
+    let todosInCurrentSection: string[] = [];
 
-    for (const block of blocks) {
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks[i];
+      
+      // Detect headings
+      if (block.type === 'heading_1' || block.type === 'heading_2' || block.type === 'heading_3') {
+        if (includeHierarchy) {
+          // Reset section context
+          currentHeading = this.extractRichText(block[block.type].rich_text);
+          currentLevel = parseInt(block.type.split('_')[1]) - 1;
+          currentContextText = null;
+          todosInCurrentSection = [];
+          
+          // Look ahead for context paragraph after heading
+          if (i + 1 < blocks.length && blocks[i + 1].type === 'paragraph') {
+            currentContextText = this.extractRichText(blocks[i + 1].paragraph.rich_text);
+          }
+        }
+      }
+      
+      // Process todos
       if (block.type === 'to_do') {
         const text = this.extractRichText(block.to_do.rich_text);
-        todos.push({
+        todosInCurrentSection.push(text);
+        
+        const todoItem: TodoItem = {
           text,
           completed: block.to_do.checked || false,
-          level: 0,
+          level: includeHierarchy ? currentLevel + 1 : 0,
           index: todoIndex++,
           originalLine: `- [${block.to_do.checked ? 'x' : ' '}] ${text}`,
           lineNumber: todoIndex,
-          isSubtask: false,
-          children: []
-        });
+          isSubtask: includeHierarchy && currentHeading !== null,
+          children: [],
+          // Rich context
+          heading: includeHierarchy ? (currentHeading || undefined) : undefined,
+          headingLevel: includeHierarchy ? currentLevel : undefined,
+          contextText: includeHierarchy ? (currentContextText || undefined) : undefined,
+          taskTitle: includeHierarchy ? taskTitle : undefined,
+          relatedTodos: includeHierarchy ? [...todosInCurrentSection.filter(t => t !== text)] : undefined
+        };
+        
+        // Add heading context if hierarchy is enabled (keeping backward compatibility)
+        if (includeHierarchy && currentHeading) {
+          todoItem.text = `${currentHeading}: ${text}`;
+        }
+        
+        todos.push(todoItem);
       }
     }
 
@@ -484,6 +611,20 @@ export class NotionAPIAdapter implements TaskProvider {
   private extractRichText(richText: any[]): string {
     if (!richText || !Array.isArray(richText)) return '';
     return richText.map(text => text.plain_text || text.text?.content || '').join('');
+  }
+
+  private extractTaskTitle(taskResponse: any): string {
+    try {
+      if (taskResponse.properties?.title?.title) {
+        return this.extractRichText(taskResponse.properties.title.title);
+      }
+      if (taskResponse.properties?.Name?.title) {
+        return this.extractRichText(taskResponse.properties.Name.title);
+      }
+      return 'Untitled Task';
+    } catch (error) {
+      return 'Untitled Task';
+    }
   }
 
   private calculateStats(todos: TodoItem[]) {

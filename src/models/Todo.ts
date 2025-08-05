@@ -12,6 +12,12 @@ export interface TodoItem {
   isSubtask: boolean;
   children: TodoItem[];
   parentId?: string;
+  // Rich context for better AI understanding
+  heading?: string;
+  headingLevel?: number;
+  contextText?: string;
+  taskTitle?: string;
+  relatedTodos?: string[];
 }
 
 export interface TodoHierarchy {
