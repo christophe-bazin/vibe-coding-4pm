@@ -59,6 +59,15 @@ export class NotionAPIAdapter implements TaskProvider {
         continue;
       }
       
+      if (trimmed === '---') {
+        blocks.push({
+          object: 'block',
+          type: 'divider',
+          divider: {}
+        });
+        continue;
+      }
+      
       if (trimmed.startsWith('# ')) {
         blocks.push({
           object: 'block',

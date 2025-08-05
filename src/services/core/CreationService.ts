@@ -37,11 +37,11 @@ export class CreationService {
   private async loadTaskTypeTemplate(taskType: string): Promise<string> {
     // Load raw workflow template from markdown files
     // Templates contain placeholder content that AI will adapt to specific contexts
-    const templateFile = `workflows/${taskType.toLowerCase()}.md`;
+    const templateFile = `templates/task/${taskType.toLowerCase()}.md`;
     const filePath = resolve(templateFile);
     
     if (!existsSync(filePath)) {
-      throw new Error(`Template file not found: ${templateFile}. Expected templates: feature.md, bug.md, refactoring.md in workflows/ directory`);
+      throw new Error(`Template file not found: ${templateFile}. Expected templates: feature.md, bug.md, refactoring.md in templates/task/ directory`);
     }
 
     try {

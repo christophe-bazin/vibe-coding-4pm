@@ -15,7 +15,7 @@ This is a Model Context Protocol (MCP) server that enables AI assistants to mana
 
 ## Project Architecture
 
-- **Configuration-driven**: All behavior defined in MCP configuration and `workflows/*.md`
+- **Configuration-driven**: All behavior defined in MCP configuration and `templates/*.md`
 - **Service-oriented**: Clean separation between core services and shared utilities
 - **Workflow adaptation**: AI adapts templates contextually using `adaptedWorkflow` parameter
 - **Auto-continuation**: System automatically proceeds to next todos after completion
@@ -94,9 +94,9 @@ All configuration is centralized in your project's `.claude/mcp-config.json`:
 ### Todo Management  
 - `analyze_todos`: Extract and analyze todos with completion statistics
 - `update_todos`: Batch update with automatic execution continuation
-- `generate_dev_summary`: Generate development summary with testing todos based on task completion
-- `get_dev_summary_template`: Get template for writing intelligent dev summary
-- `append_dev_summary`: Append completed dev summary to Notion task
+- `generate_dev_summary`: Generate development summary instructions
+- `get_dev_summary_template`: Get raw template for AI adaptation
+- `append_dev_summary`: Append AI-adapted dev summary to Notion task
 
 ## Development Workflow
 
@@ -112,7 +112,7 @@ All configuration is centralized in your project's `.claude/mcp-config.json`:
 2. Configure: Copy `mcp-config.example.json` to `.claude/mcp-config.json`
 3. Setup Notion: Add API key and database ID to config
 4. Customize: Adjust statusMapping, transitions, taskTypes as needed
-5. Workflows: Feature/Bug/Refactoring templates in `./workflows/`
+5. Templates: Feature/Bug/Refactoring templates in `./templates/task/`
 6. Auto-execution: System handles todo progression automatically
 
 ## Security and Best Practices

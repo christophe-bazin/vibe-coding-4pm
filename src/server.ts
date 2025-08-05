@@ -53,9 +53,9 @@ class MCPServer {
         { name: 'get_task_template', description: 'Get raw task template. IMPORTANT: You must adapt the template to your specific context by replacing bracketed placeholders, contextualizing todos/steps/criteria, using specific terminology, and passing the adapted result in adaptedWorkflow when calling create_task.', inputSchema: { type: 'object', properties: { taskType: { type: 'string' } }, required: ['taskType'] } },
         { name: 'analyze_todos', description: 'Analyze todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, includeHierarchy: { type: 'boolean' } }, required: ['taskId'] } },
         { name: 'update_todos', description: 'Batch update todos. Format: {"taskId":"xxx","updates":[{"todoText":"todo text","completed":true}]}', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, updates: { type: 'array' } }, required: ['taskId', 'updates'] } },
-        { name: 'generate_dev_summary', description: 'Generate development summary with testing todos based on git changes', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
-        { name: 'get_dev_summary_template', description: 'Get template for writing intelligent dev summary', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
-        { name: 'append_dev_summary', description: 'Append completed dev summary to Notion task', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, summaryContent: { type: 'string' } }, required: ['taskId', 'summaryContent'] } },
+        { name: 'generate_dev_summary', description: 'Generate development summary with testing todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
+        { name: 'get_dev_summary_template', description: 'Get raw template for AI adaptation', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
+        { name: 'append_dev_summary', description: 'Append AI-adapted dev summary to Notion task', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, adaptedSummary: { type: 'string' } }, required: ['taskId', 'adaptedSummary'] } },
       ]
     }));
 
@@ -110,8 +110,9 @@ class MCPServer {
         return await update.getDevSummaryTemplate(args.taskId);
 
       case 'append_dev_summary':
-        await update.appendDevSummary(args.taskId, args.summaryContent);
+        await update.appendDevSummary(args.taskId, args.adaptedSummary);
         return 'Development summary appended to Notion task successfully.';
+
 
       default:
         throw new Error(`Unknown tool: ${name}`);

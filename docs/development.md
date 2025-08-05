@@ -26,10 +26,13 @@ notion-vibe-coding/
 │   │   └── Workflow.ts              # Execution + configuration types
 │   └── types/
 │       └── Errors.ts                # Custom error types
-├── workflows/                       # Template files
-│   ├── feature.md                   # Feature task template
-│   ├── bug.md                       # Bug task template
-│   └── refactoring.md               # Refactoring task template
+├── templates/                       # Template files
+│   ├── task/                        # Task creation templates
+│   │   ├── feature.md               # Feature task template
+│   │   ├── bug.md                   # Bug task template
+│   │   └── refactoring.md           # Refactoring task template
+│   └── dev_summary/                 # Development summary templates
+│       └── dev_summary.md           # Dev summary template
 ├── docs/                            # Documentation
 ├── mcp.js                           # CLI wrapper for testing
 ├── mcp-config.example.json          # Example MCP configuration
@@ -221,7 +224,7 @@ async myNewFeature(param: string): Promise<any> {
 }
 ```
 
-2. **Add template** in `workflows/task-creation.md`:
+2. **Add template** in `templates/task/[tasktype].md`:
 ```markdown
 #### Documentation
 \`\`\`

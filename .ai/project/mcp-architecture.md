@@ -17,7 +17,7 @@ The Notion Workflow MCP Server is built as a lightweight, configuration-driven s
                        │  Configuration   │
                        │  Files           │
                        │  • config.json   │
-                       │  • workflows/*.md│
+                       │  • templates/*.md│
                        └──────────────────┘
 ```
 
@@ -40,9 +40,9 @@ The Notion Workflow MCP Server is built as a lightweight, configuration-driven s
 - `get_task_template`: Get raw templates for AI adaptation (Feature/Bug/Refactoring)
 - `analyze_todos`: Extract and analyze todos with completion statistics
 - `update_todos`: Batch update with automatic execution continuation
-- `generate_dev_summary`: Generate development summary with testing todos
-- `get_dev_summary_template`: Get template for writing intelligent dev summary
-- `append_dev_summary`: Append completed dev summary to Notion task
+- `generate_dev_summary`: Generate development summary instructions
+- `get_dev_summary_template`: Get raw template for AI adaptation
+- `append_dev_summary`: Append AI-adapted dev summary to Notion task
 
 ### Clean Service Architecture
 
@@ -176,7 +176,7 @@ MCP Client → update_task → ValidationService → StatusService → Notion Up
 - Task types and defaults
 - Workflow file locations
 
-**`workflows/*.md`**: AI guidance content
+**`templates/*.md`**: AI guidance content
 - Structured prompts for AI behavior
 - Templates and examples
 - Rules and restrictions

@@ -81,9 +81,9 @@ The MCP server provides 10 tools available via Claude Desktop (MCP) and CLI wrap
 - `get_task_template` - Get raw templates for AI adaptation
 - `analyze_todos` - Extract and analyze todos with completion statistics
 - `update_todos` - Batch update with automatic execution continuation
-- `generate_dev_summary` - Generate development summary with testing todos
-- `get_dev_summary_template` - Get template for intelligent dev summary
-- `append_dev_summary` - Append completed dev summary to Notion task
+- `generate_dev_summary` - Generate development summary instructions
+- `get_dev_summary_template` - Get raw template for AI adaptation
+- `append_dev_summary` - Append AI-adapted dev summary to Notion task
 
 ## How It Works
 

@@ -7,6 +7,8 @@ import { NotionTask, TaskMetadata } from '../../models/Task.js';
 import { TodoAnalysisResult, TodoUpdateRequest } from '../../models/Todo.js';
 import { StatusService } from '../shared/StatusService.js';
 import { ValidationService } from '../shared/ValidationService.js';
+import { readFileSync, existsSync } from 'fs';
+import { resolve } from 'path';
 
 import { ExecutionAction } from '../../models/Workflow.js';
 
@@ -89,8 +91,8 @@ export class UpdateService {
             await this.updateTaskStatus(taskId, testStatus);
           }
           
-          // Generate intelligent dev summary directly (no 3-step workflow)
-          devSummary = await this.generateDevSummaryDirect(taskId, taskMetadata.title);
+          // Generate dev summary instructions for AI
+          devSummary = await this.generateDevSummary(taskId);
         }
       } catch (error) {
         console.warn('Next action analysis failed:', error);
@@ -106,28 +108,36 @@ export class UpdateService {
 
   async generateDevSummary(taskId: string): Promise<string> {
     // This should NOT append anything to Notion - just return instructions for the AI
-    // The AI will call generateDevSummaryContent to get the actual content to append
+    // The AI will call get_dev_summary_template, adapt it, then we append
     const taskMetadata = await this.getTaskMetadata(taskId);
     
-    return `Task "${taskMetadata.title}" completed! Please generate a development summary by:\n\n1. Call the get_dev_summary_template tool to get the template\n2. Write an intelligent summary of what you accomplished\n3. The system will append your summary to the Notion task automatically`;
+    return `Task "${taskMetadata.title}" completed! Please generate a development summary by:\n\n1. Call get_dev_summary_template to get the raw template\n2. Adapt the template with specific details of what you accomplished\n3. Call this tool again with your adapted summary to append it to Notion`;
   }
   
   async getDevSummaryTemplate(taskId: string): Promise<string> {
-    const taskMetadata = await this.getTaskMetadata(taskId);
-    
-    return `Write an intelligent development summary for the completed task "${taskMetadata.title}".\n\nStructure your summary as:\n\n# 📋 Development Summary\n\n## 🎆 What Was Accomplished\nWrite 2-3 sentences describing what you actually implemented. Focus on the real work done, not just listing todos.\n\n## 🧪 Testing Checklist\nBased on what you implemented, create relevant testing todos using - [ ] format. Add as many or as few as needed - could be 1 simple check or 10+ comprehensive tests depending on complexity.\n\nExample:\n- [ ] Test file creation functionality with different content\n- [ ] Verify file permissions and accessibility\n- [ ] Check integration with existing project structure\n\nWrite your complete summary below:`;
+    // Return raw template for AI adaptation - same pattern as CreationService
+    return await this.loadDevSummaryTemplate();
   }
   
-  async generateDevSummaryDirect(taskId: string, taskTitle: string): Promise<string> {
-    // Generate intelligent summary directly and append to Notion in one go
-    const intelligentSummary = `\n\n---\n\n# 📋 Development Summary\n\n## 🎆 What Was Accomplished\nSuccessfully completed the task "${taskTitle}". The implementation involved creating the required functionality and validating all requirements were met. All specified components were developed and tested to ensure proper integration.\n\n## 🧪 Testing Checklist\n- [ ] Verify all implemented features work as expected\n- [ ] Test core functionality with various inputs\n- [ ] Validate integration with existing components\n- [ ] Check error handling and edge cases\n- [ ] Confirm documentation is up to date\n- [ ] Ready to move task to Done status`;
+  
+  private async loadDevSummaryTemplate(): Promise<string> {
+    const templateFile = 'templates/dev_summary/dev_summary.md';
+    const filePath = resolve(templateFile);
     
-    await this.appendToNotionTask(taskId, intelligentSummary);
-    return 'Development summary generated and appended to Notion task.';
+    if (!existsSync(filePath)) {
+      throw new Error(`Dev summary template not found: ${templateFile}`);
+    }
+
+    try {
+      return readFileSync(filePath, 'utf-8');
+    } catch (error) {
+      throw new Error(`Error reading dev summary template ${templateFile}: ${error}`);
+    }
   }
   
-  async appendDevSummary(taskId: string, summaryContent: string): Promise<void> {
-    const formattedSummary = `\n\n---\n\n${summaryContent}`;
+  async appendDevSummary(taskId: string, adaptedSummary: string): Promise<void> {
+    // Append the AI-adapted summary to Notion
+    const formattedSummary = `\n\n---\n\n${adaptedSummary}`;
     await this.appendToNotionTask(taskId, formattedSummary);
   }
   
