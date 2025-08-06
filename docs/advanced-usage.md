@@ -9,7 +9,7 @@ The CLI wrapper (`mcp.js`) provides direct command-line access to all MCP functi
 ### Usage
 
 ```bash
-# From the notion-vibe-coding directory
+# From the vibe-coding-4pm directory
 node mcp.js <tool> '<json_arguments>'
 ```
 
@@ -82,12 +82,12 @@ Install once, use everywhere:
 ```bash
 # Install globally
 cd ~/tools  # or any global location
-git clone https://github.com/christophe-bazin/notion-vibe-coding.git
-cd notion-vibe-coding
+git clone https://github.com/christophe-bazin/vibe-coding-4pm.git
+cd vibe-coding-4pm
 npm install && npm run build
 
 # Optional: create global alias
-echo 'alias mcp="node ~/tools/notion-vibe-coding/mcp.js"' >> ~/.bashrc
+echo 'alias mcp="node ~/tools/vibe-coding-4pm/mcp.js"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -99,9 +99,9 @@ Each project gets its own configuration:
 // your-project/.claude/mcp-config.json
 {
   "mcpServers": {
-    "notion-vibe-coding": {
+    "vibe-coding-4pm": {
       "command": "node",
-      "args": ["/path/to/notion-vibe-coding/dist/server.js"],
+      "args": ["/path/to/vibe-coding-4pm/dist/server.js"],
       "env": {
         "NOTION_API_KEY": "your_notion_integration_token_here",
         "NOTION_DATABASE_ID": "your_database_id_here",

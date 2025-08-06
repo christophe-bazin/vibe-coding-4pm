@@ -22,7 +22,7 @@ class MCPServer {
   private workflowConfig: WorkflowConfig;
 
   constructor() {
-    this.server = new Server({ name: 'notion-vibe-coding', version: '2.0.0' }, { capabilities: { tools: {} } });
+    this.server = new Server({ name: 'vibe-coding-4pm', version: '2.0.0' }, { capabilities: { tools: {} } });
     this.workflowConfig = JSON.parse(process.env.WORKFLOW_CONFIG!);
     this.services = this.initServices();
     this.setupRoutes();

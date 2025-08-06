@@ -11,7 +11,7 @@ function loadEnvFromMcpConfig() {
   if (fs.existsSync(configPath)) {
     try {
       const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      const serverConfig = config.mcpServers['notion-vibe-coding'];
+      const serverConfig = config.mcpServers['vibe-coding-4pm'];
       
       if (serverConfig && serverConfig.env) {
         process.env.NOTION_API_KEY = serverConfig.env.NOTION_API_KEY;

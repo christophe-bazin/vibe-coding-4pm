@@ -1,4 +1,4 @@
-# AI Project Manager
+# VIBE CODING FOR PRODUCT MANAGERS
 
 **Transform your AI assistant into an autonomous development project manager.**
 
@@ -17,8 +17,8 @@ Say *"Add user authentication to this React app"* and watch your AI:
 ### 1. Install
 
 ```bash
-git clone https://github.com/christophe-bazin/notion-vibe-coding.git
-cd notion-vibe-coding
+git clone https://github.com/christophe-bazin/vibe-coding-4pm.git
+cd vibe-coding-4pm
 npm install && npm run build
 ```
 
@@ -103,4 +103,4 @@ The MCP server provides 10 tools available to MCP clients:
 
 ## Support
 
-For issues and questions, please open an issue on the [GitHub repository](https://github.com/christophe-bazin/notion-vibe-coding).
+For issues and questions, please open an issue on the [GitHub repository](https://github.com/christophe-bazin/vibe-coding-4pm).

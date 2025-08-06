@@ -18,9 +18,9 @@ Standard MCP server configuration format:
 ```json
 {
   "mcpServers": {
-    "notion-vibe-coding": {
+    "vibe-coding-4pm": {
       "command": "node",
-      "args": ["./notion-vibe-coding/dist/server.js"],
+      "args": ["./vibe-coding-4pm/dist/server.js"],
       "env": {
         "NOTION_API_KEY": "your_notion_integration_token_here",
         "NOTION_DATABASE_ID": "your_notion_database_id_here",
@@ -226,9 +226,9 @@ You can add additional properties as needed:
 ```json
 {
   "mcpServers": {
-    "notion-vibe-coding": {
+    "vibe-coding-4pm": {
       "command": "node", 
-      "args": ["./notion-vibe-coding/dist/server.js"],
+      "args": ["./vibe-coding-4pm/dist/server.js"],
       "env": {
         "NOTION_API_KEY": "secret_your_key_here",
         "NOTION_DATABASE_ID": "your_database_id_here",

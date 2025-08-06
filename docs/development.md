@@ -5,7 +5,7 @@ Guide for contributing to and customizing the Notion Vibe Coding MCP server.
 ## Project Structure
 
 ```
-notion-vibe-coding/
+vibe-coding-4pm/
 ├── src/                             # TypeScript source code
 ├── templates/                       # Task and summary templates
 │   ├── task/                        # Task creation templates
@@ -33,8 +33,8 @@ notion-vibe-coding/
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/christophe-bazin/notion-vibe-coding.git
-cd notion-vibe-coding
+git clone https://github.com/christophe-bazin/vibe-coding-4pm.git
+cd vibe-coding-4pm
 ```
 
 2. Install dependencies:
