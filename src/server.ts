@@ -6,7 +6,8 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 
-import { NotionAPIAdapter } from './adapters/NotionAPIAdapter.js';
+import { ProviderManager } from './providers/ProviderManager.js';
+import { ProvidersConfig } from './models/Provider.js';
 import { CreationService } from './services/core/CreationService.js';
 import { UpdateService } from './services/core/UpdateService.js';
 import { ExecutionService } from './services/core/ExecutionService.js';
@@ -29,28 +30,40 @@ class MCPServer {
   }
 
   private initServices() {
-    const apiKey = process.env.NOTION_API_KEY!;
-    const databaseId = process.env.NOTION_DATABASE_ID!;
-
-    const taskProvider = new NotionAPIAdapter(apiKey, databaseId);
+    // Initialize provider manager with configuration
+    const providersConfig: ProvidersConfig = this.getProvidersConfig();
+    const providerManager = new ProviderManager(providersConfig, process.env);
     
     const status = new StatusService(this.workflowConfig);
     const validation = new ValidationService(this.workflowConfig, status);
-    const creation = new CreationService(taskProvider, validation);
-    const update = new UpdateService(taskProvider, status, validation);
+    const creation = new CreationService(providerManager, validation);
+    const update = new UpdateService(providerManager, status, validation);
     const execution = new ExecutionService(update, status);
     const formatter = new ResponseFormatter();
 
-    return { creation, update, execution, formatter };
+    return { creation, update, execution, formatter, providerManager };
+  }
+
+  private getProvidersConfig(): ProvidersConfig {
+    // Read from environment variable (MCP config)
+    if (!process.env.PROVIDERS_CONFIG) {
+      throw new Error('PROVIDERS_CONFIG environment variable is required');
+    }
+    
+    try {
+      return JSON.parse(process.env.PROVIDERS_CONFIG);
+    } catch (error) {
+      throw new Error(`Invalid PROVIDERS_CONFIG format: ${error}`);
+    }
   }
 
   private setupRoutes() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
         { name: 'execute_task', description: 'Execute task', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
-        { name: 'create_task', description: 'Create new task using appropriate workflow template', inputSchema: { type: 'object', properties: { title: { type: 'string' }, taskType: { type: 'string' }, description: { type: 'string' }, adaptedWorkflow: { type: 'string', description: 'Optional: custom workflow template' } }, required: ['title', 'taskType', 'description'] } },
-        { name: 'get_task', description: 'Get task info', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
-        { name: 'update_task', description: 'Update task title, type and/or status', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, title: { type: 'string' }, taskType: { type: 'string' }, status: { type: 'string' } }, required: ['taskId'] } },
+        { name: 'create_task', description: 'Create new task using appropriate workflow template', inputSchema: { type: 'object', properties: { title: { type: 'string' }, taskType: { type: 'string' }, description: { type: 'string' }, adaptedWorkflow: { type: 'string', description: 'Optional: custom workflow template' }, provider: { type: 'string', description: 'Optional: provider to use (notion, linear, github)' } }, required: ['title', 'taskType', 'description'] } },
+        { name: 'get_task', description: 'Get task info', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, provider: { type: 'string', description: 'Optional: provider to use' } }, required: ['taskId'] } },
+        { name: 'update_task', description: 'Update task title, type and/or status', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, title: { type: 'string' }, taskType: { type: 'string' }, status: { type: 'string' }, provider: { type: 'string', description: 'Optional: provider to use' } }, required: ['taskId'] } },
         { name: 'get_task_template', description: 'Get task template for adaptation', inputSchema: { type: 'object', properties: { taskType: { type: 'string' } }, required: ['taskType'] } },
         { name: 'analyze_todos', description: 'Analyze todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, includeHierarchy: { type: 'boolean' } }, required: ['taskId'] } },
         { name: 'update_todos', description: 'Batch update todos.', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, updates: { type: 'array' } }, required: ['taskId', 'updates'] } },
@@ -81,7 +94,7 @@ class MCPServer {
         return formatter.formatExecutionResult(result);
 
       case 'create_task':
-        const taskResult = await creation.createTask(args.title, args.taskType, args.description, args.adaptedWorkflow);
+        const taskResult = await creation.createTask(args.title, args.taskType, args.description, args.adaptedWorkflow, args.provider);
         if (typeof taskResult === 'string') {
           // Return template adaptation instructions
           return taskResult;
@@ -91,11 +104,11 @@ class MCPServer {
         }
 
       case 'get_task':
-        const metadata = await update.getTaskMetadata(args.taskId);
+        const metadata = await update.getTaskMetadata(args.taskId, args.provider);
         return formatter.formatTaskInfo(metadata);
 
       case 'update_task':
-        await update.updateTask(args.taskId, args);
+        await update.updateTask(args.taskId, args, args.provider);
         return formatter.formatTaskUpdated(args.taskId, args);
 
 

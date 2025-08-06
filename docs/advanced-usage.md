@@ -2,6 +2,16 @@
 
 Detailed tool usage, multi-project setup, CLI wrapper, and advanced workflows for the provider-aware Notion Vibe Coding MCP server.
 
+## Multi-Provider Support
+
+The system supports multiple task management platforms:
+
+- **Notion** (core): Default provider, fully supported
+- **Linear** (premium): Available but disabled by default  
+- **GitHub Projects** (enterprise): Available but disabled by default
+
+Most MCP tools accept an optional `provider` parameter to specify which platform to use. If not specified, the default provider from configuration is used.
+
 ## CLI Wrapper Usage
 
 The CLI wrapper (`mcp.js`) provides direct command-line access to all MCP functions.
@@ -343,6 +353,7 @@ Create a new task in Notion database with workflow template.
 - `title` (string, required): The task title
 - `taskType` (string, required): Type of task ("Feature", "Bug", or "Refactoring")
 - `description` (string, required): Task description and content
+- `provider` (string, optional): Provider to use ("notion", "linear", "github"). Defaults to configured default provider.
 
 **Example:**
 ```json
@@ -371,10 +382,11 @@ Create a new task in Notion database with workflow template.
 Update task title, type and/or status with validation.
 
 **Parameters:**
-- `taskId` (string, required): The Notion task/page ID
+- `taskId` (string, required): The task/page ID
 - `title` (string, optional): New task title
 - `taskType` (string, optional): New task type ("Feature", "Bug", or "Refactoring")
 - `status` (string, optional): New status with workflow validation
+- `provider` (string, optional): Provider to use ("notion", "linear", "github"). Defaults to configured default provider.
 
 **Example:**
 ```json
@@ -450,7 +462,8 @@ Returns the complete markdown content of the requested workflow file.
 Get current task status and available transitions with todo statistics.
 
 **Parameters:**
-- `taskId` (string, required): The Notion task/page ID
+- `taskId` (string, required): The task/page ID
+- `provider` (string, optional): Provider to use ("notion", "linear", "github"). Defaults to configured default provider.
 
 **Example:**
 ```json

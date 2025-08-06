@@ -58,15 +58,16 @@ Service-oriented architecture with clean separation:
 ## Configuration System
 
 Configuration via `.claude/mcp-config.json` with:
-- statusMapping (camelCase), transitions, taskTypes
-- Environment variables: NOTION_API_KEY, NOTION_DATABASE_ID, WORKFLOW_CONFIG
+- statusMapping (camelCase), transitions, taskTypes  
+- Environment variables: NOTION_API_KEY, NOTION_DATABASE_ID, WORKFLOW_CONFIG, PROVIDERS_CONFIG
+- Provider system: Configurable providers (notion, linear, github) with enable/disable
 
 **→ Complete configuration reference in [docs/configuration.md](docs/configuration.md)**
 
 ## MCP Tools Available
 
 **10 tools for task management:**
-- Task management: `create_task`, `get_task`, `update_task`, `execute_task`
+- Task management: `create_task`, `get_task`, `update_task`, `execute_task` (all support optional `provider` parameter)
 - Templates: `get_task_template` (Feature/Bug/Refactoring templates)
 - Todos: `analyze_todos`, `update_todos` 
 - Summaries: `generate_summary`, `get_summary_template`, `append_summary`

@@ -3,6 +3,7 @@
  */
 
 import { TaskProvider } from '../../interfaces/TaskProvider.js';
+import { ProviderManager } from '../../providers/ProviderManager.js';
 import { Task, TaskMetadata } from '../../models/Task.js';
 import { TodoAnalysisResult, TodoUpdateRequest } from '../../models/Todo.js';
 import { StatusService } from '../shared/StatusService.js';
@@ -16,7 +17,7 @@ export class UpdateService {
   private executionService?: any; // Injected later to avoid circular dependency
 
   constructor(
-    private taskProvider: TaskProvider,
+    private providerManager: ProviderManager,
     private statusService: StatusService,
     private validationService: ValidationService
   ) {}
@@ -25,13 +26,15 @@ export class UpdateService {
     this.executionService = executionService;
   }
 
-  async getTask(taskId: string): Promise<Task> {
-    return await this.taskProvider.getTask(taskId);
+  async getTask(taskId: string, provider?: string): Promise<Task> {
+    const taskProvider = this.providerManager.getProvider(provider);
+    return await taskProvider.getTask(taskId);
   }
 
-  async getTaskMetadata(taskId: string): Promise<TaskMetadata> {
-    const task = await this.getTask(taskId);
-    const todoAnalysis = await this.taskProvider.analyzeTodos(taskId);
+  async getTaskMetadata(taskId: string, provider?: string): Promise<TaskMetadata> {
+    const task = await this.getTask(taskId, provider);
+    const taskProvider = this.providerManager.getProvider(provider);
+    const todoAnalysis = await taskProvider.analyzeTodos(taskId);
     const statusInfo = this.statusService.getTaskStatus(task.status);
 
     return {
@@ -44,30 +47,34 @@ export class UpdateService {
     };
   }
 
-  async updateTask(taskId: string, updates: { title?: string; taskType?: string; status?: string }): Promise<void> {
+  async updateTask(taskId: string, updates: { title?: string; taskType?: string; status?: string }, provider?: string): Promise<void> {
     this.validationService.validateTaskUpdateData(updates);
 
     if (updates.status) {
-      const task = await this.getTask(taskId);
+      const task = await this.getTask(taskId, provider);
       this.validationService.validateStatusTransition(task.status, updates.status);
     }
 
-    await this.taskProvider.updateTask(taskId, updates);
+    const taskProvider = this.providerManager.getProvider(provider);
+    await taskProvider.updateTask(taskId, updates);
   }
 
-  async updateTaskStatus(taskId: string, newStatus: string): Promise<void> {
-    const task = await this.getTask(taskId);
+  async updateTaskStatus(taskId: string, newStatus: string, provider?: string): Promise<void> {
+    const task = await this.getTask(taskId, provider);
     this.validationService.validateStatusTransition(task.status, newStatus);
-    await this.taskProvider.updateTaskStatus(taskId, newStatus);
+    const taskProvider = this.providerManager.getProvider(provider);
+    await taskProvider.updateTaskStatus(taskId, newStatus);
   }
 
-  async analyzeTodos(taskId: string, includeHierarchy: boolean = false): Promise<TodoAnalysisResult> {
-    return await this.taskProvider.analyzeTodos(taskId, includeHierarchy);
+  async analyzeTodos(taskId: string, includeHierarchy: boolean = false, provider?: string): Promise<TodoAnalysisResult> {
+    const taskProvider = this.providerManager.getProvider(provider);
+    return await taskProvider.analyzeTodos(taskId, includeHierarchy);
   }
 
-  async updateTodos(taskId: string, updates: TodoUpdateRequest[]): Promise<{ updated: number; failed: number; nextAction?: ExecutionAction; devSummary?: string }> {
+  async updateTodos(taskId: string, updates: TodoUpdateRequest[], provider?: string): Promise<{ updated: number; failed: number; nextAction?: ExecutionAction; devSummary?: string }> {
     this.validationService.validateTodoUpdateData(updates);
-    const result = await this.taskProvider.updateTodos(taskId, updates);
+    const taskProvider = this.providerManager.getProvider(provider);
+    const result = await taskProvider.updateTodos(taskId, updates);
     
     // Get next action if todos were successfully updated
     let nextAction: ExecutionAction | undefined;
@@ -80,19 +87,19 @@ export class UpdateService {
         // If task is completed, update status to Test and generate dev summary directly
         if (nextAction?.type === 'completed') {
           // Move to Test status first
-          const todoAnalysis = await this.analyzeTodos(taskId);
-          const taskMetadata = await this.getTaskMetadata(taskId);
+          const todoAnalysis = await this.analyzeTodos(taskId, false, provider);
+          const taskMetadata = await this.getTaskMetadata(taskId, provider);
           const testStatus = this.statusService.getNextRecommendedStatus(
             taskMetadata.status, 
             todoAnalysis.stats.percentage
           );
           
           if (testStatus && testStatus !== taskMetadata.status) {
-            await this.updateTaskStatus(taskId, testStatus);
+            await this.updateTaskStatus(taskId, testStatus, provider);
           }
           
           // Generate summary instructions for AI
-          devSummary = await this.generateSummary(taskId);
+          devSummary = await this.generateSummary(taskId, provider);
         }
       } catch (error) {
         console.warn('Next action analysis failed:', error);
@@ -102,14 +109,15 @@ export class UpdateService {
     return { ...result, nextAction, devSummary };
   }
 
-  async updateSingleTodo(taskId: string, todoText: string, completed: boolean): Promise<boolean> {
-    return await this.taskProvider.updateSingleTodo(taskId, todoText, completed);
+  async updateSingleTodo(taskId: string, todoText: string, completed: boolean, provider?: string): Promise<boolean> {
+    const taskProvider = this.providerManager.getProvider(provider);
+    return await taskProvider.updateSingleTodo(taskId, todoText, completed);
   }
 
-  async generateSummary(taskId: string): Promise<string> {
+  async generateSummary(taskId: string, provider?: string): Promise<string> {
     // This should NOT append anything to the task - just return instructions for the AI
     // The AI will call get_summary_template, adapt it, then we append
-    const taskMetadata = await this.getTaskMetadata(taskId);
+    const taskMetadata = await this.getTaskMetadata(taskId, provider);
     
     return `Task "${taskMetadata.title}" completed! Please generate a summary by:
 
@@ -124,7 +132,7 @@ export class UpdateService {
    Format: {"taskId":"${taskId}","adaptedSummary":"your adapted summary text"}`;
   }
   
-  async getSummaryTemplate(taskId: string): Promise<string> {
+  async getSummaryTemplate(taskId: string, provider?: string): Promise<string> {
     // Return raw template for AI adaptation - same pattern as CreationService
     return await this.loadSummaryTemplate();
   }
@@ -145,18 +153,19 @@ export class UpdateService {
     }
   }
   
-  async appendSummary(taskId: string, adaptedSummary: string): Promise<void> {
+  async appendSummary(taskId: string, adaptedSummary: string, provider?: string): Promise<void> {
     // Validate the summary data with detailed error messages
     this.validationService.validateSummaryData(adaptedSummary);
     
     // Append the AI-adapted summary to the task
     const formattedSummary = `\n\n---\n\n${adaptedSummary}`;
-    await this.appendToTask(taskId, formattedSummary);
+    await this.appendToTask(taskId, formattedSummary, provider);
   }
   
   
-  private async appendToTask(taskId: string, summary: string): Promise<void> {
+  private async appendToTask(taskId: string, summary: string, provider?: string): Promise<void> {
     // Use the task provider to append content to the task page
-    await this.taskProvider.appendToTask(taskId, summary);
+    const taskProvider = this.providerManager.getProvider(provider);
+    await taskProvider.appendToTask(taskId, summary);
   }
 }

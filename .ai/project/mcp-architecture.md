@@ -98,6 +98,84 @@ The Workflow MCP Server is built as a lightweight, configuration-driven system t
 - Error and success message formatting
 - CLI output styling
 
+### Provider Architecture (`src/providers/`)
+
+**Multi-Provider System**: Extensible architecture supporting multiple task management platforms
+
+```
+src/providers/
+├── ProviderManager.ts          # Provider lifecycle management
+├── ProviderFactory.ts          # Provider instantiation 
+├── notion/
+│   └── NotionProvider.ts      # Notion implementation
+├── linear/
+│   └── LinearProvider.ts      # Linear implementation (stub)
+└── github/
+    └── GitHubProvider.ts      # GitHub Projects implementation (stub)
+```
+
+**ProviderManager** (`src/providers/ProviderManager.ts`)
+**Responsibility**: Orchestrate multi-provider initialization and routing
+
+- Load providers from PROVIDERS_CONFIG environment variable
+- Initialize only enabled providers with their credentials
+- Route requests to specific providers or use default
+- Handle provider availability and fallback logic
+- Validate provider configurations at startup
+
+**ProviderFactory** (`src/providers/ProviderFactory.ts`) 
+**Responsibility**: Create provider instances based on configuration
+
+- Create TaskProvider instances from configuration
+- Map provider types to implementation classes
+- Handle credential injection and validation
+- Support for core/premium/enterprise provider tiers
+
+**NotionProvider** (`src/providers/notion/NotionProvider.ts`)
+**Responsibility**: Notion-specific implementation of TaskProvider interface
+
+- Full implementation of all TaskProvider methods
+- Notion API integration (@notionhq/client)
+- Markdown to Notion blocks conversion
+- Todo analysis and content parsing
+- Credential handling (API key, database ID)
+
+**Provider Stubs** (Linear, GitHub)
+**Responsibility**: Placeholder implementations for future development
+
+- Implement TaskProvider interface with "not implemented" errors
+- Provide structure for future provider development
+- Enable configuration testing without actual API integration
+
+### Provider Configuration System
+
+**Environment-Based Configuration**:
+```json
+{
+  "PROVIDERS_CONFIG": {
+    "default": "notion",
+    "available": {
+      "notion": {
+        "name": "Notion",
+        "type": "core", 
+        "enabled": true,
+        "config": {
+          "apiKey": "direct_api_key_value",
+          "databaseId": "direct_database_id_value" 
+        }
+      }
+    }
+  }
+}
+```
+
+**Key Design Decisions**:
+- Configuration stores actual credentials (not env var references)
+- Only enabled providers are initialized
+- Default provider must be enabled and available
+- Provider type supports tiering (core/premium/enterprise)
+- All services accept optional `provider` parameter
+
 ### MCP Tool Parameter Formats
 
 **Critical Format Requirements** for proper tool usage:

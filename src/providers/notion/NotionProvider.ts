@@ -1,14 +1,16 @@
-import { TaskProvider } from '../interfaces/TaskProvider.js';
-import { Task } from '../models/Task.js';
-import { TodoItem, TodoAnalysisResult, TodoUpdateRequest } from '../models/Todo.js';
+import { TaskProvider } from '../../interfaces/TaskProvider.js';
+import { Task } from '../../models/Task.js';
+import { TodoItem, TodoAnalysisResult, TodoUpdateRequest } from '../../models/Todo.js';
 import { Client } from '@notionhq/client';
 
-export class NotionAPIAdapter implements TaskProvider {
+export class NotionProvider implements TaskProvider {
   private notion: Client;
   private databaseId: string;
   private titleProperty: string | null = null;
   
   constructor(apiKey: string, databaseId: string) {
+    console.log(`🔧 NotionProvider: apiKey=${apiKey?.substring(0,10)}...`);
+    console.log(`🔧 NotionProvider: databaseId=${databaseId}`);
     this.notion = new Client({ auth: apiKey });
     this.databaseId = databaseId;
   }

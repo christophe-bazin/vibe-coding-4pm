@@ -17,6 +17,7 @@ function loadEnvFromMcpConfig() {
         process.env.NOTION_API_KEY = serverConfig.env.NOTION_API_KEY;
         process.env.NOTION_DATABASE_ID = serverConfig.env.NOTION_DATABASE_ID;
         process.env.WORKFLOW_CONFIG = JSON.stringify(serverConfig.env.WORKFLOW_CONFIG);
+        process.env.PROVIDERS_CONFIG = JSON.stringify(serverConfig.env.PROVIDERS_CONFIG);
       }
     } catch (e) {
       console.error('Error loading MCP config:', e.message);

@@ -37,22 +37,16 @@ Standard MCP server configuration format:
 
 ### Required Variables
 
-#### `NOTION_API_KEY`
-- **Type**: String
-- **Description**: Your Notion integration token
-- **Format**: `secret_*` (starts with "secret_")
-- **Example**: `"secret_abc123def456ghi789"`
-
-#### `NOTION_DATABASE_ID`
-- **Type**: String
-- **Description**: The Notion database ID where tasks will be created/managed
-- **Format**: UUID without dashes (32 characters)
-- **Example**: `"abc123def456ghi789jkl012mno345pq"`
-
 #### `WORKFLOW_CONFIG`
 - **Type**: JSON Object 
 - **Description**: Complete workflow configuration
 - **Note**: See example configuration file for complete structure
+
+#### `PROVIDERS_CONFIG`
+- **Type**: JSON Object
+- **Description**: Multi-provider configuration for task management platforms
+- **Default**: Notion only (enabled)
+- **Available Providers**: notion (core), linear (premium), github (enterprise)
 
 ## Workflow Configuration Object
 
@@ -142,6 +136,66 @@ Statuses that require human approval:
 - AI cannot transition tasks to these statuses
 - Typically includes "done"
 
+## Providers Configuration Object
+
+### Basic Structure
+
+```json
+{
+  "PROVIDERS_CONFIG": {
+    "default": "notion",
+    "available": {
+      "notion": {
+        "name": "Notion", 
+        "type": "core",
+        "enabled": true,
+        "config": {
+          "apiKey": "your_notion_api_key",
+          "databaseId": "your_notion_database_id"
+        }
+      },
+      "linear": {
+        "name": "Linear",
+        "type": "premium", 
+        "enabled": false,
+        "config": {
+          "apiKey": "LINEAR_API_KEY",
+          "teamId": "LINEAR_TEAM_ID"
+        }
+      }
+    }
+  }
+}
+```
+
+### Configuration Fields
+
+#### `default`
+- **Type**: String
+- **Description**: Default provider to use when no provider is specified
+- **Required**: Yes
+- **Example**: `"notion"`
+
+#### `available`
+- **Type**: Object
+- **Description**: Available providers and their configurations
+- **Structure**: `{ [providerName]: ProviderConfig }`
+
+### Provider Configuration
+
+Each provider has the following structure:
+
+- **`name`**: Display name for the provider
+- **`type`**: Provider tier (`core`, `premium`, `enterprise`)
+- **`enabled`**: Whether the provider is active
+- **`config`**: Provider-specific configuration (credentials, etc.)
+
+### Provider Types
+
+- **`core`**: Free providers (included by default)
+- **`premium`**: Paid providers (requires subscription)
+- **`enterprise`**: Enterprise-only providers
+
 ## Template System
 
 The system uses templates stored in the `templates/` directory:
@@ -230,8 +284,6 @@ You can add additional properties as needed:
       "command": "node", 
       "args": ["./vibe-coding-4pm/dist/server.js"],
       "env": {
-        "NOTION_API_KEY": "secret_your_key_here",
-        "NOTION_DATABASE_ID": "your_database_id_here",
         "WORKFLOW_CONFIG": {
           "statusMapping": {
             "notStarted": "Not Started",
@@ -248,6 +300,38 @@ You can add additional properties as needed:
           "taskTypes": ["Feature", "Bug", "Refactoring"],
           "defaultStatus": "notStarted",
           "requiresValidation": ["done"]
+        },
+        "PROVIDERS_CONFIG": {
+          "default": "notion",
+          "available": {
+            "notion": {
+              "name": "Notion",
+              "type": "core",
+              "enabled": true,
+              "config": {
+                "apiKey": "secret_your_key_here",
+                "databaseId": "your_database_id_here"
+              }
+            },
+            "linear": {
+              "name": "Linear",
+              "type": "premium",
+              "enabled": false,
+              "config": {
+                "apiKey": "your_linear_api_key",
+                "teamId": "your_linear_team_id"
+              }
+            },
+            "github": {
+              "name": "GitHub Projects",
+              "type": "enterprise", 
+              "enabled": false,
+              "config": {
+                "token": "your_github_token",
+                "org": "your_github_org"
+              }
+            }
+          }
         }
       }
     }
