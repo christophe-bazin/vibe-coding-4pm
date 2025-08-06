@@ -3,7 +3,7 @@
  */
 
 import { TaskProvider } from '../../interfaces/TaskProvider.js';
-import { NotionTask, TaskMetadata } from '../../models/Task.js';
+import { Task, TaskMetadata } from '../../models/Task.js';
 import { TodoAnalysisResult, TodoUpdateRequest } from '../../models/Todo.js';
 import { StatusService } from '../shared/StatusService.js';
 import { ValidationService } from '../shared/ValidationService.js';
@@ -25,7 +25,7 @@ export class UpdateService {
     this.executionService = executionService;
   }
 
-  async getTask(taskId: string): Promise<NotionTask> {
+  async getTask(taskId: string): Promise<Task> {
     return await this.taskProvider.getTask(taskId);
   }
 
@@ -107,7 +107,7 @@ export class UpdateService {
   }
 
   async generateSummary(taskId: string): Promise<string> {
-    // This should NOT append anything to Notion - just return instructions for the AI
+    // This should NOT append anything to the task - just return instructions for the AI
     // The AI will call get_summary_template, adapt it, then we append
     const taskMetadata = await this.getTaskMetadata(taskId);
     
@@ -149,14 +149,14 @@ export class UpdateService {
     // Validate the summary data with detailed error messages
     this.validationService.validateSummaryData(adaptedSummary);
     
-    // Append the AI-adapted summary to Notion
+    // Append the AI-adapted summary to the task
     const formattedSummary = `\n\n---\n\n${adaptedSummary}`;
-    await this.appendToNotionTask(taskId, formattedSummary);
+    await this.appendToTask(taskId, formattedSummary);
   }
   
   
-  private async appendToNotionTask(taskId: string, summary: string): Promise<void> {
-    // Use the task provider to append content to the Notion page
+  private async appendToTask(taskId: string, summary: string): Promise<void> {
+    // Use the task provider to append content to the task page
     await this.taskProvider.appendToTask(taskId, summary);
   }
 }

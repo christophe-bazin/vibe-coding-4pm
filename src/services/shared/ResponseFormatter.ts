@@ -5,7 +5,7 @@
 import { ExecutionResult, ExecutionAction } from '../../models/Workflow.js';
 import { TaskMetadata } from '../../models/Task.js';
 import { TodoAnalysisResult } from '../../models/Todo.js';
-import { NotionTask } from '../../models/Task.js';
+import { Task } from '../../models/Task.js';
 
 export class ResponseFormatter {
   
@@ -74,7 +74,7 @@ export class ResponseFormatter {
     return text;
   }
 
-  formatTaskCreated(task: NotionTask): string {
+  formatTaskCreated(task: Task): string {
     let text = `✅ Task Created\n\n`;
     
     text += `Title: ${task.title}\n`;

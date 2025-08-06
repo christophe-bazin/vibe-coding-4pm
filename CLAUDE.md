@@ -1,10 +1,10 @@
-# Notion Workflow MCP Server - Claude Instructions
+# Workflow MCP Server - Claude Instructions
 
 MCP server providing AI-guided development workflows for task management with configuration-driven approach. Available via MCP protocol.
 
 ## Project Overview
 
-This is a Model Context Protocol (MCP) server that enables AI assistants to manage Notion development tasks through structured workflows. The system uses MCP configuration with camelCase conventions and workflow files to guide AI behavior.
+This is a Model Context Protocol (MCP) server that enables AI assistants to manage development tasks through structured workflows. The system uses MCP configuration with camelCase conventions and workflow files to guide AI behavior.
 
 ## Development Guidelines
 

@@ -2,14 +2,14 @@
 
 ## Overview
 
-The Notion Workflow MCP Server is built as a lightweight, configuration-driven system that provides AI assistants with structured workflows for Notion task management.
+The Workflow MCP Server is built as a lightweight, configuration-driven system that provides AI assistants with structured workflows for task management.
 
 ## Core Architecture
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   MCP Client    │    │   MCP Server     │    │   Notion API    │
-│   (Claude)      │◄──►│   (This App)     │◄──►│   (Tasks)       │
+│   MCP Client    │    │   MCP Server     │    │   Task Provider │
+│   (Claude)      │◄──►│   (This App)     │◄──►│   (Notion/etc)  │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                               │
                               ▼

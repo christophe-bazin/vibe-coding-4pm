@@ -11,11 +11,11 @@ export class StatusService {
   getTaskStatus(currentStatus: string): TaskStatus {
     const statusKey = this.getStatusKey(currentStatus);
     const availableTransitions = this.workflowConfig.transitions[statusKey] || [];
-    const availableNotionStatuses = availableTransitions.map(key => this.workflowConfig.statusMapping[key]).filter(Boolean) as string[];
+    const availableStatuses = availableTransitions.map(key => this.workflowConfig.statusMapping[key]).filter(Boolean) as string[];
 
     return {
       current: currentStatus,
-      available: availableNotionStatuses,
+      available: availableStatuses,
       recommended: this.getRecommendedStatus(currentStatus),
       shouldAutoProgress: false
     };

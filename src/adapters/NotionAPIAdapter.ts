@@ -1,5 +1,5 @@
 import { TaskProvider } from '../interfaces/TaskProvider.js';
-import { NotionTask } from '../models/Task.js';
+import { Task } from '../models/Task.js';
 import { TodoItem, TodoAnalysisResult, TodoUpdateRequest } from '../models/Todo.js';
 import { Client } from '@notionhq/client';
 
@@ -142,7 +142,7 @@ export class NotionAPIAdapter implements TaskProvider {
    * @returns Promise resolving to the task data
    * @throws Error if task cannot be retrieved
    */
-  async getTask(taskId: string): Promise<NotionTask> {
+  async getTask(taskId: string): Promise<Task> {
     try {
       const page = await this.notion.pages.retrieve({ page_id: taskId });
       return this.mapNotionPageToTask(page);
@@ -159,7 +159,7 @@ export class NotionAPIAdapter implements TaskProvider {
    * @returns Promise resolving to the created task
    * @throws Error if validation fails or creation fails
    */
-  async createTask(title: string, taskType: string, description: string): Promise<NotionTask> {
+  async createTask(title: string, taskType: string, description: string): Promise<Task> {
     // Input validation
     if (!title || title.trim().length === 0) {
       throw new Error('Title is required and cannot be empty');
@@ -306,7 +306,7 @@ export class NotionAPIAdapter implements TaskProvider {
     return result.updated > 0;
   }
 
-  private mapNotionPageToTask(page: any): NotionTask {
+  private mapNotionPageToTask(page: any): Task {
     // Find the title property dynamically
     let title = 'Untitled';
     for (const [, property] of Object.entries(page.properties || {})) {

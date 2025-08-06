@@ -2,7 +2,7 @@
  * Task-related types and interfaces
  */
 
-export interface NotionTask {
+export interface Task {
   id: string;
   title: string;
   status: string;

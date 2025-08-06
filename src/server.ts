@@ -56,7 +56,7 @@ class MCPServer {
         { name: 'update_todos', description: 'Batch update todos.', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, updates: { type: 'array' } }, required: ['taskId', 'updates'] } },
         { name: 'generate_summary', description: 'Generate summary', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
         { name: 'get_summary_template', description: 'Get summary template', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
-        { name: 'append_summary', description: 'Append AI-adapted summary to Notion task.', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, adaptedSummary: { type: 'string' } }, required: ['taskId', 'adaptedSummary'] } },
+        { name: 'append_summary', description: 'Append AI-adapted summary to task.', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, adaptedSummary: { type: 'string' } }, required: ['taskId', 'adaptedSummary'] } },
       ]
     }));
 
@@ -121,7 +121,7 @@ class MCPServer {
           throw new Error('Missing required parameter: adaptedSummary. Use "adaptedSummary", not "summary".');
         }
         await update.appendSummary(args.taskId, args.adaptedSummary);
-        return 'Summary appended to Notion task successfully.';
+        return 'Summary appended to task successfully.';
 
 
       default:

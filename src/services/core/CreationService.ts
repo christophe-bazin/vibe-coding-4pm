@@ -3,7 +3,7 @@
  */
 
 import { TaskProvider } from '../../interfaces/TaskProvider.js';
-import { NotionTask } from '../../models/Task.js';
+import { Task } from '../../models/Task.js';
 import { ValidationService } from '../shared/ValidationService.js';
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
@@ -14,7 +14,7 @@ export class CreationService {
     private validationService: ValidationService
   ) {}
 
-  async createTask(title: string, taskType: string, description: string, adaptedWorkflow?: string): Promise<NotionTask | string> {
+  async createTask(title: string, taskType: string, description: string, adaptedWorkflow?: string): Promise<Task | string> {
     this.validationService.validateTaskType(taskType);
     
     // Check if we have a valid adaptedWorkflow
