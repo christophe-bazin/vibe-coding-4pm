@@ -2,23 +2,24 @@
 
 ## Overview
 
-The Workflow MCP Server is built as a lightweight, configuration-driven system that provides AI assistants with structured workflows for task management.
+VC4PM Server is a global npm package providing AI-guided development workflows via MCP protocol. Clean, single-config architecture optimized for multi-project usage.
 
 ## Core Architecture
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   MCP Client    │    │   MCP Server     │    │   Task Provider │
-│   (Claude)      │◄──►│   (This App)     │◄──►│   (Notion/etc)  │
+│   MCP Client    │    │ @vc4pm/server    │    │   Task Provider │
+│ (Claude/Cursor) │◄──►│ (Global Package) │◄──►│   (Notion/etc)  │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                               │
                               ▼
-                       ┌──────────────────┐
-                       │  Configuration   │
-                       │  Files           │
-                       │  • config.json   │
-                       │  • templates/*.md│
-                       └──────────────────┘
+                    ┌────────────────────────┐
+                    │    Project Config      │
+                    │  .vc4pm/config.json    │
+                    │  • workflow settings   │
+                    │  • provider configs    │  
+                    │  • credentials         │
+                    └────────────────────────┘
 ```
 
 ## Component Breakdown

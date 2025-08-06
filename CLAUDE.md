@@ -1,6 +1,6 @@
-# Workflow MCP Server - Claude Instructions
+# VC4PM Server - Development Instructions
 
-MCP server providing AI-guided development workflows for task management with configuration-driven approach. Available via MCP protocol.
+Global npm package (@vc4pm/server) providing AI-guided development workflows for task management. Clean architecture with single config file approach.
 
 ## Project Overview
 
@@ -27,23 +27,31 @@ See detailed architecture in [.ai/project/mcp-architecture.md](.ai/project/mcp-a
 
 ## Essential Commands
 
-Build the server:
+Build and test the server:
 
 ```bash
 npm run build
+npm link                # Test global installation locally  
+vc4pm-server --help     # Test global command
 ```
 
 ### Usage Options
 
-**Via MCP Protocol:**
-- The server runs as an MCP server 
-- All 10 MCP tools available through natural language interface
-- Uses `.claude/mcp-config.json` configuration
+**Global Installation (Production):**
+```bash
+npm install -g @vc4pm/server
+vc4pm-server           # Available globally in any project
+```
 
-**Via Claude Code CLI (Development/Testing):**
-- Use `node mcp.js <tool> '<json_args>'` to call MCP tools directly
-- Example: `node mcp.js create_task '{"title":"test","taskType":"Bug","description":"desc","adaptedWorkflow":"..."}'`
-- The wrapper handles server startup and MCP protocol automatically
+**Development/Testing:**
+```bash
+npm run build && ./bin/vc4pm-server.js
+```
+
+**MCP Integration:**
+- All 10 MCP tools available through natural language interface
+- Uses single config file: `.vc4pm/config.json`
+- Clean logs, no verbose debug output
 
 ## Codebase Structure
 
@@ -57,10 +65,11 @@ Service-oriented architecture with clean separation:
 
 ## Configuration System
 
-Configuration via `.claude/mcp-config.json` with:
+**Single config file:** `.vc4pm/config.json` with:
+- Direct JSON configuration (no environment variables)
 - statusMapping (camelCase), transitions, taskTypes  
-- Environment variables: NOTION_API_KEY, NOTION_DATABASE_ID, WORKFLOW_CONFIG, PROVIDERS_CONFIG
 - Provider system: Configurable providers (notion, linear, github) with enable/disable
+- Clean validation and helpful error messages
 
 **→ Complete configuration reference in [docs/configuration.md](docs/configuration.md)**
 

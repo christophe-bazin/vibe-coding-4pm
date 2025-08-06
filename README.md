@@ -1,25 +1,23 @@
-# VIBE CODING FOR PRODUCT MANAGERS
+# VC4PM Server
 
-**Transform your AI assistant into an autonomous development project manager.**
+**AI Task Management MCP Server for Development Workflows**
 
-Say *"Add user authentication to this React app"* and watch your AI:
+Transform your AI assistant into an autonomous development project manager. Say *"Add user authentication to this React app"* and watch your AI create structured tasks, implement features, and track progress automatically.
 
-## 🚀 **Key Features & Workflow**
+## 🚀 **Key Features**
 
-- **🎯 Autonomous Project Management**: AI creates structured tasks, implements features, and tracks progress automatically
-- **📋 Intelligent Task Creation**: Smart templates adapt to your requirements - fully customizable or use defaults (Feature, Bug, Refactoring)  
-- **⚡ Complete Development Automation**: From task creation → implementation → testing checklist → status management
-- **🔄 Multi-AI Support**: Works with Claude, Cursor, Copilot through natural language interface
-- **🏗️ Multi-Provider Ready**: Currently supports task management systems (Notion first, Linear/GitHub/Jira coming)
+- **🎯 Autonomous Project Management**: AI creates tasks, implements features, and tracks progress
+- **📋 Intelligent Task Creation**: Smart templates adapt to your requirements  
+- **⚡ Complete Development Automation**: From task creation → implementation → testing → done
+- **🔄 Multi-AI Support**: Works with Claude Desktop, Claude Code, Cursor through MCP
+- **🏗️ Notion Integration**: Currently supports Notion (Linear/GitHub coming soon)
 
 ## Quick Start
 
 ### 1. Install
 
 ```bash
-git clone https://github.com/christophe-bazin/vibe-coding-4pm.git
-cd vibe-coding-4pm
-npm install && npm run build
+npm install -g @vc4pm/server
 ```
 
 ### 2. Setup Your Task Management System
@@ -35,14 +33,35 @@ npm install && npm run build
 
 ### 3. Configure Your Project
 
-```bash
-cp mcp-config.example.json your-project/.claude/mcp-config.json  
+Create `.vc4pm/config.json` in your project:
+
+```json
+{
+  "workflow": {
+    "statusMapping": {
+      "notStarted": "Not Started",
+      "inProgress": "In Progress", 
+      "test": "Test",
+      "done": "Done"
+    },
+    "taskTypes": ["Feature", "Bug", "Refactoring"]
+  },
+  "providers": {
+    "default": "notion",
+    "available": {
+      "notion": {
+        "enabled": true,
+        "config": {
+          "apiKey": "your_notion_integration_token_here",
+          "databaseId": "your_notion_database_id_here"
+        }
+      }
+    }
+  }
+}
 ```
 
-Then edit `.claude/mcp-config.json` and replace:
-
-- `your_notion_integration_token_here` with your task provider API key
-- `your_notion_database_id_here` with your task board/database ID
+Replace the apiKey and databaseId with your actual Notion credentials.
 
 ### 4. Start Using
 
@@ -59,7 +78,7 @@ AI Assistant:
 You: Review and mark as "Done" when satisfied
 ```
 
-The MCP server provides 10 tools that your AI assistant can use seamlessly through natural language or direct CLI access.
+The MCP server provides 10 tools that your AI assistant can use seamlessly through natural language.
 
 ## What You Get
 

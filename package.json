@@ -1,25 +1,26 @@
 {
-  "name": "vibe-coding-4pm",
-  "version": "1.0.0",
-  "description": "MCP server for managing task workflows with AI assistants",
+  "name": "@vc4pm/server",
+  "version": "2.0.0",
+  "description": "AI task management MCP server for development workflows",
   "main": "dist/server.js",
   "type": "commonjs",
+  "bin": {
+    "vc4pm-server": "./bin/vc4pm-server.js"
+  },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/server.js",
-    "start:mcp": "node dist/server.js",
-    "start:clean": "node dist/server-clean.js",
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "prepublishOnly": "npm run build"
   },
+  "preferGlobal": true,
   "keywords": [
     "mcp",
-    "notion",
-    "workflow",
     "ai",
-    "tasks",
-    "productivity"
+    "claude",
+    "task-management",
+    "workflow",
+    "notion"
   ],
   "author": "Christophe Bazin",
   "license": "MIT",
@@ -37,6 +38,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/christophe-bazin/notion-workflow-mcp.git"
+    "url": "https://github.com/christophe-bazin/vibe-coding-4pm.git"
   }
 }
