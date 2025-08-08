@@ -32,20 +32,13 @@ Build and test the server:
 ```bash
 npm run build
 npm link                # Test global installation locally  
-vc4pm-server --help     # Test global command
+vc4pm --help           # Test global command
 ```
 
-### Usage Options
+### Development Testing
 
-**Global Installation (Production):**
 ```bash
-npm install -g @vc4pm/server
-vc4pm-server           # Available globally in any project
-```
-
-**Development/Testing:**
-```bash
-npm run build && ./bin/vc4pm-server.js
+npm run build && node mcp.js create_task '{"title":"test","taskType":"Feature","description":"test"}'
 ```
 
 **MCP Integration:**

@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "type": "commonjs",
   "bin": {
-    "vc4pm-server": "./bin/vc4pm-server.js"
+    "vc4pm": "./mcp.js"
   },
   "scripts": {
     "build": "tsc",

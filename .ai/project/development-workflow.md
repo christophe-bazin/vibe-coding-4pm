@@ -15,7 +15,7 @@ npm run build
 ```bash
 # Link for local development
 npm link
-vc4pm-server --help
+vc4pm --help
 
 # Create test project config
 mkdir test-project/.vc4pm

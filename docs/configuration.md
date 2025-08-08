@@ -183,4 +183,4 @@ Each project can have its own `.vc4pm/config.json` with different:
 - Workflow configurations (custom statuses, transitions)
 - Task types and validation rules
 
-The global `vc4pm-server` command automatically detects and uses the project-local configuration.
+The global `vc4pm` command automatically detects and uses the project-local configuration.

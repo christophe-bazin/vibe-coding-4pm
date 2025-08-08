@@ -32,7 +32,9 @@ class MCPServer {
   private initServices() {
     // Initialize provider manager with configuration
     const providersConfig: ProvidersConfig = this.getProvidersConfig();
-    const providerManager = new ProviderManager(providersConfig, process.env);
+    // Extract credentials from provider configs and merge with env
+    const credentials = this.extractCredentials(providersConfig);
+    const providerManager = new ProviderManager(providersConfig, credentials);
     
     const status = new StatusService(this.workflowConfig);
     const validation = new ValidationService(this.workflowConfig, status);
@@ -55,6 +57,23 @@ class MCPServer {
     } catch (error) {
       throw new Error(`Invalid PROVIDERS_CONFIG format: ${error}`);
     }
+  }
+
+  private extractCredentials(providersConfig: ProvidersConfig): Record<string, string | undefined> {
+    const credentials = { ...process.env };
+    
+    // Extract credentials from provider configs for direct credential providers like Notion
+    for (const [providerName, providerConfig] of Object.entries(providersConfig.available)) {
+      if (providerConfig.config) {
+        // For notion provider, extract direct credentials
+        if (providerName === 'notion' && providerConfig.config.apiKey) {
+          credentials.NOTION_API_KEY = providerConfig.config.apiKey;
+          credentials.NOTION_DATABASE_ID = providerConfig.config.databaseId;
+        }
+      }
+    }
+    
+    return credentials;
   }
 
   private setupRoutes() {

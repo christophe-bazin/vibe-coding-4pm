@@ -14,12 +14,15 @@ Most MCP tools accept an optional `provider` parameter to specify which platform
 
 ## CLI Wrapper Usage
 
-The CLI wrapper (`mcp.js`) provides direct command-line access to all MCP functions.
+The global `vc4pm` command provides direct command-line access to all MCP functions.
 
 ### Usage
 
 ```bash
-# From the vibe-coding-4pm directory
+# Available globally after: npm install -g @vc4pm/server
+vc4pm <tool> '<json_arguments>'
+
+# Or locally in development
 node mcp.js <tool> '<json_arguments>'
 ```
 
@@ -28,29 +31,37 @@ node mcp.js <tool> '<json_arguments>'
 #### Task Management
 ```bash
 # Create tasks with intelligent template adaptation
-node mcp.js create_task '{"title":"Fix login bug","taskType":"Bug","description":"Users cannot authenticate with OAuth"}'
+vc4pm create_task '{"title":"Fix login bug","taskType":"Bug","description":"Users cannot authenticate with OAuth"}'
 
 # Get task information with todo statistics
-node mcp.js get_task '{"taskId":"23e0da7a-7a07-8145-9611-e394062d8a55"}'
+vc4pm get_task '{"taskId":"23e0da7a-7a07-8145-9611-e394062d8a55"}'
 
 # Update tasks with flexible validation
-node mcp.js update_task '{"taskId":"<task-id>","status":"In Progress"}'
-node mcp.js update_task '{"taskId":"<task-id>","title":"New Title","taskType":"Feature"}'
+vc4pm update_task '{"taskId":"<task-id>","status":"In Progress"}'
+vc4pm update_task '{"taskId":"<task-id>","title":"New Title","taskType":"Feature"}'
 
 # Execute tasks with provider-aware batch workflow
-node mcp.js execute_task '{"taskId":"<task-id>"}'\n\n# Get templates for AI adaptation\nnode mcp.js get_task_template '{"taskType":"Feature"}'\n\n# Generate development summary workflow\nnode mcp.js generate_summary '{"taskId":"<task-id>"}'\nnode mcp.js get_summary_template '{"taskId":"<task-id>"}'\nnode mcp.js append_summary '{"taskId":"<task-id>","adaptedSummary":"# Development Summary\\n\\nCompleted the task..."}'
+vc4pm execute_task '{"taskId":"<task-id>"}'
+
+# Get templates for AI adaptation
+vc4pm get_task_template '{"taskType":"Feature"}'
+
+# Generate development summary workflow
+vc4pm generate_summary '{"taskId":"<task-id>"}'
+vc4pm get_summary_template '{"taskId":"<task-id>"}'
+vc4pm append_summary '{"taskId":"<task-id>","adaptedSummary":"# Development Summary\n\nCompleted the task..."}'
 ```
 
 #### Todo Management
 ```bash
 # Batch update todos with automatic execution continuation
-node mcp.js update_todos '{"taskId":"<task-id>","updates":[{"todoText":"Setup OAuth provider","completed":true}]}'
+vc4pm update_todos '{"taskId":"<task-id>","updates":[{"todoText":"Setup OAuth provider","completed":true}]}'
 
 # Analyze all todos with completion statistics
-node mcp.js analyze_todos '{"taskId":"<task-id>"}'
+vc4pm analyze_todos '{"taskId":"<task-id>"}'
 
 # Generate development summary with testing todos
-node mcp.js generate_summary '{"taskId":"<task-id>"}'
+vc4pm generate_summary '{"taskId":"<task-id>"}'
 ```
 
 #### Templates & Workflow
