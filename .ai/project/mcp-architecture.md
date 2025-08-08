@@ -9,7 +9,7 @@ VC4PM Server is a global npm package providing AI-guided development workflows v
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   MCP Client    │    │ @vc4pm/server    │    │   Task Provider │
-│ (Claude/Cursor) │◄──►│ (Global Package) │◄──►│   (Notion/etc)  │
+│ (Claude/Cursor) │◄──►│ (Global Package) │◄──►│ (Notion/Linear) │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                               │
                               ▼
@@ -82,7 +82,7 @@ vc4pm create_task '{}'
 - `update_todos`: Batch update with automatic execution continuation
 - `generate_summary`: Generate summary instructions
 - `get_summary_template`: Get raw template for AI adaptation
-- `append_summary`: Append AI-adapted summary to Notion task
+- `append_summary`: Append AI-adapted summary to task
 
 ### Clean Service Architecture
 
