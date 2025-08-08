@@ -27,13 +27,6 @@ export class CreationService {
       
       // If adaptedWorkflow is provided but invalid, treat as if no adaptedWorkflow
       if (!hasTemplateStructure || !hasCheckboxes || !isLongEnough) {
-        console.log('Invalid adaptedWorkflow detected:', {
-          hasTemplateStructure,
-          hasCheckboxes,
-          isLongEnough,
-          length: adaptedWorkflow.length,
-          preview: adaptedWorkflow.substring(0, 100)
-        });
         workflow = undefined;
       }
     }
@@ -52,6 +45,7 @@ Adapt this template by keeping the ## headers structure but customizing the impl
     const taskProvider = this.providerManager.getProvider(provider);
     return await taskProvider.createTask(title, taskType, structuredDescription);
   }
+
 
   private async applyTaskTemplate(taskType: string, adaptedWorkflow: string, title: string): Promise<string> {
     // Return the pre-adapted workflow directly - AI has already contextualized the template

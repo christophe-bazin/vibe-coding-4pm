@@ -16,7 +16,6 @@ vibe-coding-4pm/
 │       └── summary.md               # Summary template
 ├── docs/                            # User documentation
 ├── mcp.js                           # CLI wrapper for testing
-├── mcp-config.example.json          # Example MCP configuration
 └── README.md
 ```
 
@@ -44,8 +43,8 @@ npm install
 
 3. Set up configuration:
 ```bash
-cp mcp-config.example.json .claude/mcp-config.json
-# Edit with your Notion credentials
+mkdir .vc4pm
+# Create .vc4pm/config.json with your project configuration
 ```
 
 ### Building
@@ -98,7 +97,7 @@ Templates use markdown format and support intelligent adaptation by AI assistant
 
 ### Adding New Task Types
 
-1. **Update your MCP configuration** (`.claude/mcp-config.json`):
+1. **Update your project configuration** (`.vc4pm/config.json`):
 ```json
 {
   "taskTypes": ["Feature", "Bug", "Refactoring", "Documentation"]
@@ -196,11 +195,11 @@ Use clear, descriptive commit messages:
 - Check that your API key and database ID are correct in the config
 - Ensure your database has the required Status and Type properties
 
-**MCP Integration Issues:**
+**Configuration Issues:**
 
-- Restart your MCP client after updating configuration
-- Check that your `.claude/mcp-config.json` file has valid JSON syntax
+- Check that your `.vc4pm/config.json` file has valid JSON syntax
 - Verify the server builds successfully with `npm run build`
+- Ensure config file is in current working directory
 
 **Template Issues:**
 

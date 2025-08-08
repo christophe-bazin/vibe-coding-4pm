@@ -2,24 +2,64 @@
 
 ## Overview
 
-The Workflow MCP Server is built as a lightweight, configuration-driven system that provides AI assistants with structured workflows for task management.
+VC4PM Server is a global npm package providing AI-guided development workflows via MCP protocol. Clean, single-config architecture optimized for multi-project usage.
 
 ## Core Architecture
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   MCP Client    │    │   MCP Server     │    │   Task Provider │
-│   (Claude)      │◄──►│   (This App)     │◄──►│   (Notion/etc)  │
+│   MCP Client    │    │ @vc4pm/server    │    │   Task Provider │
+│ (Claude/Cursor) │◄──►│ (Global Package) │◄──►│ (Notion/Linear) │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                               │
                               ▼
-                       ┌──────────────────┐
-                       │  Configuration   │
-                       │  Files           │
-                       │  • config.json   │
-                       │  • templates/*.md│
-                       └──────────────────┘
+                    ┌────────────────────────┐
+                    │    Project Config      │
+                    │  .vc4pm/config.json    │
+                    │  • workflow settings   │
+                    │  • provider configs    │  
+                    │  • credentials         │
+                    └────────────────────────┘
 ```
+
+## Global Package Architecture (Simplified)
+
+### Command Structure
+After refactoring, the architecture was simplified to a single global command:
+
+```bash
+npm install -g @vc4pm/server
+vc4pm <tool> '<json_arguments>'  # Global access in any project
+```
+
+**Architecture**:
+- ✅ `mcp.js` (intelligent MCP wrapper)
+- ✅ `vc4pm` global command (mapped to mcp.js)
+- ✅ `dist/server.js` (internal MCP server, launched by wrapper)
+
+### Wrapper Functionality (`mcp.js`)
+
+The wrapper provides:
+1. **Config Loading**: Reads `.vc4pm/config.json` from current project
+2. **Environment Setup**: Converts config to environment variables for server
+3. **MCP Communication**: Spawns internal server and communicates via JSON-RPC
+4. **Clean Output**: Filters server logs and returns only tool results
+
+**Flow**:
+```
+vc4pm create_task '{}' 
+  → mcp.js loads .vc4pm/config.json
+  → spawns dist/server.js with env vars
+  → sends MCP initialize + tool call
+  → returns clean result
+  → kills server
+```
+
+### Benefits of Simplified Architecture
+- **Single Command**: Only `vc4pm` needed, no confusion
+- **Project-Aware**: Auto-detects `.vc4pm/config.json` in any project
+- **Clean UX**: Wrapper handles MCP complexity, users get simple CLI
+- **Universal**: Works with Claude Code, Cursor, and direct CLI usage
 
 ## Component Breakdown
 
@@ -42,7 +82,7 @@ The Workflow MCP Server is built as a lightweight, configuration-driven system t
 - `update_todos`: Batch update with automatic execution continuation
 - `generate_summary`: Generate summary instructions
 - `get_summary_template`: Get raw template for AI adaptation
-- `append_summary`: Append AI-adapted summary to Notion task
+- `append_summary`: Append AI-adapted summary to task
 
 ### Clean Service Architecture
 

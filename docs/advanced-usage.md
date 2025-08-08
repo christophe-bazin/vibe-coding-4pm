@@ -14,12 +14,15 @@ Most MCP tools accept an optional `provider` parameter to specify which platform
 
 ## CLI Wrapper Usage
 
-The CLI wrapper (`mcp.js`) provides direct command-line access to all MCP functions.
+The global `vc4pm` command provides direct command-line access to all MCP functions.
 
 ### Usage
 
 ```bash
-# From the vibe-coding-4pm directory
+# Available globally after: npm install -g @vc4pm/server
+vc4pm <tool> '<json_arguments>'
+
+# Or locally in development
 node mcp.js <tool> '<json_arguments>'
 ```
 
@@ -28,29 +31,37 @@ node mcp.js <tool> '<json_arguments>'
 #### Task Management
 ```bash
 # Create tasks with intelligent template adaptation
-node mcp.js create_task '{"title":"Fix login bug","taskType":"Bug","description":"Users cannot authenticate with OAuth"}'
+vc4pm create_task '{"title":"Fix login bug","taskType":"Bug","description":"Users cannot authenticate with OAuth"}'
 
 # Get task information with todo statistics
-node mcp.js get_task '{"taskId":"23e0da7a-7a07-8145-9611-e394062d8a55"}'
+vc4pm get_task '{"taskId":"23e0da7a-7a07-8145-9611-e394062d8a55"}'
 
 # Update tasks with flexible validation
-node mcp.js update_task '{"taskId":"<task-id>","status":"In Progress"}'
-node mcp.js update_task '{"taskId":"<task-id>","title":"New Title","taskType":"Feature"}'
+vc4pm update_task '{"taskId":"<task-id>","status":"In Progress"}'
+vc4pm update_task '{"taskId":"<task-id>","title":"New Title","taskType":"Feature"}'
 
 # Execute tasks with provider-aware batch workflow
-node mcp.js execute_task '{"taskId":"<task-id>"}'\n\n# Get templates for AI adaptation\nnode mcp.js get_task_template '{"taskType":"Feature"}'\n\n# Generate development summary workflow\nnode mcp.js generate_summary '{"taskId":"<task-id>"}'\nnode mcp.js get_summary_template '{"taskId":"<task-id>"}'\nnode mcp.js append_summary '{"taskId":"<task-id>","adaptedSummary":"# Development Summary\\n\\nCompleted the task..."}'
+vc4pm execute_task '{"taskId":"<task-id>"}'
+
+# Get templates for AI adaptation
+vc4pm get_task_template '{"taskType":"Feature"}'
+
+# Generate development summary workflow
+vc4pm generate_summary '{"taskId":"<task-id>"}'
+vc4pm get_summary_template '{"taskId":"<task-id>"}'
+vc4pm append_summary '{"taskId":"<task-id>","adaptedSummary":"# Development Summary\n\nCompleted the task..."}'
 ```
 
 #### Todo Management
 ```bash
 # Batch update todos with automatic execution continuation
-node mcp.js update_todos '{"taskId":"<task-id>","updates":[{"todoText":"Setup OAuth provider","completed":true}]}'
+vc4pm update_todos '{"taskId":"<task-id>","updates":[{"todoText":"Setup OAuth provider","completed":true}]}'
 
 # Analyze all todos with completion statistics
-node mcp.js analyze_todos '{"taskId":"<task-id>"}'
+vc4pm analyze_todos '{"taskId":"<task-id>"}'
 
 # Generate development summary with testing todos
-node mcp.js generate_summary '{"taskId":"<task-id>"}'
+vc4pm generate_summary '{"taskId":"<task-id>"}'
 ```
 
 #### Templates & Workflow
@@ -106,31 +117,33 @@ source ~/.bashrc
 Each project gets its own configuration:
 
 ```json
-// your-project/.claude/mcp-config.json
+// your-project/.vc4pm/config.json
 {
-  "mcpServers": {
-    "vibe-coding-4pm": {
-      "command": "node",
-      "args": ["/path/to/vibe-coding-4pm/dist/server.js"],
-      "env": {
-        "NOTION_API_KEY": "your_notion_integration_token_here",
-        "NOTION_DATABASE_ID": "your_database_id_here",
-        "WORKFLOW_CONFIG": {
-          "statusMapping": {
-            "notStarted": "Not Started",
-            "inProgress": "In Progress", 
-            "test": "Test",
-            "done": "Done"
-          },
-          "transitions": {
-            "notStarted": ["inProgress"],
-            "inProgress": ["test"],
-            "test": ["done", "inProgress"],
-            "done": ["test"]
-          },
-          "taskTypes": ["Feature", "Bug", "Refactoring"],
-          "defaultStatus": "notStarted",
-          "requiresValidation": ["done"]
+  "workflow": {
+    "statusMapping": {
+      "notStarted": "Not Started",
+      "inProgress": "In Progress", 
+      "test": "Test",
+      "done": "Done"
+    },
+    "transitions": {
+      "notStarted": ["inProgress"],
+      "inProgress": ["test"],
+      "test": ["done", "inProgress"],
+      "done": ["test"]
+    },
+    "taskTypes": ["Feature", "Bug", "Refactoring"],
+    "defaultStatus": "notStarted",
+    "requiresValidation": ["done"]
+  },
+  "providers": {
+    "default": "notion",
+    "available": {
+      "notion": {
+        "enabled": true,
+        "config": {
+          "apiKey": "your_notion_integration_token_here",
+          "databaseId": "your_database_id_here"
         }
       }
     }
@@ -143,11 +156,11 @@ Each project gets its own configuration:
 Add project-specific AI guidance:
 
 ```markdown
-<!-- your-project/.claude/instructions.md -->
+<!-- your-project/README.md - Development Workflow Section -->
 # Development Workflow
 
-## Notion Database
-Database ID: `your-database-id-here`
+## Task Management Setup
+Configuration: `.vc4pm/config.json`
 
 ## Task Management Rules
 - Always create tasks before implementing features
@@ -157,7 +170,7 @@ Database ID: `your-database-id-here`
 
 ## Development Flow
 1. Ask Claude to create a task for new features
-2. Provide the Notion URL to start implementation
+2. Provide the task URL to start implementation
 3. Claude will manage status progression automatically
 4. Review and validate when task reaches "Test" status
 ```
@@ -655,19 +668,20 @@ The system automatically updates task status based on todo completion:
 
 ## Troubleshooting Common Issues
 
-### MCP Not Detected
-- Verify `.claude/mcp-config.json` path is correct
-- Check Notion API key validity
-- Ensure database is shared with your Notion integration
+### Command Not Found
+- Verify `vc4pm` is installed globally: `npm install -g @vc4pm/server`
+- Check `.vc4pm/config.json` exists in current directory
+- Verify provider API key validity in config
+- Ensure database/project is accessible by your integration
 
 ### Status Transition Errors  
-- Confirm configuration transitions match your Notion board setup
-- Verify status values exactly match Notion select options
+- Confirm configuration transitions match your task provider setup
+- Verify status values exactly match provider options
 - Check that required statuses exist: "Not Started", "In Progress", "Test", "Done"
 
 ### Database Access Errors
-- Confirm integration has access to the target database
-- Verify database ID is correct in project configuration
+- Confirm integration has access to the target database/project
+- Verify provider configuration is correct
 - Check that database has required properties: Status, Type
 
 ### Todo Matching Issues
@@ -676,6 +690,6 @@ The system automatically updates task status based on todo completion:
 - Use `analyze_task_todos` to see all available todos
 
 ### Configuration Problems
-- Validate JSON syntax in mcp-config.json
-- Ensure all required fields are present
-- Check that workflow files exist at specified paths
+- Validate JSON syntax in `.vc4pm/config.json`
+- Ensure all required fields are present (workflow, providers)
+- Check that provider configuration matches your setup

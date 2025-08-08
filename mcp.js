@@ -4,36 +4,34 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-// Load environment variables from MCP config
-function loadEnvFromMcpConfig() {
-  const configPath = path.join(__dirname, '.claude', 'mcp-config.json');
+// Load configuration from .vc4pm/config.json
+function loadConfig() {
+  const configPath = path.join(process.cwd(), '.vc4pm', 'config.json');
   
-  if (fs.existsSync(configPath)) {
-    try {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      const serverConfig = config.mcpServers['vibe-coding-4pm'];
-      
-      if (serverConfig && serverConfig.env) {
-        process.env.NOTION_API_KEY = serverConfig.env.NOTION_API_KEY;
-        process.env.NOTION_DATABASE_ID = serverConfig.env.NOTION_DATABASE_ID;
-        process.env.WORKFLOW_CONFIG = JSON.stringify(serverConfig.env.WORKFLOW_CONFIG);
-        process.env.PROVIDERS_CONFIG = JSON.stringify(serverConfig.env.PROVIDERS_CONFIG);
-      }
-    } catch (e) {
-      console.error('Error loading MCP config:', e.message);
-    }
+  if (!fs.existsSync(configPath)) {
+    console.error('No .vc4pm/config.json found. Run: vc4pm --help for setup instructions.');
+    process.exit(1);
+  }
+  
+  try {
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    
+    // Set environment variables for the server
+    process.env.WORKFLOW_CONFIG = JSON.stringify(config.workflow);
+    process.env.PROVIDERS_CONFIG = JSON.stringify(config.providers);
+    
+    return config;
+  } catch (e) {
+    console.error('Error loading config:', e.message);
+    process.exit(1);
   }
 }
-
-loadEnvFromMcpConfig();
 
 // Sanitize JSON from AI
 function sanitizeJson(jsonStr) {
   return jsonStr
-    // Clean up bash escaping issues
     .replace(/\\!/g, '!')      // Remove \! 
     .replace(/\\'/g, "'")      // Remove \'
-    // Fix actual control characters
     .replace(/\n/g, '\\n')     // Escape real newlines
     .replace(/\t/g, '\\t')     // Escape real tabs
     .replace(/\r/g, '\\r');    // Escape real carriage returns
@@ -56,14 +54,12 @@ let mcpArgs = {};
 
 // Parse arguments
 if (args.length === 2 && !args[1].startsWith('--')) {
-  // JSON format (legacy support)
+  // JSON format
   const jsonArgs = args[1];
   try {
     mcpArgs = JSON.parse(jsonArgs);
   } catch (e) {
-    // Smart JSON sanitization for AI-generated content
     const sanitizedJson = sanitizeJson(jsonArgs);
-    
     try {
       mcpArgs = JSON.parse(sanitizedJson);
     } catch (e2) {
@@ -71,7 +67,7 @@ if (args.length === 2 && !args[1].startsWith('--')) {
       console.error('Original:', jsonArgs.substring(0, 200));
       console.error('Sanitized:', sanitizedJson.substring(0, 200));
       console.error('Error:', e2.message);
-      process.exit(1);ma
+      process.exit(1);
     }
   }
 } else {
@@ -114,17 +110,14 @@ if (args.length === 2 && !args[1].startsWith('--')) {
         mcpArgs[cleanKey] = value;
     }
   }
-  
-  // For create_task, get template if no workflow provided
-  if (tool === 'create_task' && !mcpArgs.adaptedWorkflow && mcpArgs.taskType) {
-    console.log(`No workflow provided, fetching ${mcpArgs.taskType} template...`);
-    // We'll need to get the template first, then create the task
-    // For now, let the MCP server handle this
-  }
 }
 
-// Start MCP server
-const server = spawn('npm', ['run', 'start:mcp'], {
+// Load config first
+const config = loadConfig();
+
+// Start MCP server directly
+const serverPath = path.join(__dirname, 'dist', 'server.js');
+const server = spawn('node', [serverPath], {
   stdio: ['pipe', 'pipe', 'inherit'],
   cwd: __dirname
 });
@@ -157,7 +150,7 @@ server.stdin.write(JSON.stringify(initMessage) + '\n');
 // Wait then send tool call
 setTimeout(() => {
   server.stdin.write(JSON.stringify(toolMessage) + '\n');
-}, 500);
+}, 1000);
 
 // Handle responses
 let responses = 0;
@@ -185,15 +178,15 @@ server.stdout.on('data', (data) => {
         setTimeout(() => server.kill(), 100);
       }
     } catch (e) {
-      // Ignore non-JSON lines
+      // Ignore non-JSON lines (logs from server)
     }
   });
 });
 
-// Cleanup with longer timeout for long-running operations
+// Cleanup timeout
 setTimeout(() => {
   if (!toolResultReceived) {
     console.log('Timeout reached, killing server...');
   }
   server.kill();
-}, 30000); // 30 seconds timeout for hierarchical execution
+}, 30000);

@@ -1,22 +1,26 @@
 # Development Workflow
 
-## Project Setup
+## Project Setup (for contributors)
 
 ### Initial Setup
 ```bash
 # Clone and setup
-git clone <repository-url>
-cd notion-workflow-mcp
+git clone https://github.com/christophe-bazin/vibe-coding-4pm.git
+cd server
 npm install
 npm run build
 ```
 
-### Environment Configuration
+### Global Testing Setup
 ```bash
-# Create environment file
-cp .env.example .env
-# Edit .env with your Notion API key
-echo "NOTION_API_KEY=your_secret_token" > .env
+# Link for local development
+npm link
+vc4pm --help
+
+# Create test project config
+mkdir test-project/.vc4pm
+cp .vc4pm/config.example.json test-project/.vc4pm/config.json
+# Edit with test credentials
 ```
 
 ### Notion Setup
