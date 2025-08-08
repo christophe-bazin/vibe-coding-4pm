@@ -32,11 +32,7 @@ npm install -g @vc4pm/server
 vc4pm <tool> '<json_arguments>'  # Global access in any project
 ```
 
-**Previous Architecture (Removed)**:
-- ❌ `bin/vc4pm-server.js` (standalone MCP server launcher)
-- ❌ `vc4pm-server` global command
-
-**Current Architecture**:
+**Architecture**:
 - ✅ `mcp.js` (intelligent MCP wrapper)
 - ✅ `vc4pm` global command (mapped to mcp.js)
 - ✅ `dist/server.js` (internal MCP server, launched by wrapper)
