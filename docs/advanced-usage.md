@@ -117,31 +117,33 @@ source ~/.bashrc
 Each project gets its own configuration:
 
 ```json
-// your-project/.claude/mcp-config.json
+// your-project/.vc4pm/config.json
 {
-  "mcpServers": {
-    "vibe-coding-4pm": {
-      "command": "node",
-      "args": ["/path/to/vibe-coding-4pm/dist/server.js"],
-      "env": {
-        "NOTION_API_KEY": "your_notion_integration_token_here",
-        "NOTION_DATABASE_ID": "your_database_id_here",
-        "WORKFLOW_CONFIG": {
-          "statusMapping": {
-            "notStarted": "Not Started",
-            "inProgress": "In Progress", 
-            "test": "Test",
-            "done": "Done"
-          },
-          "transitions": {
-            "notStarted": ["inProgress"],
-            "inProgress": ["test"],
-            "test": ["done", "inProgress"],
-            "done": ["test"]
-          },
-          "taskTypes": ["Feature", "Bug", "Refactoring"],
-          "defaultStatus": "notStarted",
-          "requiresValidation": ["done"]
+  "workflow": {
+    "statusMapping": {
+      "notStarted": "Not Started",
+      "inProgress": "In Progress", 
+      "test": "Test",
+      "done": "Done"
+    },
+    "transitions": {
+      "notStarted": ["inProgress"],
+      "inProgress": ["test"],
+      "test": ["done", "inProgress"],
+      "done": ["test"]
+    },
+    "taskTypes": ["Feature", "Bug", "Refactoring"],
+    "defaultStatus": "notStarted",
+    "requiresValidation": ["done"]
+  },
+  "providers": {
+    "default": "notion",
+    "available": {
+      "notion": {
+        "enabled": true,
+        "config": {
+          "apiKey": "your_notion_integration_token_here",
+          "databaseId": "your_database_id_here"
         }
       }
     }
@@ -154,11 +156,11 @@ Each project gets its own configuration:
 Add project-specific AI guidance:
 
 ```markdown
-<!-- your-project/.claude/instructions.md -->
+<!-- your-project/README.md - Development Workflow Section -->
 # Development Workflow
 
-## Notion Database
-Database ID: `your-database-id-here`
+## Task Management Setup
+Configuration: `.vc4pm/config.json`
 
 ## Task Management Rules
 - Always create tasks before implementing features
@@ -666,9 +668,10 @@ The system automatically updates task status based on todo completion:
 
 ## Troubleshooting Common Issues
 
-### MCP Not Detected
-- Verify `.claude/mcp-config.json` path is correct
-- Check Notion API key validity
+### Command Not Found
+- Verify `vc4pm` is installed globally: `npm install -g @vc4pm/server`
+- Check `.vc4pm/config.json` exists in current directory
+- Verify Notion API key validity in config
 - Ensure database is shared with your Notion integration
 
 ### Status Transition Errors  
@@ -687,6 +690,6 @@ The system automatically updates task status based on todo completion:
 - Use `analyze_task_todos` to see all available todos
 
 ### Configuration Problems
-- Validate JSON syntax in mcp-config.json
-- Ensure all required fields are present
-- Check that workflow files exist at specified paths
+- Validate JSON syntax in `.vc4pm/config.json`
+- Ensure all required fields are present (workflow, providers)
+- Check that provider configuration matches your setup
