@@ -170,7 +170,7 @@ Configuration: `.vc4pm/config.json`
 
 ## Development Flow
 1. Ask Claude to create a task for new features
-2. Provide the Notion URL to start implementation
+2. Provide the task URL to start implementation
 3. Claude will manage status progression automatically
 4. Review and validate when task reaches "Test" status
 ```
@@ -671,17 +671,17 @@ The system automatically updates task status based on todo completion:
 ### Command Not Found
 - Verify `vc4pm` is installed globally: `npm install -g @vc4pm/server`
 - Check `.vc4pm/config.json` exists in current directory
-- Verify Notion API key validity in config
-- Ensure database is shared with your Notion integration
+- Verify provider API key validity in config
+- Ensure database/project is accessible by your integration
 
 ### Status Transition Errors  
-- Confirm configuration transitions match your Notion board setup
-- Verify status values exactly match Notion select options
+- Confirm configuration transitions match your task provider setup
+- Verify status values exactly match provider options
 - Check that required statuses exist: "Not Started", "In Progress", "Test", "Done"
 
 ### Database Access Errors
-- Confirm integration has access to the target database
-- Verify database ID is correct in project configuration
+- Confirm integration has access to the target database/project
+- Verify provider configuration is correct
 - Check that database has required properties: Status, Type
 
 ### Todo Matching Issues

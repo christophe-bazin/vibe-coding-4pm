@@ -10,7 +10,7 @@ Transform your AI assistant into an autonomous development project manager. Say 
 - **📋 Intelligent Task Creation**: Smart templates adapt to your requirements  
 - **⚡ Complete Development Automation**: From task creation → implementation → testing → done
 - **🔄 Multi-AI Support**: Works with Claude Desktop, Claude Code, Cursor through MCP
-- **🏗️ Notion Integration**: Currently supports Notion (Linear/GitHub coming soon)
+- **🏗️ Multi-Provider Support**: Supports Notion (Linear/GitHub coming soon)
 
 ## Quick Start
 
@@ -24,6 +24,7 @@ npm install -g @vc4pm/server
 
 **Currently Supported: Notion** (Linear, GitHub, Jira coming soon)
 
+**For Notion:**
 1. Create a [Notion integration](https://www.notion.so/my-integrations)
 2. Copy your integration token
 3. Create a database with these properties:
@@ -61,7 +62,7 @@ Create `.vc4pm/config.json` in your project:
 }
 ```
 
-Replace the apiKey and databaseId with your actual Notion credentials.
+Replace the apiKey and databaseId with your actual provider credentials.
 
 ### 4. Start Using
 
@@ -102,7 +103,7 @@ The MCP server provides 10 tools available to MCP clients:
 - `update_todos` - Batch update with automatic execution continuation
 - `generate_summary` - Generate summary instructions
 - `get_summary_template` - Get raw template for AI adaptation
-- `append_summary` - Append AI-adapted summary to Notion task
+- `append_summary` - Append AI-adapted summary to task
 
 ## How It Works
 
