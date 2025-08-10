@@ -38,8 +38,8 @@ class MCPServer {
     
     const status = new StatusService(this.workflowConfig);
     const validation = new ValidationService(this.workflowConfig, status);
-    const creation = new CreationService(providerManager, validation);
-    const update = new UpdateService(providerManager, status, validation);
+    const creation = new CreationService(providerManager, validation, this.workflowConfig);
+    const update = new UpdateService(providerManager, status, validation, this.workflowConfig);
     const execution = new ExecutionService(update, status);
     const formatter = new ResponseFormatter();
 

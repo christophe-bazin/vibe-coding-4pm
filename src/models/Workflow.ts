@@ -8,6 +8,12 @@ export interface WorkflowConfig {
   taskTypes: string[];
   defaultStatus: string;
   requiresValidation: boolean;
+  templates?: TemplateConfig;
+}
+
+export interface TemplateConfig {
+  override: boolean;
+  customPath?: string;
 }
 
 

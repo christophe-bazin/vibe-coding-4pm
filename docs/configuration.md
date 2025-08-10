@@ -39,7 +39,11 @@ Single configuration file: `.vc4pm/config.json`
     },
     "taskTypes": ["Feature", "Bug", "Refactoring"],
     "defaultStatus": "notStarted",
-    "requiresValidation": ["done"]
+    "requiresValidation": ["done"],
+    "templates": {
+      "override": false,
+      "customPath": ".vc4pm/templates/"
+    }
   },
   "providers": {
     "default": "notion",
@@ -106,6 +110,39 @@ Available task types for classification:
 - **Feature**: New functionality or enhancements
 - **Bug**: Issue fixes and corrections  
 - **Refactoring**: Code improvements and restructuring
+
+#### `templates`
+Override global templates with project-specific ones:
+
+```json
+"templates": {
+  "override": false,
+  "customPath": ".vc4pm/templates/"
+}
+```
+
+**Options:**
+- `override`: Set to `true` to use custom templates instead of global ones
+- `customPath`: Directory where custom templates are stored (optional, defaults to `.vc4pm/templates/`)
+
+**Template Structure:**
+When `override: true`, create these files:
+```
+.vc4pm/
+├── config.json
+└── templates/
+    ├── task/
+    │   ├── feature.md
+    │   ├── bug.md
+    │   └── refactoring.md
+    └── summary/
+        └── summary.md
+```
+
+**Behavior:**
+- If custom template exists → uses custom template
+- If custom template missing → falls back to global template
+- Templates use the same markdown format as global ones
 
 ### Provider Configuration
 

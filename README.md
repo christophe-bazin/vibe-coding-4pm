@@ -7,7 +7,8 @@ Transform your AI assistant into an autonomous development project manager. Say 
 ## 🚀 **Key Features**
 
 - **🎯 Autonomous Project Management**: AI creates tasks, implements features, and tracks progress
-- **📋 Intelligent Task Creation**: Smart templates adapt to your requirements  
+- **📋 Intelligent Task Creation**: Smart templates adapt to your requirements
+- **🎨 Custom Templates**: Override global templates with project-specific ones  
 - **⚡ Complete Development Automation**: From task creation → implementation → testing → done
 - **🔄 Multi-AI Support**: Works with Claude Desktop, Claude Code, Cursor through MCP
 - **🏗️ Multi-Provider Support**: Supports Notion (Linear/GitHub coming soon)
@@ -45,7 +46,11 @@ Create `.vc4pm/config.json` in your project:
       "test": "Test",
       "done": "Done"
     },
-    "taskTypes": ["Feature", "Bug", "Refactoring"]
+    "taskTypes": ["Feature", "Bug", "Refactoring"],
+    "templates": {
+      "override": false,
+      "customPath": ".vc4pm/templates/"
+    }
   },
   "providers": {
     "default": "notion",

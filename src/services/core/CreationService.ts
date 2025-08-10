@@ -6,13 +6,15 @@ import { TaskProvider } from '../../interfaces/TaskProvider.js';
 import { ProviderManager } from '../../providers/ProviderManager.js';
 import { Task } from '../../models/Task.js';
 import { ValidationService } from '../shared/ValidationService.js';
+import { WorkflowConfig } from '../../models/Workflow.js';
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 
 export class CreationService {
   constructor(
     private providerManager: ProviderManager,
-    private validationService: ValidationService
+    private validationService: ValidationService,
+    private workflowConfig: WorkflowConfig
   ) {}
 
   async createTask(title: string, taskType: string, description: string, adaptedWorkflow?: string, provider?: string): Promise<Task | string> {
@@ -63,7 +65,25 @@ Adapt this template by keeping the ## headers structure but customizing the impl
   private async loadTaskTypeTemplate(taskType: string): Promise<string> {
     // Load raw workflow template from markdown files
     // Templates contain placeholder content that AI will adapt to specific contexts
-    const templateFile = `templates/task/${taskType.toLowerCase()}.md`;
+    const templateFileName = `${taskType.toLowerCase()}.md`;
+    
+    // Check for custom templates if override is enabled
+    if (this.workflowConfig.templates?.override) {
+      const customPath = this.workflowConfig.templates.customPath || '.vc4pm/templates/';
+      const customTemplateFile = `${customPath}task/${templateFileName}`;
+      const customFilePath = resolve(customTemplateFile);
+      
+      if (existsSync(customFilePath)) {
+        try {
+          return readFileSync(customFilePath, 'utf-8');
+        } catch (error) {
+          throw new Error(`Error reading custom template file ${customTemplateFile} at ${customFilePath}: ${error}`);
+        }
+      }
+    }
+    
+    // Fallback to global templates
+    const templateFile = `templates/task/${templateFileName}`;
     const filePath = resolve(templateFile);
     
     if (!existsSync(filePath)) {

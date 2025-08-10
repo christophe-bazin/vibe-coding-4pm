@@ -14,7 +14,11 @@
     },
     "taskTypes": ["Feature", "Bug", "Refactoring"],
     "defaultStatus": "notStarted",
-    "requiresValidation": ["done"]
+    "requiresValidation": ["done"],
+    "templates": {
+      "override": false,
+      "customPath": ".vc4pm/templates/"
+    }
   },
   "providers": {
     "default": "notion",

@@ -11,7 +11,7 @@ import { ValidationService } from '../shared/ValidationService.js';
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 
-import { ExecutionAction } from '../../models/Workflow.js';
+import { ExecutionAction, WorkflowConfig } from '../../models/Workflow.js';
 
 export class UpdateService {
   private executionService?: any; // Injected later to avoid circular dependency
@@ -19,7 +19,8 @@ export class UpdateService {
   constructor(
     private providerManager: ProviderManager,
     private statusService: StatusService,
-    private validationService: ValidationService
+    private validationService: ValidationService,
+    private workflowConfig: WorkflowConfig
   ) {}
 
   setExecutionService(executionService: any): void {
@@ -139,7 +140,25 @@ export class UpdateService {
   
   
   private async loadSummaryTemplate(): Promise<string> {
-    const templateFile = 'templates/summary/summary.md';
+    const templateFileName = 'summary.md';
+    
+    // Check for custom templates if override is enabled
+    if (this.workflowConfig.templates?.override) {
+      const customPath = this.workflowConfig.templates.customPath || '.vc4pm/templates/';
+      const customTemplateFile = `${customPath}summary/${templateFileName}`;
+      const customFilePath = resolve(customTemplateFile);
+      
+      if (existsSync(customFilePath)) {
+        try {
+          return readFileSync(customFilePath, 'utf-8');
+        } catch (error) {
+          throw new Error(`Error reading custom summary template ${customTemplateFile}: ${error}`);
+        }
+      }
+    }
+    
+    // Fallback to global templates
+    const templateFile = `templates/summary/${templateFileName}`;
     const filePath = resolve(templateFile);
     
     if (!existsSync(filePath)) {
