@@ -13,7 +13,8 @@ export interface WorkflowConfig {
 
 export interface TemplateConfig {
   override: boolean;
-  customPath?: string;
+  taskPath?: string;
+  summaryPath?: string;
 }
 
 

@@ -42,7 +42,8 @@ Single configuration file: `.vc4pm/config.json`
     "requiresValidation": ["done"],
     "templates": {
       "override": false,
-      "customPath": ".vc4pm/templates/"
+      "taskPath": ".vc4pm/templates/task/",
+      "summaryPath": ".vc4pm/templates/summary/"
     }
   },
   "providers": {
@@ -117,32 +118,30 @@ Override global templates with project-specific ones:
 ```json
 "templates": {
   "override": false,
-  "customPath": ".vc4pm/templates/"
+  "taskPath": ".vc4pm/templates/task/",
+  "summaryPath": ".vc4pm/templates/summary/"
 }
 ```
 
 **Options:**
 - `override`: Set to `true` to use custom templates instead of global ones
-- `customPath`: Directory where custom templates are stored (optional, defaults to `.vc4pm/templates/`)
+- `taskPath`: Directory for task templates (optional, defaults to `.vc4pm/templates/task/`)
+- `summaryPath`: Directory for summary templates (optional, defaults to `.vc4pm/templates/summary/`)
 
-**Template Structure:**
+**Template Files:**
 When `override: true`, create these files:
 ```
-.vc4pm/
-├── config.json
-└── templates/
-    ├── task/
-    │   ├── feature.md
-    │   ├── bug.md
-    │   └── refactoring.md
-    └── summary/
-        └── summary.md
+.vc4pm/templates/task/feature.md
+.vc4pm/templates/task/bug.md
+.vc4pm/templates/task/refactoring.md
+.vc4pm/templates/summary/summary.md
 ```
 
 **Behavior:**
 - If custom template exists → uses custom template
-- If custom template missing → falls back to global template
+- If custom template missing → falls back to global template  
 - Templates use the same markdown format as global ones
+- Paths can be customized independently for tasks and summaries
 
 ### Provider Configuration
 

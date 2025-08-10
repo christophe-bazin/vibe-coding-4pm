@@ -144,8 +144,8 @@ export class UpdateService {
     
     // Check for custom templates if override is enabled
     if (this.workflowConfig.templates?.override) {
-      const customPath = this.workflowConfig.templates.customPath || '.vc4pm/templates/';
-      const customTemplateFile = `${customPath}summary/${templateFileName}`;
+      const summaryPath = this.workflowConfig.templates.summaryPath || '.vc4pm/templates/summary/';
+      const customTemplateFile = `${summaryPath}${templateFileName}`;
       const customFilePath = resolve(customTemplateFile);
       
       if (existsSync(customFilePath)) {

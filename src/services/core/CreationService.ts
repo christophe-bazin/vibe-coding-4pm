@@ -69,8 +69,8 @@ Adapt this template by keeping the ## headers structure but customizing the impl
     
     // Check for custom templates if override is enabled
     if (this.workflowConfig.templates?.override) {
-      const customPath = this.workflowConfig.templates.customPath || '.vc4pm/templates/';
-      const customTemplateFile = `${customPath}task/${templateFileName}`;
+      const taskPath = this.workflowConfig.templates.taskPath || '.vc4pm/templates/task/';
+      const customTemplateFile = `${taskPath}${templateFileName}`;
       const customFilePath = resolve(customTemplateFile);
       
       if (existsSync(customFilePath)) {

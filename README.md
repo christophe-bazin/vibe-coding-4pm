@@ -49,7 +49,8 @@ Create `.vc4pm/config.json` in your project:
     "taskTypes": ["Feature", "Bug", "Refactoring"],
     "templates": {
       "override": false,
-      "customPath": ".vc4pm/templates/"
+      "taskPath": ".vc4pm/templates/task/",
+      "summaryPath": ".vc4pm/templates/summary/"
     }
   },
   "providers": {

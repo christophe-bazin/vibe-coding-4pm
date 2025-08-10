@@ -17,7 +17,8 @@
     "requiresValidation": ["done"],
     "templates": {
       "override": false,
-      "customPath": ".vc4pm/templates/"
+      "taskPath": ".vc4pm/templates/task/",
+      "summaryPath": ".vc4pm/templates/summary/"
     }
   },
   "providers": {
