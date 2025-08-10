@@ -146,7 +146,8 @@ export class UpdateService {
     if (this.workflowConfig.templates?.override) {
       const summaryPath = this.workflowConfig.templates.summaryPath || '.vc4pm/templates/summary/';
       const customTemplateFile = `${summaryPath}${templateFileName}`;
-      const customFilePath = resolve(customTemplateFile);
+      const projectRoot = process.env.PROJECT_ROOT || process.cwd();
+      const customFilePath = resolve(projectRoot, customTemplateFile);
       
       if (existsSync(customFilePath)) {
         try {

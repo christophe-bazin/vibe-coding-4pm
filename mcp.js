@@ -19,6 +19,7 @@ function loadConfig() {
     // Set environment variables for the server
     process.env.WORKFLOW_CONFIG = JSON.stringify(config.workflow);
     process.env.PROVIDERS_CONFIG = JSON.stringify(config.providers);
+    process.env.PROJECT_ROOT = process.cwd();
     
     return config;
   } catch (e) {
