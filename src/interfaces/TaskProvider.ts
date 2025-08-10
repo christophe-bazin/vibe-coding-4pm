@@ -1,5 +1,6 @@
 import { Task } from '../models/Task.js';
 import { TodoAnalysisResult, TodoUpdateRequest } from '../models/Todo.js';
+import { PageContent } from '../models/Page.js';
 
 export interface TaskProvider {
   getTask(taskId: string): Promise<Task>;
@@ -14,4 +15,5 @@ export interface TaskProvider {
 
   getProviderName(): string;
   getProviderType(): string;
+  readPage(pageId: string, includeLinkedPages?: boolean): Promise<PageContent>;
 }

@@ -1,6 +1,7 @@
 import { TaskProvider } from '../../interfaces/TaskProvider.js';
 import { Task } from '../../models/Task.js';
 import { TodoItem, TodoAnalysisResult, TodoUpdateRequest } from '../../models/Todo.js';
+import { PageContent, LinkedPage, NotionBlock } from '../../models/Page.js';
 import { Client } from '@notionhq/client';
 
 export class NotionProvider implements TaskProvider {
@@ -721,5 +722,222 @@ export class NotionProvider implements TaskProvider {
     }
 
     return blockers;
+  }
+
+  async readPage(pageId: string, includeLinkedPages: boolean = true): Promise<PageContent> {
+    try {
+      // Get page metadata
+      const page = await this.notion.pages.retrieve({ page_id: pageId });
+      
+      // Get page blocks (content)
+      const blocks = await this.notion.blocks.children.list({ 
+        block_id: pageId,
+        page_size: 100 
+      });
+      
+      // Convert blocks to content
+      const content = this.convertBlocksToMarkdown(blocks.results);
+      
+      // Extract page title
+      const title = this.extractPageTitle(page);
+      
+      // Get linked pages if requested
+      let linkedPages: LinkedPage[] = [];
+      if (includeLinkedPages) {
+        linkedPages = await this.extractLinkedPages(blocks.results);
+        
+        // Also get child pages if this is a database
+        const childPages = await this.getChildPages(pageId);
+        linkedPages.push(...childPages);
+      }
+      
+      return {
+        id: pageId,
+        title,
+        url: (page as any).url || '',
+        content,
+        linkedPages,
+        lastEdited: new Date((page as any).last_edited_time),
+        createdTime: new Date((page as any).created_time)
+      };
+    } catch (error) {
+      throw new Error(`Failed to read Notion page: ${error}`);
+    }
+  }
+
+  private extractPageTitle(page: any): string {
+    // Try to find title property
+    for (const [, property] of Object.entries(page.properties || {})) {
+      if ((property as any).type === 'title') {
+        return this.extractRichText((property as any).title) || 'Untitled';
+      }
+    }
+    return 'Untitled';
+  }
+
+  private convertBlocksToMarkdown(blocks: any[]): string {
+    return blocks.map(block => {
+      switch (block.type) {
+        case 'paragraph':
+          return this.extractRichText(block.paragraph.rich_text);
+        case 'heading_1':
+          return `# ${this.extractRichText(block.heading_1.rich_text)}`;
+        case 'heading_2':
+          return `## ${this.extractRichText(block.heading_2.rich_text)}`;
+        case 'heading_3':
+          return `### ${this.extractRichText(block.heading_3.rich_text)}`;
+        case 'bulleted_list_item':
+          return `- ${this.extractRichText(block.bulleted_list_item.rich_text)}`;
+        case 'numbered_list_item':
+          return `1. ${this.extractRichText(block.numbered_list_item.rich_text)}`;
+        case 'to_do':
+          const checked = block.to_do.checked ? '[x]' : '[ ]';
+          return `- ${checked} ${this.extractRichText(block.to_do.rich_text)}`;
+        case 'code':
+          const language = block.code.language || 'text';
+          const codeText = this.extractRichText(block.code.rich_text);
+          return `\`\`\`${language}\n${codeText}\n\`\`\``;
+        case 'quote':
+          return `> ${this.extractRichText(block.quote.rich_text)}`;
+        default:
+          return '';
+      }
+    }).filter(text => text.length > 0).join('\n\n');
+  }
+
+  private async extractLinkedPages(blocks: any[]): Promise<LinkedPage[]> {
+    const linkedPages: LinkedPage[] = [];
+    const seenPageIds = new Set<string>();
+
+    for (const block of blocks) {
+      // Extract mentions from rich text
+      const richText = this.getRichTextFromBlock(block);
+      if (richText) {
+        for (const text of richText) {
+          if (text.type === 'mention' && text.mention?.type === 'page') {
+            const pageId = text.mention.page.id;
+            if (!seenPageIds.has(pageId)) {
+              seenPageIds.add(pageId);
+              try {
+                const linkedPage = await this.notion.pages.retrieve({ page_id: pageId });
+                linkedPages.push({
+                  id: pageId,
+                  title: this.extractPageTitle(linkedPage),
+                  url: (linkedPage as any).url || '',
+                  relationshipType: 'mention'
+                });
+              } catch (error) {
+                // Skip pages we can't access
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return linkedPages;
+  }
+
+  private getRichTextFromBlock(block: any): any[] | null {
+    switch (block.type) {
+      case 'paragraph':
+        return block.paragraph.rich_text;
+      case 'heading_1':
+        return block.heading_1.rich_text;
+      case 'heading_2':
+        return block.heading_2.rich_text;
+      case 'heading_3':
+        return block.heading_3.rich_text;
+      case 'bulleted_list_item':
+        return block.bulleted_list_item.rich_text;
+      case 'numbered_list_item':
+        return block.numbered_list_item.rich_text;
+      case 'to_do':
+        return block.to_do.rich_text;
+      case 'quote':
+        return block.quote.rich_text;
+      default:
+        return null;
+    }
+  }
+
+  private async getChildPages(pageId: string): Promise<LinkedPage[]> {
+    try {
+      // Try to get child pages (for databases)
+      const children = await this.notion.blocks.children.list({
+        block_id: pageId,
+        page_size: 10
+      });
+
+      const childPages: LinkedPage[] = [];
+
+      for (const child of children.results) {
+        if ('type' in child && child.type === 'child_page' && 'child_page' in child) {
+          try {
+            const childPageData = await this.notion.pages.retrieve({ page_id: child.id });
+            const childContent = await this.getPageContentSummary(child.id);
+            
+            childPages.push({
+              id: child.id,
+              title: child.child_page.title,
+              url: `https://notion.so/${child.id.replace(/-/g, '')}`,
+              content: childContent,
+              relationshipType: 'child'
+            });
+          } catch (error) {
+            // Skip pages we can't access
+          }
+        }
+      }
+
+      // Also check if this is a database and get database entries
+      try {
+        const database = await this.notion.databases.retrieve({ database_id: pageId });
+        if (database) {
+          const dbPages = await this.notion.databases.query({ 
+            database_id: pageId,
+            page_size: 5
+          });
+
+          for (const dbPage of dbPages.results) {
+            try {
+              const pageTitle = this.extractPageTitle(dbPage);
+              const pageContent = await this.getPageContentSummary(dbPage.id);
+              
+              childPages.push({
+                id: dbPage.id,
+                title: pageTitle,
+                url: (dbPage as any).url || '',
+                content: pageContent,
+                relationshipType: 'child'
+              });
+            } catch (error) {
+              // Skip pages we can't access
+            }
+          }
+        }
+      } catch (error) {
+        // Not a database, that's fine
+      }
+
+      return childPages;
+    } catch (error) {
+      return [];
+    }
+  }
+
+  private async getPageContentSummary(pageId: string): Promise<string> {
+    try {
+      const blocks = await this.notion.blocks.children.list({ 
+        block_id: pageId,
+        page_size: 20
+      });
+      
+      const content = this.convertBlocksToMarkdown(blocks.results);
+      // Return first 300 chars as summary
+      return content.substring(0, 300) + (content.length > 300 ? '...' : '');
+    } catch (error) {
+      return '';
+    }
   }
 }

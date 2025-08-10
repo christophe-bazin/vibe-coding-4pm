@@ -6,6 +6,7 @@ import { ExecutionResult, ExecutionAction } from '../../models/Workflow.js';
 import { TaskMetadata } from '../../models/Task.js';
 import { TodoAnalysisResult } from '../../models/Todo.js';
 import { Task } from '../../models/Task.js';
+import { PageContent, LinkedPage } from '../../models/Page.js';
 
 export class ResponseFormatter {
   
@@ -157,5 +158,36 @@ export class ResponseFormatter {
       default:
         return `📋 Next Action Available`;
     }
+  }
+
+  formatPageContent(pageContent: PageContent): string {
+    let text = `📄 Notion Page Content\n\n`;
+    
+    text += `Title: ${pageContent.title}\n`;
+    text += `ID: ${pageContent.id}\n`;
+    text += `URL: ${pageContent.url}\n`;
+    text += `Last Edited: ${pageContent.lastEdited.toLocaleDateString()}\n`;
+    text += `Created: ${pageContent.createdTime.toLocaleDateString()}\n\n`;
+    
+    // Main content
+    if (pageContent.content) {
+      text += `📝 Content\n`;
+      text += `${pageContent.content}\n\n`;
+    }
+    
+    // Linked pages
+    if (pageContent.linkedPages && pageContent.linkedPages.length > 0) {
+      text += `🔗 Linked Pages (${pageContent.linkedPages.length})\n`;
+      for (const linkedPage of pageContent.linkedPages) {
+        text += `- [${linkedPage.title}](${linkedPage.url}) (${linkedPage.relationshipType})\n`;
+        if (linkedPage.content) {
+          // Show first 200 chars of linked page content
+          const preview = linkedPage.content.substring(0, 200);
+          text += `  Preview: ${preview}${linkedPage.content.length > 200 ? '...' : ''}\n`;
+        }
+      }
+    }
+    
+    return text;
   }
 }

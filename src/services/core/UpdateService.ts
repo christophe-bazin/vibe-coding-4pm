@@ -6,6 +6,7 @@ import { TaskProvider } from '../../interfaces/TaskProvider.js';
 import { ProviderManager } from '../../providers/ProviderManager.js';
 import { Task, TaskMetadata } from '../../models/Task.js';
 import { TodoAnalysisResult, TodoUpdateRequest } from '../../models/Todo.js';
+import { PageContent } from '../../models/Page.js';
 import { StatusService } from '../shared/StatusService.js';
 import { ValidationService } from '../shared/ValidationService.js';
 import { readFileSync, existsSync } from 'fs';
@@ -187,5 +188,10 @@ export class UpdateService {
     // Use the task provider to append content to the task page
     const taskProvider = this.providerManager.getProvider(provider);
     await taskProvider.appendToTask(taskId, summary);
+  }
+
+  async readNotionPage(pageId: string, includeLinkedPages: boolean = true, provider?: string): Promise<PageContent> {
+    const taskProvider = this.providerManager.getProvider(provider);
+    return await taskProvider.readPage(pageId, includeLinkedPages);
   }
 }

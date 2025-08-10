@@ -85,7 +85,7 @@ AI Assistant:
 You: Review and mark as "Done" when satisfied
 ```
 
-The MCP server provides 10 tools that your AI assistant can use seamlessly through natural language.
+The MCP server provides 11 tools that your AI assistant can use seamlessly through natural language.
 
 ## What You Get
 
@@ -110,6 +110,7 @@ The MCP server provides 10 tools available to MCP clients:
 - `generate_summary` - Generate summary instructions
 - `get_summary_template` - Get raw template for AI adaptation
 - `append_summary` - Append AI-adapted summary to task
+- `read_notion_page` - Read any Notion page with linked pages content
 
 ## How It Works
 

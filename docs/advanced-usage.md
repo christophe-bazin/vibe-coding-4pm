@@ -50,6 +50,10 @@ vc4pm get_task_template '{"taskType":"Feature"}'
 vc4pm generate_summary '{"taskId":"<task-id>"}'
 vc4pm get_summary_template '{"taskId":"<task-id>"}'
 vc4pm append_summary '{"taskId":"<task-id>","adaptedSummary":"# Development Summary\n\nCompleted the task..."}'
+
+# Read Notion pages with content and links
+vc4pm read_notion_page '{"pageId":"your-notion-page-id"}'
+vc4pm read_notion_page '{"pageId":"your-page-id","includeLinkedPages":false}'
 ```
 
 #### Todo Management

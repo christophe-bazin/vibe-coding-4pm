@@ -68,11 +68,12 @@ Service-oriented architecture with clean separation:
 
 ## MCP Tools Available
 
-**10 tools for task management:**
+**11 tools for task management:**
 - Task management: `create_task`, `get_task`, `update_task`, `execute_task` (all support optional `provider` parameter)
 - Templates: `get_task_template` (Feature/Bug/Refactoring templates)
 - Todos: `analyze_todos`, `update_todos` 
 - Summaries: `generate_summary`, `get_summary_template`, `append_summary`
+- Content: `read_notion_page` (read any Notion page with linked pages)
 
 **→ Complete tool reference in [docs/advanced-usage.md](docs/advanced-usage.md)**
 

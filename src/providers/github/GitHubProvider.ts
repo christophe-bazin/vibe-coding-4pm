@@ -1,6 +1,7 @@
 import { TaskProvider } from '../../interfaces/TaskProvider.js';
 import { Task } from '../../models/Task.js';
 import { TodoAnalysisResult, TodoUpdateRequest } from '../../models/Todo.js';
+import { PageContent } from '../../models/Page.js';
 
 export class GitHubProvider implements TaskProvider {
   constructor(private config: { token: string; org: string; repo?: string }) {
@@ -45,5 +46,9 @@ export class GitHubProvider implements TaskProvider {
 
   getProviderType(): string {
     return 'github';
+  }
+
+  async readPage(pageId: string, includeLinkedPages?: boolean): Promise<PageContent> {
+    throw new Error('GitHub page reading not implemented yet');
   }
 }

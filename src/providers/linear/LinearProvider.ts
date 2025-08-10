@@ -1,6 +1,7 @@
 import { TaskProvider } from '../../interfaces/TaskProvider.js';
 import { Task } from '../../models/Task.js';
 import { TodoAnalysisResult, TodoUpdateRequest } from '../../models/Todo.js';
+import { PageContent } from '../../models/Page.js';
 
 export class LinearProvider implements TaskProvider {
   constructor(private config: { apiKey: string; teamId: string }) {
@@ -45,5 +46,9 @@ export class LinearProvider implements TaskProvider {
 
   getProviderType(): string {
     return 'linear';
+  }
+
+  async readPage(pageId: string, includeLinkedPages?: boolean): Promise<PageContent> {
+    throw new Error('Linear page reading not implemented yet');
   }
 }

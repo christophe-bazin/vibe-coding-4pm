@@ -89,6 +89,7 @@ class MCPServer {
         { name: 'generate_summary', description: 'Generate summary', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
         { name: 'get_summary_template', description: 'Get summary template', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
         { name: 'append_summary', description: 'Append AI-adapted summary to task.', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, adaptedSummary: { type: 'string' } }, required: ['taskId', 'adaptedSummary'] } },
+        { name: 'read_notion_page', description: 'Read a Notion page and its directly linked pages', inputSchema: { type: 'object', properties: { pageId: { type: 'string' }, includeLinkedPages: { type: 'boolean', default: true }, provider: { type: 'string', description: 'Optional: provider to use' } }, required: ['pageId'] } },
       ]
     }));
 
@@ -155,6 +156,9 @@ class MCPServer {
         await update.appendSummary(args.taskId, args.adaptedSummary);
         return 'Summary appended to task successfully.';
 
+      case 'read_notion_page':
+        const pageContent = await update.readNotionPage(args.pageId, args.includeLinkedPages, args.provider);
+        return formatter.formatPageContent(pageContent);
 
       default:
         throw new Error(`Unknown tool: ${name}`);
