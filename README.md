@@ -92,7 +92,7 @@ Choose your IDE and follow the setup instructions:
 
 2. Add the MCP server to Claude Code:
    ```bash
-   claude mcp add vc4pm "node" "@vc4pm/mcp-server/dist/server.js"
+   claude mcp add vc4pm "vc4pm-server"
    ```
 
 3. Open your project in Claude Code (ensure `.vc4pm/config.json` exists)
@@ -106,8 +106,7 @@ Choose your IDE and follow the setup instructions:
 {
   "mcpServers": {
     "vc4pm": {
-      "command": "node",
-      "args": ["@vc4pm/mcp-server/dist/server.js"]
+      "command": "vc4pm-server"
     }
   }
 }
