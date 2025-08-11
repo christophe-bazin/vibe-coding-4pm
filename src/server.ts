@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * MCP Server - Pure router (< 100 lines)
  */

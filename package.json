@@ -3,6 +3,9 @@
   "version": "3.0.1",
   "description": "MCP server for AI-guided task management with per-project configuration",
   "main": "dist/server.js",
+  "bin": {
+    "vc4pm-server": "dist/server.js"
+  },
   "type": "commonjs",
   "scripts": {
     "build": "tsc",
