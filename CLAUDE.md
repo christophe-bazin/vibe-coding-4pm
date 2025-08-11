@@ -8,10 +8,10 @@ This is a Model Context Protocol (MCP) server that enables AI assistants to mana
 
 ## Development Guidelines
 
-- Follow established coding standards in [.ai/development/coding-standards.md](.ai/development/coding-standards.md)
-- Adhere to commit conventions in [.ai/development/commit-conventions.md](.ai/development/commit-conventions.md)
-- Maintain clear documentation style per [.ai/development/documentation-style.md](.ai/development/documentation-style.md)
-- Follow the release process defined in [.ai/development/release-process.md](.ai/development/release-process.md)
+- Follow established coding standards in [.ai/coding-standards.md](.ai/coding-standards.md)
+- Adhere to commit conventions in [.ai/commit-conventions.md](.ai/commit-conventions.md)
+- Maintain clear documentation style per [.ai/documentation-style.md](.ai/documentation-style.md)
+- Follow the release process defined in [.ai/release-process.md](.ai/release-process.md)
 
 ## Project Architecture
 
@@ -23,7 +23,7 @@ This is a Model Context Protocol (MCP) server that enables AI assistants to mana
 - **Provider pattern**: Ready for Linear, GitHub, Jira integration via TaskProvider interface
 - **camelCase convention**: Consistent naming for internal configuration
 
-See detailed architecture in [.ai/project/mcp-architecture.md](.ai/project/mcp-architecture.md)
+See detailed architecture in [docs/advanced-usage.md](docs/advanced-usage.md#technical-architecture)
 
 ## Essential Commands
 
@@ -67,7 +67,7 @@ Service-oriented architecture with clean separation:
 - **Provider pattern**: NotionAPIAdapter with TaskProvider interface
 - **Template system**: Intelligent adaptation in `templates/` directory
 
-**→ Complete architecture details in [.ai/project/mcp-architecture.md](.ai/project/mcp-architecture.md)**
+**→ Complete architecture details in [docs/advanced-usage.md](docs/advanced-usage.md#technical-architecture)**
 
 ## Configuration System
 
@@ -99,7 +99,7 @@ Service-oriented architecture with clean separation:
 - **Status transitions**: Flexible by default, configurable constraints
 - **Never mention AI assistance in commits** (handled automatically by MCP tools)
 
-**→ Complete development workflow in [.ai/project/development-workflow.md](.ai/project/development-workflow.md)**
+**→ Complete development workflow in [docs/development.md](docs/development.md#testing-strategy)**
 
 ## Documentation Structure
 
@@ -114,39 +114,42 @@ Service-oriented architecture with clean separation:
 ### Development Guidelines (CLAUDE.md + .ai/)
 - **Purpose**: For AI assistant development and project contributions  
 - **Audience**: Claude and contributors working on the codebase
-- **Content**: MCP v3.0 architecture, coding standards, development workflow, commit conventions
-- **Files**: CLAUDE.md, .ai/development/, .ai/project/
+- **Content**: Development guidelines, coding standards, commit conventions, release process
+- **Files**: CLAUDE.md, .ai/coding-standards.md, .ai/commit-conventions.md, .ai/documentation-style.md, .ai/release-process.md
 
 **When updating documentation:**
 - User-facing changes → Update README.md and docs/ 
 - Development/architecture changes → Update CLAUDE.md and .ai/
 - Never mix user documentation with development guidelines
 
-**Detailed technical information belongs in .ai/project/:**
-- Complete MCP v3.0 architecture → .ai/project/mcp-architecture.md
-- Development workflow specifics → .ai/project/development-workflow.md  
-- Template system and fallback logic → .ai/project/mcp-architecture.md
-- Keep user docs/ simple and focused on usage, not implementation
+**Technical information now organized clearly:**
+- **User and technical docs** → docs/ directory (accessible to all users and contributors)
+- **Development guidelines** → .ai/ directory (for AI assistants and contributors)
+- **Architecture details** → docs/advanced-usage.md#technical-architecture
+- **Development workflow** → docs/development.md#testing-strategy
+- Keep separation between user docs and development guidelines
 
 ## Documentation Update Strategy
 
 **For each type of change, update the appropriate documentation layer:**
 
 ### User-Facing Changes
-- New MCP tools → README.md (tool list) + docs/advanced-usage.md (examples)
-- Configuration options → docs/configuration.md (user reference)
-- Installation steps → README.md (quick start) + docs/development.md (contribution guide)
+- New MCP tools → README.md (tool list) + docs/advanced-usage.md (complete reference)
+- Configuration options → docs/configuration.md (per-project reference)
+- Installation steps → README.md (quick start) + docs/development.md (contributor setup)
+- Architecture details → docs/advanced-usage.md#technical-architecture
 
 ### Technical/Architecture Changes  
-- MCP v3.0 service architecture → .ai/project/mcp-architecture.md (complete technical details)
-- Development patterns → .ai/development/coding-standards.md
-- Template system and fallback → .ai/project/mcp-architecture.md
-- Internal workflows → .ai/project/development-workflow.md
+- MCP v3.0 service architecture → docs/advanced-usage.md#technical-architecture
+- Development patterns → .ai/coding-standards.md
+- Template system and fallback → docs/advanced-usage.md#configuration-system
+- Development and testing workflows → docs/development.md
 
-### Avoid Duplication
-- Technical implementation details belong ONLY in .ai/project/
-- User documentation should reference .ai/ for technical details if needed
-- Keep README.md and docs/ focused on practical usage, not internal architecture
+### Clear Separation
+- **Technical details accessible to all** → docs/ directory (architecture, workflows, configuration)
+- **Development guidelines for contributors** → .ai/ directory (coding standards, conventions)
+- **README.md** → Quick start and overview
+- **docs/** → Complete technical and usage documentation
 
 ## Security and Best Practices
 

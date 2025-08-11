@@ -1,6 +1,6 @@
 # Advanced Usage Guide
 
-Detailed MCP tool usage, multi-project setup, and advanced workflows for the VC4PM MCP server.
+Detailed MCP tool usage, architecture overview, multi-project setup, and advanced workflows for the VC4PM MCP server v3.0.
 
 ## Multi-Provider Support
 
@@ -11,6 +11,42 @@ The system supports multiple task management platforms:
 - **GitHub Projects** (enterprise): Available but disabled by default
 
 Most MCP tools accept an optional `provider` parameter to specify which platform to use. If not specified, the default provider from configuration is used.
+
+## Architecture Overview
+
+### Core Architecture
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   AI IDE        │    │ @vc4pm/mcp-server│    │   Task Provider │
+│ (Claude Code)   │◄──►│  (MCP Protocol)  │◄──►│ (Notion/Linear) │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                              │
+                              ▼
+                    ┌────────────────────────┐
+                    │    Project Config      │
+                    │  .vc4pm/config.json    │
+                    │  • workflow settings   │
+                    │  • provider configs    │  
+                    │  • credentials         │
+                    └────────────────────────┘
+```
+
+### MCP Native Design Benefits
+- **Direct Integration**: Native MCP protocol, no wrapper overhead
+- **Project Awareness**: Each project has isolated config and credentials
+- **IDE Optimized**: Built for file system access and terminal capabilities
+- **Template Fallback**: Package templates used when local templates missing
+
+### Server Lifecycle
+```
+1. Claude Code starts MCP server (dist/server.js)
+2. Server reads .vc4pm/config.json from CWD
+3. Initializes provider (Notion/Linear) with project credentials
+4. Exposes 11 MCP tools to AI assistant
+5. AI uses tools through natural language
+6. Server maintains project context throughout session
+```
 
 ## MCP Integration
 
@@ -77,9 +113,105 @@ Ensure Cursor runs from project directory containing `.vc4pm/config.json`.
 #### **Other MCP IDEs**
 Configure similarly, ensuring the working directory contains the project configuration.
 
-## MCP Tool Reference
+## Technical Architecture
+
+### Service Architecture
+
+The server uses a clean service-oriented architecture:
+
+#### Core Services (`src/services/core/`)
+
+**CreationService** (`src/services/core/CreationService.ts`)
+- Task creation with template fallback system (fixed in v3.0)
+- AI-driven template adaptation via `adaptedWorkflow` parameter
+- Template resolution: Local overrides → Package templates
+- Multi-provider support with optional provider parameter
+
+**UpdateService** (`src/services/core/UpdateService.ts`)
+- Task metadata updates with workflow validation
+- Batch todo updates with auto-execution triggering
+- Summary generation and management
+- Notion page reading with linked pages support
+
+**ExecutionService** (`src/services/core/ExecutionService.ts`)
+- Provider-aware batch execution workflow
+- Rich context formatting with task hierarchy
+- Automatic status transitions based on workflow configuration
+- Integration with todo completion tracking
+
+#### Shared Services (`src/services/shared/`)
+
+**StatusService** - Workflow state management with configurable transitions
+**ValidationService** - Input validation and constraint checking
+**ResponseFormatter** - Standardized MCP response formatting
+
+### Provider Architecture
+
+```
+src/providers/
+├── ProviderManager.ts          # Provider orchestration
+├── ProviderFactory.ts          # Provider instantiation 
+├── notion/
+│   └── NotionProvider.ts      # Full Notion implementation
+├── linear/
+│   └── LinearProvider.ts      # Linear stub (future)
+└── github/
+    └── GitHubProvider.ts      # GitHub Projects stub (future)
+```
+
+**NotionProvider** (`src/providers/notion/NotionProvider.ts`)
+- Complete TaskProvider interface implementation
+- Notion API integration (@notionhq/client v2.2.15)
+- Rich text parsing and markdown conversion
+- Page reading with linked pages and child pages
+- Content management with todos, headings, lists, code blocks
+
+### Configuration System
+
+The MCP server loads configuration from the current working directory:
+
+```typescript
+private loadProjectConfig(): ProjectConfig {
+  const configPath = resolve(process.cwd(), '.vc4pm', 'config.json');
+  if (!existsSync(configPath)) {
+    throw new Error(`Project configuration not found: ${configPath}`);
+  }
+  return JSON.parse(readFileSync(configPath, 'utf-8'));
+}
+```
+
+**Key Design Principles:**
+- **Project Isolation**: Each project has its own config and credentials
+- **Security**: API keys stored locally per project
+- **Template Fallback**: Package templates used when local templates missing
+- **Provider Pattern**: Extensible for Linear, GitHub, Jira integration
+
+## MCP Tool Reference (11 Total)
 
 AI assistants use these tools through natural language. Here are the underlying tool calls:
+
+### Complete Tool List
+
+**Task Management:**
+- `create_task` - Create tasks with workflow adaptation (requires adaptedWorkflow)
+- `get_task` - Get task information with todo statistics and status info
+- `update_task` - Update task title, type and/or status with validation
+- `execute_task` - Execute task with automated workflow progression
+
+**Template System:**
+- `get_task_template` - Get raw templates for AI adaptation (Feature/Bug/Refactoring)
+
+**Todo Management:**
+- `analyze_todos` - Extract and analyze todos with completion statistics
+- `update_todos` - Batch update with automatic execution continuation
+
+**Development Summary:**
+- `generate_summary` - Generate summary instructions for AI
+- `get_summary_template` - Get raw template for AI adaptation
+- `append_summary` - Append AI-adapted summary to task
+
+**Content Management:**
+- `read_notion_page` - Read Notion page and its linked/child pages
 
 ### Task Management Tools
 
