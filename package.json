@@ -1,6 +1,6 @@
 {
   "name": "@vc4pm/mcp-server",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "MCP server for AI-guided task management with per-project configuration",
   "main": "dist/server.js",
   "bin": {
