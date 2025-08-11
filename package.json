@@ -15,9 +15,14 @@
     "mcp",
     "ai",
     "claude",
+    "cursor",
     "task-management",
     "workflow",
-    "notion"
+    "notion",
+    "linear",
+    "github-projects",
+    "development-workflow",
+    "ai-assistant"
   ],
   "author": "Christophe Bazin",
   "license": "MIT",
@@ -36,5 +41,18 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/christophe-bazin/vibe-coding-4pm.git"
+  },
+  "homepage": "https://github.com/christophe-bazin/vibe-coding-4pm#readme",
+  "bugs": {
+    "url": "https://github.com/christophe-bazin/vibe-coding-4pm/issues"
+  },
+  "files": [
+    "dist/**/*",
+    "templates/**/*",
+    "README.md",
+    "docs/**/*"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }
