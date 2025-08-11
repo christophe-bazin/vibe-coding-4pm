@@ -1,21 +1,26 @@
 # Contributing Guide
 
-Guide for contributing to and customizing the Notion Vibe Coding MCP server.
+Guide for contributing to and customizing the VC4PM MCP Server v3.0.
 
 ## Project Structure
 
 ```
-vibe-coding-4pm/
+@vc4pm/mcp-server/
 ├── src/                             # TypeScript source code
-├── templates/                       # Task and summary templates
+│   ├── services/                    # Core business logic services
+│   ├── providers/                   # Task provider implementations 
+│   ├── models/                      # TypeScript interfaces and types
+│   └── server.ts                    # MCP server implementation
+├── templates/                       # Task and summary templates (global)
 │   ├── task/                        # Task creation templates
 │   │   ├── feature.md               # Feature task template
 │   │   ├── bug.md                   # Bug task template
 │   │   └── refactoring.md           # Refactoring task template
 │   └── summary/                     # Summary templates
 │       └── summary.md               # Summary template
+├── dist/                            # Compiled JavaScript output
 ├── docs/                            # User documentation
-├── mcp.js                           # CLI wrapper for testing
+├── .ai/                             # Development guidelines for AI
 └── README.md
 ```
 
@@ -24,9 +29,10 @@ vibe-coding-4pm/
 ### Prerequisites
 
 - Node.js 18+ 
-- npm or yarn
+- npm package manager
 - TypeScript knowledge
-- Notion API familiarity
+- Task provider familiarity (Notion API, Linear, etc.)
+- MCP protocol understanding
 
 ### Installation
 
@@ -41,10 +47,17 @@ cd vibe-coding-4pm
 npm install
 ```
 
-3. Set up configuration:
+3. Set up test project configuration:
 ```bash
-mkdir .vc4pm
-# Create .vc4pm/config.json with your project configuration
+mkdir test-project/.vc4pm
+cp .vc4pm/config.json test-project/.vc4pm/config.json
+# Edit with your test credentials
+```
+
+4. Link for local development:
+```bash
+npm link
+# Now you can test with local version
 ```
 
 ### Building
@@ -60,38 +73,76 @@ npm run dev
 ### Testing
 
 #### MCP Server Testing
+
+**Direct MCP Testing:**
 ```bash
-# Test MCP tools manually via CLI wrapper
-node mcp.js create_task '{"title":"Test","taskType":"Feature","description":"Test task"}'
-node mcp.js get_task '{"taskId":"<task-id>"}'
+# Build first
+npm run build
+
+# Test server startup
+cd test-project
+node /path/to/repo/dist/server.js
+```
+
+**IDE Integration Testing:**
+```bash
+# Add local development server to Claude Code
+claude mcp add vc4pm-dev "node" "/path/to/repo/dist/server.js"
+
+# Open test project in Claude Code
+# Use natural language to test tools:
+# "Create a task for testing the MCP server"
+# "Get the task details"
+# "Update the task status"
 ```
 
 #### Development Workflow
 1. Make changes to TypeScript source
 2. Run `npm run build` to compile
-3. Test via CLI wrapper
-4. Test via MCP client integration
-5. Update documentation if needed
+3. Test MCP server startup
+4. Test via Claude Code with local server
+5. Verify template fallback system works
+6. Update documentation if needed
 
-## How It Works
+## Architecture Overview
 
-The MCP server provides 10 tools that AI assistants can use to manage tasks in your Notion workspace:
+The MCP server provides 11 tools for AI-guided development workflows:
 
 - **Task Management**: Create, read, update tasks with automatic status tracking
-- **Template System**: Intelligent templates adapt to your specific requirements
-- **Todo Processing**: Batch todo updates with progress tracking
-- **Development Summaries**: Automatic summary generation with testing checklists
+- **Template System**: Intelligent templates with project-specific overrides
+- **Todo Processing**: Batch todo updates with automatic execution continuation
+- **Content Management**: Read and update Notion pages with markdown
+- **Development Summaries**: AI-adapted summary generation with testing checklists
 
-### Template Customization
+### MCP Native Design
 
-You can customize templates in the `templates/` directory:
+- **No CLI Wrapper**: Direct MCP protocol implementation
+- **Per-Project Config**: Each project uses `.vc4pm/config.json` 
+- **Template Fallback**: Package templates used when local templates missing
+- **Provider Pattern**: Extensible for Linear, GitHub, Jira support
 
-- `templates/task/feature.md` - For new features
-- `templates/task/bug.md` - For bug fixes  
-- `templates/task/refactoring.md` - For code improvements
-- `templates/dev_summary/dev_summary.md` - For development summaries
+### Template System v3.0
 
-Templates use markdown format and support intelligent adaptation by AI assistants.
+**Global Templates** (in npm package):
+- `templates/task/feature.md` - Feature development template
+- `templates/task/bug.md` - Bug fixing template  
+- `templates/task/refactoring.md` - Code refactoring template
+- `templates/summary/summary.md` - Development summary template
+
+**Project Template Overrides** (per project):
+```bash
+# Enable override in .vc4pm/config.json
+"templates": { "override": true }
+
+# Create custom templates
+mkdir -p .vc4pm/templates/task
+cp custom-feature.md .vc4pm/templates/task/feature.md
+```
+
+**Template Resolution:**
+1. If project has custom template AND override enabled → use custom
+2. Otherwise → use global package template
+3. Templates are AI-adapted contextually at creation time
 
 ## Customization
 
@@ -130,25 +181,41 @@ The server is designed to support multiple task providers beyond Notion (Linear,
 
 ### Manual Testing
 
-1. **Create a test workspace** in Notion with the required database structure
-2. **Test basic functionality**:
+1. **Set up test provider** (Notion database with required properties)
+2. **Test MCP server integration**:
 ```bash
-# Test task creation
-node mcp.js create_task '{"title":"Test Task","taskType":"Feature","description":"Test"}'
+# Test via Claude Code (recommended)
+# Open test project containing .vc4pm/config.json
+# Use natural language:
+# "Create a task for testing the server"
+# "Get the task I just created" 
+# "Update the task status to In Progress"
 
-# Test task retrieval
-node mcp.js get_task '{"taskId":"your-task-id"}'
+# Direct server testing
+cd test-project
+node /path/to/repo/dist/server.js
+# Should start without errors and show available tools
+```
 
-# Test status updates
-node mcp.js update_task '{"taskId":"your-task-id","status":"In Progress"}'
+3. **Test template fallback**:
+```bash
+# Test project without local templates
+cd clean-test-project
+# Should use package templates without errors
+
+# Test project with custom templates
+cd custom-test-project  
+# Should use custom templates when override: true
 ```
 
 ### Verifying Integration
 
-1. Test with your actual Notion workspace
-2. Verify task creation and updates work correctly  
-3. Test template customizations
-4. Check that AI assistants can access all tools through MCP
+1. **Provider Integration**: Test with real Notion/Linear workspace
+2. **Template System**: Verify global and custom templates work
+3. **Multi-Project**: Test different projects with different configs
+4. **MCP Compliance**: Verify all 11 tools respond correctly
+5. **Claude Code**: Test full workflow via AI assistant
+6. **Content Management**: Test page reading and updating features
 
 ## Development Standards
 
@@ -199,13 +266,17 @@ Use clear, descriptive commit messages:
 
 - Check that your `.vc4pm/config.json` file has valid JSON syntax
 - Verify the server builds successfully with `npm run build`
-- Ensure config file is in current working directory
+- Ensure config file exists in project directory (not package directory)
+- Check provider credentials are correct and enabled
+- Verify MCP server can read config from process working directory
 
 **Template Issues:**
 
-- Templates should use standard markdown formatting
-- Check that your template files are in the correct directories
-- Test template changes by creating new tasks
+- Package templates should exist in `templates/` directory
+- Custom templates need `override: true` in config to be used
+- Template fallback should work when local templates missing
+- Check template resolution paths in error messages
+- Verify package root resolution works correctly
 
 ### Getting Help
 

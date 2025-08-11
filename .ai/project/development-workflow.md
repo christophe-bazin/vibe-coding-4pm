@@ -1,4 +1,4 @@
-# Development Workflow
+# Development Workflow v3.0
 
 ## Project Setup (for contributors)
 
@@ -6,28 +6,24 @@
 ```bash
 # Clone and setup
 git clone https://github.com/christophe-bazin/vibe-coding-4pm.git
-cd server
+cd vibe-coding-4pm
 npm install
 npm run build
 ```
 
-### Global Testing Setup
+### Local Development Setup
 ```bash
 # Link for local development
 npm link
-vc4pm --help
+
+# Setup MCP server in Claude Code
+claude mcp add vc4pm-dev "node" "/path/to/vibe-coding-4pm/dist/server.js"
 
 # Create test project config
 mkdir test-project/.vc4pm
-cp .vc4pm/config.example.json test-project/.vc4pm/config.json
+cp .vc4pm/config.json test-project/.vc4pm/config.json
 # Edit with test credentials
 ```
-
-### Notion Setup
-1. Create Notion integration
-2. Setup test database with required properties
-3. Share database with integration
-4. Test basic connectivity
 
 ## Development Process
 
@@ -44,7 +40,7 @@ cp .vc4pm/config.example.json test-project/.vc4pm/config.json
 ```bash
 git checkout main
 git pull origin main
-git checkout -b feature/execution-service-improvements
+git checkout -b feature/template-fallback-fix
 ```
 
 2. **Development Loop**
@@ -52,39 +48,75 @@ git checkout -b feature/execution-service-improvements
 # Make changes to services
 npm run build  # Compile TypeScript
 
-# Test with CLI wrapper
-node mcp.js create_task '{"title":"Test","taskType":"Feature","description":"Test task"}'
-node mcp.js execute_task '{"taskId":"test-id"}'
+# Test MCP server directly
+node dist/server.js &
+SERVER_PID=$!
 
-# Test auto-continuation system
-node mcp.js update_todos '{"taskId":"test-id","updates":[{"todoText":"Test todo","completed":true}]}'
+# Test via Claude Code (recommended)
+# Open test project in Claude Code
+# Use natural language: "Create a task for testing new feature"
+
+# Or test MCP protocol directly
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node dist/server.js
+
+kill $SERVER_PID
 ```
 
-3. **Commit Changes**
+3. **Template System Testing**
+```bash
+# Test template fallback (v3.0 fix)
+cd test-project-without-templates
+# Should use package templates, not fail
+
+# Test template override
+mkdir -p .vc4pm/templates/task
+cp custom-feature.md .vc4pm/templates/task/feature.md
+# Should use custom template when override: true
+```
+
+4. **Commit Changes**
 ```bash
 git add .
-git commit -m "feat(execution): implement auto-continuation system
+git commit -m "fix(templates): resolve templates from package directory
 
-- Add callback system between UpdateService and ExecutionService
-- Implement todo-by-todo AI guidance with auto-progression
-- Add development summary generation with git integration"
+- Fix template fallback to use package root instead of CWD
+- Add proper path resolution for npm linked/installed packages
+- Ensure templates work in projects without local overrides"
 ```
 
-4. **Push and Create PR**
+5. **Push and Create PR**
 ```bash
-git push origin feature/workflow-guidance-improvements
+git push origin feature/template-fallback-fix
 # Create pull request via GitHub
 ```
 
 ### Testing Strategy
 
-#### Manual Testing
-- Test all 9 MCP tools with real Notion pages
-- Verify flexible status transitions work correctly
-- Test auto-continuation workflow with todo updates
-- Test template intelligence for different task types
-- Check error handling with invalid inputs
-- Verify git-based development summaries
+#### MCP Integration Testing
+- Test all 12 MCP tools via Claude Code
+- Verify project-specific configuration loading
+- Test template fallback system works correctly
+- Check per-project provider isolation
+- Verify error handling with invalid inputs
+
+#### Manual Testing Checklist
+```bash
+# Test in different scenarios:
+
+# 1. Clean project (no local templates)
+mkdir test-clean && cd test-clean
+# Create .vc4pm/config.json
+# Use MCP tools - should use package templates
+
+# 2. Project with custom templates
+mkdir test-custom && cd test-custom
+# Create .vc4pm/config.json with templates.override: true
+# Create custom templates in .vc4pm/templates/
+# Use MCP tools - should use custom templates
+
+# 3. Multiple projects with different configs
+# Each should use its own configuration independently
+```
 
 #### Service Testing
 ```bash
@@ -96,22 +128,20 @@ const { ExecutionService } = require('./dist/services/core/ExecutionService.js')
 console.log('Services loaded successfully');
 "
 
-# Test template loading
+# Test configuration loading
 node -e "
-const fs = require('fs');
-console.log('Feature template:', fs.readFileSync('./workflows/feature.md', 'utf8').substring(0, 100));
-console.log('Bug template:', fs.readFileSync('./workflows/bug.md', 'utf8').substring(0, 100));
+const server = require('./dist/server.js');
+console.log('Server configuration loading works');
 "
 ```
 
-#### Integration Testing
+#### Content Management Testing
 ```bash
-# Test Notion API connectivity
-node -e "
-const { Client } = require('@notionhq/client');
-const notion = new Client({ auth: process.env.NOTION_API_KEY });
-notion.users.me().then(r => console.log('Connected as:', r.name));
-"
+# Test new content management features
+# In Claude Code with MCP configured:
+# "Read the Notion page [page-id] and its linked pages"
+# "Update the page with new content"
+# "Update both the page and its child pages"
 ```
 
 ### Code Quality
@@ -125,179 +155,238 @@ npm run build
 npx tsc --noEmit
 ```
 
-#### Code Style
-- Follow established coding standards
-- Use meaningful variable names
-- Add comments for complex logic
-- Keep functions focused and small
+#### MCP Protocol Compliance
+- Ensure all tools follow MCP specification
+- Validate input/output schemas
+- Test error responses are properly formatted
+- Check tool descriptions are clear and helpful
 
 #### Error Handling
 - Provide clear, actionable error messages
-- Include context in error descriptions
-- Handle edge cases gracefully
+- Include expected file paths in template errors
+- Handle missing configuration gracefully
 - Log appropriate information without exposing secrets
 
 ### Configuration Management
 
-#### Config File Changes
-1. Update `config.json` with new options
-2. Update TypeScript interfaces in `types.ts`
-3. Add validation in `config-loader.ts`
-4. Update documentation
-5. Test with existing setups
+#### Project Configuration Changes
+1. Update `.vc4pm/config.json` example with new options
+2. Update TypeScript interfaces in `src/models/`
+3. Add validation in server configuration loading
+4. Update documentation in `docs/configuration.md`
+5. Test with existing project setups
 
-#### Workflow File Changes
-1. Edit markdown files in `workflows/`
-2. Test loading in development
-3. Verify AI guidance is clear
-4. Update examples if needed
+#### Template System Changes
+1. Edit template files in `templates/`
+2. Test loading from package directory
+3. Test override system with local templates
+4. Verify AI guidance is clear and actionable
+5. Update template documentation
 
 ### Debugging
 
-#### Enable Debug Mode
-```typescript
-// Add to config for verbose logging
-{
-  "debug": true,
-  "logLevel": "verbose"
-}
-```
-
-#### Common Debug Commands
+#### MCP Server Debugging
 ```bash
-# Test URL parsing
+# Test server startup with config
+cd test-project
+node /path/to/vibe-coding-4pm/dist/server.js
+
+# Test configuration loading
 node -e "
-const { parseNotionUrl } = require('./dist/utils.js');
-console.log(parseNotionUrl('https://notion.so/your-test-page'));
+process.chdir('/path/to/test-project');
+const config = require('/path/to/vibe-coding-4pm/dist/server.js');
 "
 
-# Test status transitions
+# Test template resolution
 node -e "
-const { ConfigLoader } = require('./dist/config-loader.js');
-const loader = new ConfigLoader('./config.json');
-console.log('Allowed from En cours:', 
-  loader.loadConfig().board.transitions['En cours']);
+const { resolve } = require('path');
+const { existsSync } = require('fs');
+const packageRoot = resolve('./node_modules/@vc4pm/mcp-server');
+const templatePath = resolve(packageRoot, 'templates/task/feature.md');
+console.log('Template exists:', existsSync(templatePath));
+console.log('Template path:', templatePath);
 "
 ```
 
-#### MCP Server Testing
+#### Claude Code Integration Debugging
 ```bash
-# Start server in debug mode
-DEBUG=* npm start
+# Check MCP server status
+claude mcp list
 
-# Test with MCP client
-# Send test requests to verify functionality
+# Remove and re-add server
+claude mcp remove vc4pm
+claude mcp add vc4pm "node" "@vc4pm/mcp-server/dist/server.js"
+
+# Test from different project directories
+cd project-a && # Test MCP tools
+cd project-b && # Should use different config
+```
+
+#### Common Debug Scenarios
+```bash
+# Template not found errors
+# Check: packageRoot resolution, template file existence, path resolution
+
+# Configuration errors  
+# Check: .vc4pm/config.json exists, JSON syntax, required fields
+
+# Provider connection errors
+# Check: API keys, database IDs, provider permissions
 ```
 
 ## Release Workflow
 
 ### Pre-Release Testing
 - [ ] All TypeScript compiles without errors
-- [ ] Manual testing with real Notion board
-- [ ] All MCP tools respond correctly  
-- [ ] Documentation is up to date
-- [ ] Configuration examples work
+- [ ] Template fallback system works in clean projects
+- [ ] All 12 MCP tools respond correctly via Claude Code
+- [ ] Multi-project configuration isolation works
+- [ ] Documentation reflects current architecture
+- [ ] Content management features work with Notion pages
 
 ### Version Bumping
 ```bash
-# Update version in package.json
+# Update version in package.json (now @vc4pm/mcp-server)
 npm version [patch|minor|major]
+
+# Update CLAUDE.md and architecture docs
+# Update README.md installation instructions
 
 # Tag and push
 git push origin main --tags
 ```
 
+### NPM Publishing
+```bash
+# Build and publish
+npm run build
+npm publish
+
+# Test installation
+npm install -g @vc4pm/mcp-server
+claude mcp add vc4pm "node" "@vc4pm/mcp-server/dist/server.js"
+```
+
 ### Deployment Checklist
-- [ ] Test in staging environment
-- [ ] Verify environment variables
-- [ ] Check Notion integration permissions
-- [ ] Monitor error rates after deployment
-- [ ] Update documentation if needed
+- [ ] Test npm package installation globally
+- [ ] Verify MCP integration in Claude Code
+- [ ] Test template fallback with clean projects
+- [ ] Check multi-project configuration isolation
+- [ ] Verify content management features
+- [ ] Update documentation website
+
+## Architecture Evolution (v3.0)
+
+### Major Changes from v2.0
+- **Removed CLI Wrapper**: No more `mcp.js` or `vc4pm` command
+- **Native MCP**: Direct MCP protocol implementation
+- **Per-Project Config**: Configuration isolated to project directories
+- **Template Fallback Fix**: Proper resolution from package directory
+- **Content Management**: Added `read_notion_page` for documentation analysis
+- **IDE-First Design**: Optimized for Claude Code and Cursor
+
+### Migration from v2.0
+1. Remove old CLI references
+2. Update MCP client configuration
+3. Ensure project has `.vc4pm/config.json`
+4. Test template loading without local templates
+5. Verify content management features work
+
+### Development Focus Areas
+- **MCP Protocol**: Ensure compliance and optimal performance
+- **Project Isolation**: Each project should be completely independent
+- **Template System**: Reliable fallback and override mechanisms
+- **Content Management**: Rich Notion page manipulation capabilities
+- **Error Handling**: Clear, actionable error messages
 
 ## Collaboration Guidelines
 
-### Code Reviews
-- Focus on functionality and maintainability
-- Check error handling and edge cases
-- Verify documentation updates
-- Test configuration changes
-- Ensure backward compatibility
+### Code Reviews for v3.0
+- Focus on MCP protocol compliance
+- Check project configuration isolation
+- Verify template system reliability
+- Test content management features
+- Ensure IDE compatibility
+- Review error handling improvements
 
 ### Communication
 - Use GitHub issues for bug reports
-- Use GitHub discussions for feature ideas
-- Update CHANGELOG.md for user-facing changes
-- Notify team of breaking changes
+- Use GitHub discussions for architecture questions
+- Update architecture documentation for major changes
+- Notify team of MCP protocol changes
 
 ### Knowledge Sharing
-- Document architectural decisions
-- Share debugging techniques
-- Update troubleshooting guides
-- Maintain examples and tutorials
+- Document MCP integration patterns
+- Share debugging techniques for multi-project setups
+- Update troubleshooting guides for new architecture
+- Maintain template development examples
 
 ## Development Tools
 
-### Recommended VS Code Extensions
-- TypeScript and JavaScript Language Features
-- ESLint
-- Prettier
-- Markdown All in One
-- GitLens
-
-### Useful Scripts
+### Recommended Claude Code Setup
 ```bash
-# Watch TypeScript compilation
-npm run dev
+# Install package globally
+npm install -g @vc4pm/mcp-server
 
-# Clean build
-npm run clean && npm run build
+# Add to Claude Code
+claude mcp add vc4pm "node" "@vc4pm/mcp-server/dist/server.js"
 
-# Format code
-npx prettier --write src/
-
-# Lint TypeScript
-npx eslint src/ --ext .ts
+# For development, use local version
+claude mcp add vc4pm-dev "node" "/path/to/local/repo/dist/server.js"
 ```
 
-### Environment Management
+### Testing Different Project Configurations
 ```bash
-# Development environment
-export NODE_ENV=development
-export NOTION_API_KEY=your_dev_token
+# Create test projects with different setups
+mkdir -p test-projects/{clean,custom,multi-provider}
 
-# Staging environment  
-export NODE_ENV=staging
-export NOTION_API_KEY=your_staging_token
+# Clean project - uses package templates
+cd test-projects/clean
+echo '{"workflow":{"statusMapping":{"notStarted":"Not Started"},"taskTypes":["Feature"],"transitions":{"notStarted":["inProgress"]}},"providers":{"default":"notion","available":{"notion":{"enabled":true,"config":{"apiKey":"test","databaseId":"test"}}}}}' > .vc4pm/config.json
 
-# Production environment
-export NODE_ENV=production
-export NOTION_API_KEY=your_prod_token
+# Custom project - uses local templates  
+cd test-projects/custom
+# Add templates.override: true to config
+mkdir -p .vc4pm/templates/task
+echo "# Custom Feature Template" > .vc4pm/templates/task/feature.md
 ```
 
-## Troubleshooting Common Issues
+### Environment Management for v3.0
+```bash
+# Development with local server
+export MCP_SERVER_PATH="/path/to/local/repo/dist/server.js"
 
-### Build Failures
-- Check TypeScript errors: `npx tsc --noEmit`
-- Verify all imports have `.js` extensions
-- Ensure all dependencies are installed
-- Check for circular dependencies
+# Testing with different project directories
+cd test-project-a  # Uses config A
+cd test-project-b  # Uses config B
 
-### Runtime Errors
-- Verify Notion API key is set
-- Check Notion permissions and sharing
-- Validate configuration file format
-- Test with minimal examples
+# Production with npm package
+npm install -g @vc4pm/mcp-server
+# Uses published package globally
+```
 
-### Configuration Issues
-- Validate JSON syntax in config files
-- Check file paths are correct
-- Verify status names match Notion setup
-- Test with default configuration
+## Troubleshooting v3.0 Issues
 
-### Performance Issues
-- Monitor API rate limits
-- Check for memory leaks in long-running sessions
-- Optimize configuration file loading
-- Consider caching strategies
+### Configuration Not Found
+- Ensure `.vc4pm/config.json` exists in project root
+- Check JSON syntax and required fields
+- Verify working directory is correct
 
-This workflow ensures consistent, high-quality development while maintaining the simplicity and reliability of the MCP server.
+### Template Not Found Errors
+- Check if templates exist in package installation
+- Verify package root resolution works correctly
+- Test with and without local template overrides
+
+### MCP Integration Issues
+- Check `claude mcp list` output
+- Verify server command and path are correct
+- Test server startup manually
+- Check for configuration loading errors
+
+### Multi-Project Issues
+- Ensure each project has independent configuration
+- Check for configuration file conflicts
+- Verify provider credentials are per-project
+- Test switching between different project directories
+
+This workflow ensures reliable development of the v3.0 MCP native architecture while maintaining the simplicity and power of AI-guided development workflows.

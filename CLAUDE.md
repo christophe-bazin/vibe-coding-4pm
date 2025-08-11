@@ -1,6 +1,6 @@
-# VC4PM Server - Development Instructions
+# VC4PM MCP Server - Development Instructions
 
-Global npm package (@vc4pm/server) providing AI-guided development workflows for task management. Clean architecture with single config file approach.
+Native MCP server (@vc4pm/mcp-server) providing AI-guided development workflows for task management. v3.0 architecture with per-project configuration and template fallback system.
 
 ## Project Overview
 
@@ -27,24 +27,37 @@ See detailed architecture in [.ai/project/mcp-architecture.md](.ai/project/mcp-a
 
 ## Essential Commands
 
-Build and test the server:
+Build and test the MCP server:
 
 ```bash
 npm run build
 npm link                # Test global installation locally  
-vc4pm --help           # Test global command
+
+# Test MCP server startup
+cd test-project && node ../dist/server.js
+
+# Add to Claude Code for development
+claude mcp add vc4pm-dev "node" "/path/to/repo/dist/server.js"
 ```
 
 ### Development Testing
 
 ```bash
-npm run build && node mcp.js create_task '{"title":"test","taskType":"Feature","description":"test"}'
+# Via Claude Code (recommended)
+# Open project with .vc4pm/config.json
+# Use natural language: "Create a task for testing"
+
+# Direct server testing  
+cd test-project
+node /path/to/repo/dist/server.js
 ```
 
 **MCP Integration:**
-- All 10 MCP tools available through natural language interface
-- Uses single config file: `.vc4pm/config.json`
-- Clean logs, no verbose debug output
+- All 12 MCP tools available through natural language interface
+- Per-project config: `.vc4pm/config.json` loaded from working directory
+- Template fallback system: local overrides → package templates
+- Content management: read and update Notion pages with markdown
+- Optimized for Claude Code and Cursor IDE integration
 
 ## Codebase Structure
 
@@ -84,7 +97,7 @@ Service-oriented architecture with clean separation:
 - **Auto-continuation**: UpdateService triggers ExecutionService after todo updates
 - **Environment**: SCREAMING_CASE variables, camelCase config
 - **Status transitions**: Flexible by default, configurable constraints
-- **Never mention AI assistance in commits**
+- **Never mention AI assistance in commits** (handled automatically by MCP tools)
 
 **→ Complete development workflow in [.ai/project/development-workflow.md](.ai/project/development-workflow.md)**
 
@@ -99,9 +112,9 @@ Service-oriented architecture with clean separation:
 - **Files**: README.md, docs/configuration.md, docs/development.md, docs/advanced-usage.md
 
 ### Development Guidelines (CLAUDE.md + .ai/)
-- **Purpose**: For AI assistant development and project contributions
+- **Purpose**: For AI assistant development and project contributions  
 - **Audience**: Claude and contributors working on the codebase
-- **Content**: Architecture, coding standards, development workflow, commit conventions
+- **Content**: MCP v3.0 architecture, coding standards, development workflow, commit conventions
 - **Files**: CLAUDE.md, .ai/development/, .ai/project/
 
 **When updating documentation:**
@@ -110,9 +123,9 @@ Service-oriented architecture with clean separation:
 - Never mix user documentation with development guidelines
 
 **Detailed technical information belongs in .ai/project/:**
-- Complete architecture details → .ai/project/mcp-architecture.md
+- Complete MCP v3.0 architecture → .ai/project/mcp-architecture.md
 - Development workflow specifics → .ai/project/development-workflow.md  
-- Notion integration technical details → .ai/project/notion-integration.md
+- Template system and fallback logic → .ai/project/mcp-architecture.md
 - Keep user docs/ simple and focused on usage, not implementation
 
 ## Documentation Update Strategy
@@ -125,9 +138,9 @@ Service-oriented architecture with clean separation:
 - Installation steps → README.md (quick start) + docs/development.md (contribution guide)
 
 ### Technical/Architecture Changes  
-- Service architecture → .ai/project/mcp-architecture.md (complete technical details)
+- MCP v3.0 service architecture → .ai/project/mcp-architecture.md (complete technical details)
 - Development patterns → .ai/development/coding-standards.md
-- Integration details → .ai/project/notion-integration.md
+- Template system and fallback → .ai/project/mcp-architecture.md
 - Internal workflows → .ai/project/development-workflow.md
 
 ### Avoid Duplication
@@ -137,8 +150,9 @@ Service-oriented architecture with clean separation:
 
 ## Security and Best Practices
 
-- API keys configured via MCP environment variables
+- API keys stored in project-local `.vc4pm/config.json` files
 - Input validation on all MCP tools
-- Error handling with clear messages
+- Error handling with clear, actionable messages
 - No logging of sensitive information
-- Configuration isolated per project
+- Complete project isolation - no shared state
+- Template fallback system for reliable operation

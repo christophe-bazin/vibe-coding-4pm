@@ -1,15 +1,15 @@
-# MCP Architecture
+# MCP Architecture v3.0
 
 ## Overview
 
-VC4PM Server is a global npm package providing AI-guided development workflows via MCP protocol. Clean, single-config architecture optimized for multi-project usage.
+VC4PM MCP Server is a native MCP server providing AI-guided development workflows. Designed specifically for AI coding assistants (Claude Code, Cursor) with per-project configuration and file system access.
 
 ## Core Architecture
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   MCP Client    │    │ @vc4pm/server    │    │   Task Provider │
-│ (Claude/Cursor) │◄──►│ (Global Package) │◄──►│ (Notion/Linear) │
+│   AI IDE        │    │ @vc4pm/mcp-server│    │   Task Provider │
+│ (Claude Code)   │◄──►│  (MCP Protocol)  │◄──►│ (Notion/Linear) │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                               │
                               ▼
@@ -22,186 +22,194 @@ VC4PM Server is a global npm package providing AI-guided development workflows v
                     └────────────────────────┘
 ```
 
-## Global Package Architecture (Simplified)
+## MCP Native Architecture
 
-### Command Structure
-After refactoring, the architecture was simplified to a single global command:
+### Integration Flow
 
+**Claude Code**:
 ```bash
-npm install -g @vc4pm/server
-vc4pm <tool> '<json_arguments>'  # Global access in any project
+# Setup
+claude mcp add vc4pm "node" "@vc4pm/mcp-server/dist/server.js"
+
+# Usage - AI uses tools through natural language
+# Server automatically reads .vc4pm/config.json from project directory
 ```
 
-**Architecture**:
-- ✅ `mcp.js` (intelligent MCP wrapper)
-- ✅ `vc4pm` global command (mapped to mcp.js)
-- ✅ `dist/server.js` (internal MCP server, launched by wrapper)
-
-### Wrapper Functionality (`mcp.js`)
-
-The wrapper provides:
-1. **Config Loading**: Reads `.vc4pm/config.json` from current project
-2. **Environment Setup**: Converts config to environment variables for server
-3. **MCP Communication**: Spawns internal server and communicates via JSON-RPC
-4. **Clean Output**: Filters server logs and returns only tool results
-
-**Flow**:
+**Server Lifecycle**:
 ```
-vc4pm create_task '{}' 
-  → mcp.js loads .vc4pm/config.json
-  → spawns dist/server.js with env vars
-  → sends MCP initialize + tool call
-  → returns clean result
-  → kills server
+1. Claude Code starts MCP server (dist/server.js)
+2. Server reads .vc4pm/config.json from CWD
+3. Initializes provider (Notion/Linear) with project credentials
+4. Exposes 11 MCP tools to AI assistant
+5. AI uses tools through natural language
+6. Server maintains project context throughout session
 ```
 
-### Benefits of Simplified Architecture
-- **Single Command**: Only `vc4pm` needed, no confusion
-- **Project-Aware**: Auto-detects `.vc4pm/config.json` in any project
-- **Clean UX**: Wrapper handles MCP complexity, users get simple CLI
-- **Universal**: Works with Claude Code, Cursor, and direct CLI usage
+### Benefits of MCP Native Design
+- **Direct Integration**: Native MCP protocol, no wrapper overhead
+- **Project Awareness**: Each project has isolated config and credentials
+- **IDE Optimized**: Built for file system access and terminal capabilities
+- **Zero Configuration**: Auto-detection in compatible IDEs
 
-## Component Breakdown
+## MCP Tools (11 Total)
+
+### Task Management
+- **`create_task`**: Create tasks with workflow adaptation (requires adaptedWorkflow)
+- **`get_task`**: Get task information with todo statistics and status info
+- **`update_task`**: Update task title, type and/or status with validation
+- **`execute_task`**: Execute task with automated workflow progression
+
+### Template System
+- **`get_task_template`**: Get raw templates for AI adaptation (Feature/Bug/Refactoring)
+
+### Todo Management
+- **`analyze_todos`**: Extract and analyze todos with completion statistics and hierarchy
+- **`update_todos`**: Batch update with automatic execution continuation
+
+### Development Summary
+- **`generate_summary`**: Generate summary instructions
+- **`get_summary_template`**: Get raw template for AI adaptation
+- **`append_summary`**: Append AI-adapted summary to task
+
+### Content Management
+- **`read_notion_page`**: Read Notion page and its linked/child pages
+
+## Component Architecture
 
 ### MCP Server (`src/server.ts`)
-**Responsibility**: Handle MCP protocol and expose tools to AI clients
+**Responsibility**: Native MCP protocol implementation
 
-- Implements MCP protocol specification
-- Provides 8 main tools for AI interaction
-- Handles tool parameter validation
-- Manages error responses and formatting
-- Routes requests to appropriate handlers
+- Reads `.vc4pm/config.json` from process.cwd()
+- Implements MCP protocol specification  
+- Exposes 11 tools to AI clients
+- Handles tool parameter validation and routing
+- Project-aware configuration loading
 
-**Key Tools**:
-- `create_task`: Create tasks with workflow adaptation (requires adaptedWorkflow parameter)
-- `get_task`: Get task information with todo statistics and flexible status info
-- `update_task`: Update task title, type and/or status with flexible validation
-- `execute_task`: Execute with provider-aware batch workflow
-- `get_task_template`: Get raw templates for AI adaptation (Feature/Bug/Refactoring)
-- `analyze_todos`: Extract and analyze todos with completion statistics
-- `update_todos`: Batch update with automatic execution continuation
-- `generate_summary`: Generate summary instructions
-- `get_summary_template`: Get raw template for AI adaptation
-- `append_summary`: Append AI-adapted summary to task
+**Configuration Loading**:
+```typescript
+private loadProjectConfig(): ProjectConfig {
+  const configPath = resolve(process.cwd(), '.vc4pm', 'config.json');
+  if (!existsSync(configPath)) {
+    throw new Error(`Project configuration not found: ${configPath}`);
+  }
+  return JSON.parse(readFileSync(configPath, 'utf-8'));
+}
+```
 
 ### Clean Service Architecture
 
 #### Core Services (`src/services/core/`)
 
 **CreationService** (`src/services/core/CreationService.ts`)
-**Responsibility**: Task creation with intelligent template adaptation
+**Responsibility**: Task creation with template fallback system
 
-- Task creation with specialized templates (feature.md, bug.md, refactoring.md)
-- AI-driven template customization based on user description patterns
-- Template placeholder processing and context adaptation
-- Integration with workflow configuration
+- Template loading with package fallback (fixed in v3.0)
+- AI-driven template adaptation via `adaptedWorkflow` parameter
+- Multi-provider support with optional provider parameter
+- Template resolution: Local → Package templates
 
 **UpdateService** (`src/services/core/UpdateService.ts`)
-**Responsibility**: Task and todo updates with callback system
+**Responsibility**: Task updates, todos, and content management
 
-- Task and todo updates with validation
-- Callback system for auto-execution triggering
-- Git-based development summary generation
-- Metadata retrieval and progress tracking
+- Task metadata updates with workflow validation
+- Batch todo updates with auto-execution triggering
+- Summary generation and management
+- **NEW**: Notion page reading with linked pages support
+- **NEW**: Notion page updating with markdown content
 
 **ExecutionService** (`src/services/core/ExecutionService.ts`)
-**Responsibility**: Provider-aware task execution orchestration
+**Responsibility**: Task execution orchestration
 
-- Provider-aware batch execution (leverages AI provider strengths)
-- Rich context formatting with headings and task hierarchy
+- Provider-aware batch execution workflow
+- Rich context formatting with task hierarchy
 - Automatic status transitions based on workflow configuration
-- Single execution call with full context instead of sequential todos
+- Integration with todo completion tracking
 
 #### Shared Services (`src/services/shared/`)
 
 **StatusService** (`src/services/shared/StatusService.ts`)
-**Responsibility**: Flexible status transitions and workflow management
+**Responsibility**: Workflow state management
 
-- Flexible status transitions (all moves allowed for corrections)
-- Status recommendations based on progress
-- Workflow configuration interpretation
-- Status key mapping and validation
+- Configurable status transitions from project config
+- Status validation and recommendations
+- Dynamic status mapping (internal → provider names)
 
 **ValidationService** (`src/services/shared/ValidationService.ts`)
-**Responsibility**: Input validation and data integrity
+**Responsibility**: Input validation and constraints
 
-- Input validation for all operations
+- Project configuration validation
 - Task type and status constraint checking
-- Error handling with clear messaging
-- No hardcoded fallbacks (strict configuration enforcement)
+- Parameter validation for all MCP tools
 
 **ResponseFormatter** (`src/services/shared/ResponseFormatter.ts`)
-**Responsibility**: Standardized MCP response formatting
+**Responsibility**: Standardized MCP responses
 
-- Consistent response structures for MCP tools
+- Consistent response formatting for all tools
 - Progress visualization and statistics
-- Error and success message formatting
-- CLI output styling
+- Error handling with helpful messages
 
 ### Provider Architecture (`src/providers/`)
 
-**Multi-Provider System**: Extensible architecture supporting multiple task management platforms
+**Multi-Provider System**: Extensible architecture supporting multiple platforms
 
 ```
 src/providers/
-├── ProviderManager.ts          # Provider lifecycle management
+├── ProviderManager.ts          # Provider orchestration
 ├── ProviderFactory.ts          # Provider instantiation 
 ├── notion/
-│   └── NotionProvider.ts      # Notion implementation
+│   └── NotionProvider.ts      # Full Notion implementation
 ├── linear/
-│   └── LinearProvider.ts      # Linear implementation (stub)
+│   └── LinearProvider.ts      # Linear stub (future)
 └── github/
-    └── GitHubProvider.ts      # GitHub Projects implementation (stub)
+    └── GitHubProvider.ts      # GitHub Projects stub (future)
 ```
 
-**ProviderManager** (`src/providers/ProviderManager.ts`)
-**Responsibility**: Orchestrate multi-provider initialization and routing
-
-- Load providers from PROVIDERS_CONFIG environment variable
-- Initialize only enabled providers with their credentials
-- Route requests to specific providers or use default
-- Handle provider availability and fallback logic
-- Validate provider configurations at startup
-
-**ProviderFactory** (`src/providers/ProviderFactory.ts`) 
-**Responsibility**: Create provider instances based on configuration
-
-- Create TaskProvider instances from configuration
-- Map provider types to implementation classes
-- Handle credential injection and validation
-- Support for core/premium/enterprise provider tiers
-
 **NotionProvider** (`src/providers/notion/NotionProvider.ts`)
-**Responsibility**: Notion-specific implementation of TaskProvider interface
+**Responsibility**: Complete Notion integration
 
-- Full implementation of all TaskProvider methods
-- Notion API integration (@notionhq/client)
-- Markdown to Notion blocks conversion
-- Todo analysis and content parsing
-- Credential handling (API key, database ID)
+- Full TaskProvider interface implementation
+- Notion API integration (@notionhq/client v2.2.15)
+- Rich text parsing and markdown conversion
+- **NEW**: Page reading with linked pages and child pages
+- **NEW**: Page updating with multiple modes (replace/append/prepend)
+- **NEW**: Child page bulk updates
 
-**Provider Stubs** (Linear, GitHub)
-**Responsibility**: Placeholder implementations for future development
+**Content Management Features**:
+- Read page content with markdown conversion
+- Extract linked pages (mentions) and child pages
+- Update page content with rich markdown support
+- Support for todos, headings, lists, code blocks, quotes
+- Bulk update child pages with same content
 
-- Implement TaskProvider interface with "not implemented" errors
-- Provide structure for future provider development
-- Enable configuration testing without actual API integration
+### Project Configuration System
 
-### Provider Configuration System
-
-**Environment-Based Configuration**:
+**Per-Project Configuration** (`.vc4pm/config.json`):
 ```json
 {
-  "PROVIDERS_CONFIG": {
+  "workflow": {
+    "statusMapping": {
+      "notStarted": "Not Started",
+      "inProgress": "In Progress",
+      "test": "Test", 
+      "done": "Done"
+    },
+    "transitions": {
+      "notStarted": ["inProgress"],
+      "inProgress": ["test"],
+      "test": ["done", "inProgress"], 
+      "done": ["test"]
+    },
+    "taskTypes": ["Feature", "Bug", "Refactoring"],
+    "defaultStatus": "notStarted"
+  },
+  "providers": {
     "default": "notion",
     "available": {
       "notion": {
-        "name": "Notion",
-        "type": "core", 
         "enabled": true,
         "config": {
-          "apiKey": "direct_api_key_value",
-          "databaseId": "direct_database_id_value" 
+          "apiKey": "ntn_...",
+          "databaseId": "..."
         }
       }
     }
@@ -209,232 +217,144 @@ src/providers/
 }
 ```
 
-**Key Design Decisions**:
-- Configuration stores actual credentials (not env var references)
-- Only enabled providers are initialized
-- Default provider must be enabled and available
-- Provider type supports tiering (core/premium/enterprise)
-- All services accept optional `provider` parameter
+**Key Design Principles**:
+- **Project Isolation**: Each project has its own config and credentials
+- **Security**: API keys stored locally per project
+- **Flexibility**: Different workflows per project type
+- **Simplicity**: Single configuration file per project
 
-### MCP Tool Parameter Formats
+## Template System
 
-**Critical Format Requirements** for proper tool usage:
+### Template Resolution (Fixed in v3.0)
+
+**Template Loading Priority**:
+1. **Project Templates**: `.vc4pm/templates/task/feature.md` (if override enabled)
+2. **Package Templates**: `@vc4pm/mcp-server/templates/task/feature.md` (fallback)
+
+**Fixed Bug**: Template fallback now correctly resolves from package directory instead of CWD:
+
+```typescript
+// Before (broken)
+const filePath = resolve(templateFile); // Resolved from CWD
+
+// After (fixed) 
+const packageRoot = resolve(__dirname, '../../..'); 
+const filePath = resolve(packageRoot, templateFile); // Resolved from package
+```
+
+### Template Types
+- **`templates/task/feature.md`**: Feature development template
+- **`templates/task/bug.md`**: Bug fixing template  
+- **`templates/task/refactoring.md`**: Refactoring template
+- **`templates/summary/summary.md`**: Development summary template
+
+## Data Flow Patterns
+
+### 1. AI-Driven Task Creation
+```
+AI Request → create_task → Template Loading → Provider Creation → Task URL
+```
+
+1. AI describes feature: "Add user authentication"
+2. MCP tool `create_task` called with adaptedWorkflow
+3. CreationService loads appropriate template (feature.md)
+4. Provider creates task with structured content
+5. Returns task URL for further operations
+
+### 2. Content Management Workflow
+```
+AI Request → read_notion_page → Content Analysis → Task Updates
+```
+
+1. AI reads existing page content and linked pages
+2. Analyzes current state and requirements
+3. Updates page content with new information
+4. Optionally updates child pages with same content
+
+### 3. Task Execution Flow
+```
+execute_task → Context Loading → AI Implementation → update_todos → Status Update
+```
+
+1. `execute_task` provides complete task context
+2. AI implements entire feature using IDE tools
+3. Batch `update_todos` marks all completed items
+4. System auto-transitions task status
+5. Summary generation for documentation
+
+## MCP Tool Parameters
+
+**Critical Format Requirements**:
+
+
+**`read_notion_page`**:
+```json
+{
+  "pageId": "notion-page-uuid", 
+  "includeLinkedPages": true,
+  "provider": "notion"
+}
+```
 
 **`append_summary`**:
 ```json
 {
-  "taskId": "task-uuid-here", 
-  "adaptedSummary": "your adapted summary text"
+  "taskId": "task-uuid",
+  "adaptedSummary": "summary content here"
 }
 ```
-⚠️ **IMPORTANT**: Use `adaptedSummary` parameter, NOT `summary`
-⚠️ **Testing checkboxes**: Use unchecked format `- [ ] item` in Testing Checklist
+⚠️ **Use `adaptedSummary`, NOT `summary`**
 
 **`update_todos`**:
 ```json
 {
-  "taskId": "task-uuid-here",
-  "updates": [
-    {
-      "todoText": "exact todo text from Notion",
-      "completed": true
-    }
-  ]
+  "taskId": "task-uuid",
+  "updates": [{"todoText": "exact text", "completed": true}]
 }
 ```
-⚠️ **IMPORTANT**: Use `todoText` parameter, NOT `content`
+⚠️ **Use `todoText`, NOT `content`**
 
-### Provider Pattern
+## IDE Integration Requirements
 
-**TaskProvider Interface** (`src/interfaces/TaskProvider.ts`)
-**Responsibility**: Abstract task management backend
+### Required Capabilities
+For optimal functionality, the AI assistant must support:
 
-- Pluggable backend implementations
-- Standardized task operations
-- Provider-agnostic API surface
+- **File System Access**: Read/write project files and configurations
+- **Terminal Access**: Execute build commands, run tests, git operations
+- **Working Directory**: Maintain context of project directory with `.vc4pm/config.json`
+- **MCP Protocol**: Native MCP client support
 
-**NotionAPIAdapter** (`src/adapters/NotionAPIAdapter.ts`)
-**Responsibility**: Notion API integration
+### Compatible IDEs
+- **✅ Claude Code**: Native MCP support with auto-detection
+- **✅ Cursor**: MCP extension support with configuration
+- **❌ Claude Desktop**: No file system access, limited functionality
+- **❌ Web Interfaces**: Cannot access local file system
 
-- Direct Notion API communication
-- Dynamic title property resolution
-- Markdown to Notion blocks conversion
-- API error handling and retry logic
+## Performance & Security
 
-### Type Definitions
+### Performance Characteristics
+- **Config Caching**: Project configuration cached on server startup
+- **Template Caching**: Templates cached to avoid repeated disk reads
+- **Connection Reuse**: Persistent connections to Notion API
+- **Batch Operations**: Todo updates processed in batches
 
-**Models** (`src/models/`)
-**Responsibility**: Core data structures
+### Security Model
+- **Project Isolation**: API keys isolated per project directory
+- **Input Validation**: All parameters validated before processing
+- **No Logging**: API keys never logged or stored outside config
+- **Rate Limiting**: Notion API rate limits respected
 
-- Task.ts: Task entities and metadata
-- Todo.ts: Todo items and analysis results
-- Workflow.ts: Workflow configuration and execution modes
+## Future Extensions
 
-## Data Flow
+### Additional Providers
+- **Linear**: Issue tracking integration
+- **GitHub Projects**: Native GitHub project management
+- **Jira**: Enterprise project management
 
-### 1. Provider-Aware Batch Execution
-```
-execute_task → Rich Context → AI implements all → update_todos → Status Update
-```
+### Enhanced Features
+- **Template Override System**: Per-project template customization
+- **Workflow Automation**: Advanced status transition rules
+- **Team Collaboration**: Shared configurations and templates
+- **Analytics**: Task completion metrics and reporting
 
-1. execute_task provides full task context with hierarchical todos
-2. AI receives rich context (headings, related todos, task metadata)
-3. AI implements entire task using development tools
-4. AI calls update_todos to mark all completed todos at once
-5. System automatically updates task status and generates dev summary
-
-### 2. Template Intelligence
-```
-MCP Client → create_task → CreationService → Template Loading → Context Adaptation
-```
-
-1. AI requests task creation with description
-2. CreationService loads appropriate template (feature.md, bug.md, refactoring.md)
-3. Analyzes description for patterns (files, APIs, etc.)
-4. Generates specific todos based on detected requirements
-5. Returns task with intelligently adapted content
-
-### 3. Task Updates with Flexible Validation
-```
-MCP Client → update_task → ValidationService → StatusService → Notion Update
-```
-
-1. AI requests task changes (title, type, status)
-2. ValidationService checks basic constraints
-3. StatusService allows all transitions for corrections
-4. Updates task in Notion if valid
-5. Returns success confirmation
-
-## Configuration-Driven Design
-
-### Benefits
-- **No Code Changes**: Modify behavior through config files
-- **Easy Customization**: Adapt to different team workflows
-- **Clear Separation**: Logic separate from configuration
-- **Version Control**: Config changes tracked in Git
-- **Hot Reload**: Update workflows without restart (dev mode)
-
-### Configuration Files
-
-**`config.json`**: Core system behavior
-- Board status definitions
-- Allowed status transitions
-- Task types and defaults
-- Workflow file locations
-
-**`templates/*.md`**: AI guidance content
-- Structured prompts for AI behavior
-- Templates and examples
-- Rules and restrictions
-- Best practices
-
-## Status Transition Engine
-
-### Validation Logic
-```typescript
-isTransitionAllowed(current: string, target: string): boolean {
-  const allowed = this.config.board.transitions[current] || [];
-  return allowed.includes(target);
-}
-```
-
-### Override Mechanism
-```typescript
-async forceStatusUpdate(taskId: string, status: string, reason: string) {
-  console.warn(`Forcing transition: ${reason}`);
-  await this.updateWithoutValidation(taskId, status);
-}
-```
-
-### AI Restrictions
-Built into configuration to prevent AI from:
-- Closing tasks directly (transitions to final status restricted)
-- Skipping required validation phases
-- Making unauthorized status changes
-
-## Error Handling Strategy
-
-### Graceful Degradation
-- Invalid URLs → Clear error message with format examples
-- Missing config → Descriptive error with required fields
-- API failures → Retry logic with exponential backoff
-- Invalid transitions → Show allowed options
-
-### Error Response Format
-```json
-{
-  "success": false,
-  "error": "Invalid transition from 'En cours' to 'Terminé'",
-  "allowedTransitions": ["A tester"],
-  "currentStatus": "En cours"
-}
-```
-
-## Security Considerations
-
-### Input Validation
-- All URLs validated before processing
-- Status names validated against configuration
-- Task IDs checked for proper format
-- Parameter types enforced by TypeScript
-
-### API Security
-- Environment variables for sensitive data
-- No logging of API keys or tokens
-- Proper error handling to avoid information leakage
-- Rate limiting consideration for API calls
-
-### Configuration Security
-- Validation of config file format
-- Sanitization of workflow content
-- Protection against malicious markdown injection
-
-## Performance Characteristics
-
-### Memory Usage
-- Configuration cached on startup
-- Workflow state maintained in-memory for active tasks
-- Markdown files cached to avoid repeated disk reads
-- Automatic cleanup of stale workflow states
-
-### API Efficiency
-- Batched operations where possible
-- Minimal API calls through state caching
-- Intelligent sync only when needed
-- Connection reuse for Notion API
-
-## Scalability Considerations
-
-### Current Limitations
-- In-memory state (lost on restart)
-- Single process design
-- No persistence layer
-- Limited concurrent task handling
-
-### Future Improvements
-- Persistent state storage (Redis/SQLite)
-- Multi-process support
-- Background task processing
-- Enhanced caching strategies
-
-## Extension Points
-
-### Adding New Tools
-1. Define tool schema in server.ts
-2. Implement handler method
-3. Add routing in request handler
-4. Update documentation and types
-
-### Custom Status Types
-1. Update config.json with new statuses
-2. Define transitions in configuration
-3. Update workflow markdown files
-4. Test with Notion board setup
-
-### New Workflow Types
-1. Add to taskTypes in config.json
-2. Create templates in task-creation.md
-3. Add specific guidance if needed
-4. Update documentation
-
-This architecture provides a solid foundation for AI-guided task management while remaining simple, configurable, and extensible.
+This architecture provides a robust foundation for AI-guided development workflows while maintaining simplicity and project isolation.

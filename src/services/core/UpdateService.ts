@@ -159,12 +159,13 @@ export class UpdateService {
       }
     }
     
-    // Fallback to global templates
+    // Fallback to global templates (resolve from package directory)
     const templateFile = `templates/summary/${templateFileName}`;
-    const filePath = resolve(templateFile);
+    const packageRoot = resolve(__dirname, '../../..');  // From dist/services/core to package root
+    const filePath = resolve(packageRoot, templateFile);
     
     if (!existsSync(filePath)) {
-      throw new Error(`Summary template not found: ${templateFile}`);
+      throw new Error(`Summary template not found: ${templateFile} in package templates/summary/ directory. Expected path: ${filePath}`);
     }
 
     try {

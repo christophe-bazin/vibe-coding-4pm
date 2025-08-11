@@ -5,6 +5,8 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
+import { readFileSync, existsSync } from 'fs';
+import { resolve, join } from 'path';
 
 import { ProviderManager } from './providers/ProviderManager.js';
 import { ProvidersConfig } from './models/Provider.js';
@@ -16,53 +18,60 @@ import { ValidationService } from './services/shared/ValidationService.js';
 import { ResponseFormatter } from './services/shared/ResponseFormatter.js';
 import { WorkflowConfig, ExecutionMode } from './models/Workflow.js';
 
+interface ProjectConfig {
+  workflow: WorkflowConfig;
+  providers: ProvidersConfig;
+}
+
 
 class MCPServer {
   private server: Server;
   private services: any;
-  private workflowConfig: WorkflowConfig;
+  private projectConfig: ProjectConfig;
 
   constructor() {
-    this.server = new Server({ name: 'vibe-coding-4pm', version: '2.0.0' }, { capabilities: { tools: {} } });
-    this.workflowConfig = JSON.parse(process.env.WORKFLOW_CONFIG!);
+    this.server = new Server({ name: 'vc4pm-mcp-server', version: '3.0.0' }, { capabilities: { tools: {} } });
+    this.projectConfig = this.loadProjectConfig();
     this.services = this.initServices();
     this.setupRoutes();
   }
 
+  private loadProjectConfig(): ProjectConfig {
+    // Look for .vc4pm/config.json in current working directory
+    const configPath = resolve(process.cwd(), '.vc4pm', 'config.json');
+    
+    if (!existsSync(configPath)) {
+      throw new Error(`Project configuration not found: ${configPath}\nPlease create .vc4pm/config.json in your project directory.`);
+    }
+    
+    try {
+      const configContent = readFileSync(configPath, 'utf-8');
+      return JSON.parse(configContent);
+    } catch (error) {
+      throw new Error(`Failed to parse project configuration: ${error}`);
+    }
+  }
+
   private initServices() {
-    // Initialize provider manager with configuration
-    const providersConfig: ProvidersConfig = this.getProvidersConfig();
-    // Extract credentials from provider configs and merge with env
+    // Use project configuration directly
+    const providersConfig = this.projectConfig.providers;
     const credentials = this.extractCredentials(providersConfig);
     const providerManager = new ProviderManager(providersConfig, credentials);
     
-    const status = new StatusService(this.workflowConfig);
-    const validation = new ValidationService(this.workflowConfig, status);
-    const creation = new CreationService(providerManager, validation, this.workflowConfig);
-    const update = new UpdateService(providerManager, status, validation, this.workflowConfig);
+    const status = new StatusService(this.projectConfig.workflow);
+    const validation = new ValidationService(this.projectConfig.workflow, status);
+    const creation = new CreationService(providerManager, validation, this.projectConfig.workflow);
+    const update = new UpdateService(providerManager, status, validation, this.projectConfig.workflow);
     const execution = new ExecutionService(update, status);
     const formatter = new ResponseFormatter();
 
     return { creation, update, execution, formatter, providerManager };
   }
 
-  private getProvidersConfig(): ProvidersConfig {
-    // Read from environment variable (MCP config)
-    if (!process.env.PROVIDERS_CONFIG) {
-      throw new Error('PROVIDERS_CONFIG environment variable is required');
-    }
-    
-    try {
-      return JSON.parse(process.env.PROVIDERS_CONFIG);
-    } catch (error) {
-      throw new Error(`Invalid PROVIDERS_CONFIG format: ${error}`);
-    }
-  }
-
   private extractCredentials(providersConfig: ProvidersConfig): Record<string, string | undefined> {
     const credentials = { ...process.env };
     
-    // Extract credentials from provider configs for direct credential providers like Notion
+    // Extract credentials from provider configs
     for (const [providerName, providerConfig] of Object.entries(providersConfig.available)) {
       if (providerConfig.config) {
         // For notion provider, extract direct credentials

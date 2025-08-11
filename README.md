@@ -1,24 +1,26 @@
-# VC4PM Server
+# VC4PM MCP Server
 
-**AI Task Management MCP Server for Development Workflows**
+**AI Task Management for Development IDEs via MCP Protocol**
 
-Transform your AI assistant into an autonomous development project manager. Say *"Add user authentication to this React app"* and watch your AI create structured tasks, implement features, and track progress automatically.
+Transform your AI-powered IDE into an autonomous development project manager. Designed specifically for **Claude Code**, **Cursor**, and other AI coding assistants that have file system access and project context.
 
 ## 🚀 **Key Features**
 
-- **🎯 Autonomous Project Management**: AI creates tasks, implements features, and tracks progress
+- **💻 IDE-First Design**: Built for AI coding assistants with file system access
+- **📁 Per-Project Configuration**: Each project has its own task management setup
 - **📋 Intelligent Task Creation**: Smart templates adapt to your requirements
 - **🎨 Custom Templates**: Override global templates with project-specific ones  
 - **⚡ Complete Development Automation**: From task creation → implementation → testing → done
-- **🔄 Multi-AI Support**: Works with Claude Desktop, Claude Code, Cursor through MCP
 - **🏗️ Multi-Provider Support**: Supports Notion (Linear/GitHub coming soon)
+
+> **⚠️ Important**: This MCP server is designed for AI coding assistants that can read/write files and execute commands (Claude Code, Cursor, etc.). Most features require IDE context and won't work with chat-only AI assistants.
 
 ## Quick Start
 
-### 1. Install
+### 1. Install the MCP Server
 
 ```bash
-npm install -g @vc4pm/server
+npm install -g @vc4pm/mcp-server
 ```
 
 ### 2. Setup Your Task Management System
@@ -46,7 +48,14 @@ Create `.vc4pm/config.json` in your project:
       "test": "Test",
       "done": "Done"
     },
+    "transitions": {
+      "notStarted": ["inProgress"],
+      "inProgress": ["test"],
+      "test": ["done", "inProgress"],
+      "done": ["test"]
+    },
     "taskTypes": ["Feature", "Bug", "Refactoring"],
+    "defaultStatus": "notStarted",
     "templates": {
       "override": false,
       "taskPath": ".vc4pm/templates/task/",
@@ -70,7 +79,46 @@ Create `.vc4pm/config.json` in your project:
 
 Replace the apiKey and databaseId with your actual provider credentials.
 
-### 4. Start Using
+### 4. Configure Your AI IDE
+
+Choose your IDE and follow the setup instructions:
+
+#### **Claude Code**
+
+1. Install the MCP server globally:
+   ```bash
+   npm install -g @vc4pm/mcp-server
+   ```
+
+2. Add the MCP server to Claude Code:
+   ```bash
+   claude mcp add vc4pm "node" "@vc4pm/mcp-server/dist/server.js"
+   ```
+
+3. Open your project in Claude Code (ensure `.vc4pm/config.json` exists)
+4. ✅ **Ready to use!** Start with *"Create a task for adding user authentication"*
+
+#### **Cursor**
+
+1. Install the MCP extension for Cursor
+2. Add to your Cursor MCP configuration:
+```json
+{
+  "mcpServers": {
+    "vc4pm": {
+      "command": "node",
+      "args": ["@vc4pm/mcp-server/dist/server.js"]
+    }
+  }
+}
+```
+3. Make sure to run Cursor from your project directory containing `.vc4pm/config.json`
+
+#### **Other MCP-Compatible IDEs**
+
+Configure similarly to Cursor, ensuring the MCP server runs with the project directory as working directory.
+
+### 5. Start Using
 
 ```
 You: "Add user authentication to this React app"
@@ -85,7 +133,7 @@ AI Assistant:
 You: Review and mark as "Done" when satisfied
 ```
 
-The MCP server provides 11 tools that your AI assistant can use seamlessly through natural language.
+The MCP server provides tools that your AI assistant uses seamlessly through natural language.
 
 ## What You Get
 
@@ -96,21 +144,50 @@ The MCP server provides 11 tools that your AI assistant can use seamlessly throu
 ✅ **Quality Gates** - Built-in testing phase prevents rushing to production  
 ✅ **Multi-Project Support** - Use across different codebases with separate configurations  
 
-## Available Tools
+## Available MCP Tools
 
-The MCP server provides 10 tools available to MCP clients:
+The server provides these tools to AI coding assistants:
 
-- `create_task` - Create tasks with workflow adaptation (requires adaptedWorkflow)
-- `get_task` - Get task information with todo statistics and status info
-- `update_task` - Update task title, type and/or status with validation
-- `execute_task` - Execute task with automated workflow
-- `get_task_template` - Get raw templates for AI adaptation
-- `analyze_todos` - Extract and analyze todos with completion statistics
-- `update_todos` - Batch update with automatic execution continuation
-- `generate_summary` - Generate summary instructions
-- `get_summary_template` - Get raw template for AI adaptation
-- `append_summary` - Append AI-adapted summary to task
-- `read_notion_page` - Read any Notion page with linked pages content
+- **Task Management**: `create_task`, `get_task`, `update_task`, `execute_task` 
+- **Template System**: `get_task_template` for AI adaptation
+- **Todo Management**: `analyze_todos`, `update_todos` with batch operations
+- **Development Summary**: `generate_summary`, `get_summary_template`, `append_summary`  
+- **Content Management**: `read_notion_page` for page operations
+
+### 🔧 **IDE Context Required**
+
+These tools work best when the AI assistant has access to:
+- **File System**: Read/write project files and configurations
+- **Terminal Access**: Execute build commands, run tests, commit changes
+- **Project Context**: Understand codebase structure and dependencies
+- **Working Directory**: Access to `.vc4pm/config.json` in project root
+
+## Per-Project Configuration Benefits
+
+✅ **Project Isolation** - Each project uses its own task board and credentials  
+✅ **Team Flexibility** - Different teams can use different providers (Notion, Linear, etc.)  
+✅ **Security** - API keys stay local to each project  
+✅ **Customization** - Different workflows and templates per project type
+
+## ⚠️ **Requirements & Limitations**
+
+### **✅ Works With**
+- **Claude Code** - Full integration with auto-detection
+- **Cursor** - Via MCP configuration  
+- **AI coding assistants** with file system access and terminal capabilities
+- **Development workflows** requiring task creation, code implementation, and testing
+
+### **❌ Not Compatible With**
+- **Claude Desktop** - No file system access, limited functionality
+- **Chat-only AI assistants** - Cannot access project files or execute commands
+- **Web-based interfaces** - Require local file system and working directory access
+
+### **🔧 Required Capabilities**
+Your AI assistant must be able to:
+- Read/write files in your project directory
+- Execute terminal commands (npm, git, testing tools)
+- Access `.vc4pm/config.json` from project root
+- Maintain working directory context during sessions
 
 ## How It Works
 
