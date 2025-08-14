@@ -23,7 +23,20 @@ Transform your AI-powered IDE into an autonomous development project manager. De
 npm install -g @vc4pm/mcp-server
 ```
 
-### 2. Setup Your Task Management System
+### 2. Initialize Your Project
+
+Run the interactive setup in your project directory:
+
+```bash
+vc4pm-setup
+```
+
+This will:
+- Create `.vc4pm/config.json` with your provider configuration
+- Copy templates to `.vc4pm/templates/` for local customization
+- Guide you through provider setup (currently Notion)
+
+### 3. Setup Your Task Management System
 
 **Currently Supported: Notion** (Linear, GitHub, Jira coming soon)
 
@@ -37,7 +50,12 @@ npm install -g @vc4pm/mcp-server
 
 ### 3. Configure Your Project
 
-Create `.vc4pm/config.json` in your project:
+Run the setup utility:
+```bash
+vc4pm-setup
+```
+
+This creates `.vc4pm/config.json` with the following structure:
 
 ```json
 {
@@ -90,7 +108,13 @@ Choose your IDE and follow the setup instructions:
    npm install -g @vc4pm/mcp-server
    ```
 
-2. Add the MCP server to Claude Code:
+2. Initialize your project:
+   ```bash
+   cd your-project
+   vc4pm-setup
+   ```
+
+3. Add the MCP server to Claude Code:
    ```bash
    claude mcp add vc4pm "vc4pm-server"
    ```
@@ -111,7 +135,13 @@ Choose your IDE and follow the setup instructions:
   }
 }
 ```
-3. Make sure to run Cursor from your project directory containing `.vc4pm/config.json`
+3. Initialize your project (if not done already):
+   ```bash
+   cd your-project  
+   vc4pm-setup
+   ```
+
+4. Make sure to run Cursor from your project directory containing `.vc4pm/config.json`
 
 #### **Other MCP-Compatible IDEs**
 

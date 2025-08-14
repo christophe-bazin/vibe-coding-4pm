@@ -4,7 +4,8 @@
   "description": "MCP server for AI-guided task management with per-project configuration",
   "main": "dist/server.js",
   "bin": {
-    "vc4pm-server": "dist/server.js"
+    "vc4pm-server": "dist/server.js",
+    "vc4pm-setup": "bin/setup.js"
   },
   "type": "commonjs",
   "scripts": {
@@ -52,6 +53,7 @@
   "files": [
     "dist/**/*",
     "templates/**/*",
+    "bin/**/*",
     "README.md",
     "docs/**/*"
   ],
