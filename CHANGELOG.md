@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.5] - 2025-08-15
+
+### Added
+- GitHub CLI integration for streamlined release management
+- Automated changelog integration for GitHub releases
+- Enhanced release process documentation with GitHub CLI commands
+
+### Changed
+- Improved setup script to automatically register MCP server with Claude Code
+- Updated release process with automated GitHub CLI workflows
+
+### Fixed
+- Setup script now automatically executes 'claude mcp add' for Claude Code users
+- Improved developer experience for release management
+
 ## [3.0.4] - 2025-01-15
 
 ### Added
