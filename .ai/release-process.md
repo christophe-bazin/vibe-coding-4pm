@@ -40,62 +40,78 @@ Examples:
 - [ ] Example workflows are complete
 - [ ] Breaking changes are noted
 
-## Release Steps
+## Release Steps (AI Instructions)
 
-### 1. Prepare Release Branch
+### 1. Prepare Release
 ```bash
-git checkout main
-git pull origin main
-git checkout -b release/v1.x.x
+git checkout master
+git pull origin master
 ```
 
-### 2. Update Version
+### 2. Update Version and Documentation
 ```bash
-# Update package.json version
+# Update package.json version (choose appropriate type)
 npm version [major|minor|patch] --no-git-tag-version
+
+# Update CHANGELOG.md with new version entry
+# Update README.md if needed for new features
 ```
 
-### 3. Update Documentation
-- Update README.md with new features
-- Add entry to CHANGELOG.md
-- Review and update API documentation
-- Verify all links work
-
-### 4. Final Testing
+### 3. Final Testing
 ```bash
-# Build and test
+# Build and verify
 npm run build
-npm start
+npm pack --dry-run
 
-# Test with actual MCP client
+# Test with actual MCP client if possible
 # Verify all tools work correctly
 ```
 
-### 5. Commit Release
+### 4. Commit and Push
 ```bash
 git add .
-git commit -m "chore: prepare release v1.x.x"
+git commit -m "chore: prepare release v1.x.x
+
+- Updated package.json version
+- Updated CHANGELOG.md with release notes
+- [Any other changes made]"
+
+git push origin master
 ```
 
-### 6. Create Pull Request
-- Create PR from release branch to main
-- Include release notes in PR description
-- Get review from team member
-- Ensure CI passes
+### 5. Create GitHub Release (AUTOMATED NPM PUBLISH)
+**Important: GitHub Release triggers automatic NPM publish via GitHub Actions**
 
-### 7. Merge and Tag
 ```bash
-git checkout main
-git pull origin main
+# Create and push tag
 git tag -a v1.x.x -m "Release v1.x.x"
 git push origin v1.x.x
+
+# Then create GitHub Release
+gh release create v1.x.x --title "v1.x.x" --notes-file CHANGELOG.md --latest
 ```
 
-### 8. Create GitHub Release
-- Go to GitHub releases page
-- Create new release from tag
-- Include release notes
-- Attach any relevant files
+**Alternative: Use GitHub web interface**
+- Go to https://github.com/christophe-bazin/vibe-coding-4pm/releases/new
+- Choose tag: v1.x.x (will be created)
+- Release title: v1.x.x  
+- Description: Copy from CHANGELOG.md for this version
+- Check "Set as the latest release"
+- Click "Publish release"
+
+**⚠️ CRITICAL: The GitHub Release automatically triggers NPM publishing via GitHub Actions**
+
+### 6. Verify Automated Publishing
+After creating the GitHub Release:
+- Check GitHub Actions tab for successful workflow run
+- Verify package appears on https://www.npmjs.com/package/@vc4pm/mcp-server
+- Test installation: `npm install -g @vc4pm/mcp-server@latest`
+
+### 7. Manual NPM Publish (ONLY if automation fails)
+```bash
+# Only use if GitHub Action failed
+npm publish
+```
 
 ## Release Notes Format
 
@@ -195,21 +211,32 @@ git tag -a v1.x.y -m "Emergency rollback"
 - Prioritize next features
 - Update roadmap
 
-## Automated Releases (Future)
+## Automated NPM Publishing
 
-Consider automating with GitHub Actions:
-- Automatic testing on PR
-- Version bumping
-- Changelog generation
-- Release creation
-- Notification system
+✅ **IMPLEMENTED**: GitHub Actions automatically publishes to NPM when you create a GitHub Release.
+
+**Setup Requirements:**
+- `NPM_TOKEN` secret configured in GitHub repository settings
+- Workflow file: `.github/workflows/publish.yml`
+- Triggers on: `release.types: [published]`
+
+**What happens automatically:**
+- Dependencies installed
+- Project built (`npm run build`)
+- Tests run (if available)
+- Package published to NPM
+- Deployment comment added to release
+
+**Manual NPM Token Setup:**
+1. Go to https://www.npmjs.com/settings/tokens
+2. Create new "Automation" token
+3. Add as `NPM_TOKEN` secret in GitHub repo settings
 
 ```yaml
-# Example workflow trigger
+# Current workflow trigger
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 ```
 
 ## Release Schedule
