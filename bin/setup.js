@@ -247,10 +247,16 @@ class VC4PMSetup {
     switch (ideChoice) {
       case 'claude-code':
         console.log('\n🔵 Claude Code:');
-        console.log('1. Add the MCP server:');
-        console.log('   claude mcp add vc4pm "vc4pm-server"');
-        console.log('2. Open your project in Claude Code');
-        console.log('3. ✅ Ready! Try: "Create a task for adding user authentication"');
+        console.log('Adding MCP server to Claude Code...');
+        try {
+          const { execSync } = require('child_process');
+          execSync('claude mcp add vc4pm "vc4pm-server"', { stdio: 'inherit' });
+          console.log('✅ MCP server added to Claude Code configuration');
+        } catch (error) {
+          console.log('⚠️  Could not automatically add MCP server. Please run manually:');
+          console.log('   claude mcp add vc4pm "vc4pm-server"');
+        }
+        console.log('✅ Ready! Try: "Create a task for adding user authentication"');
         break;
 
       case 'cursor':
