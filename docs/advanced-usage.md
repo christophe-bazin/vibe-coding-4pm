@@ -89,29 +89,118 @@ Each project needs a `.vc4pm/config.json` file in its root directory:
 }
 ```
 
-### IDE Integration
+### Development Environment Integration
 
-#### **Claude Code** (Recommended)
-- **Setup**: `claude mcp add vc4pm "node" "@vc4pm/mcp-server/dist/server.js"`
+The VC4PM MCP server integrates with various AI-powered editors that support the Model Context Protocol (MCP). The setup process (`vc4pm-setup`) provides interactive configuration for supported editors.
+
+#### **Claude Code**
+Claude Code has excellent MCP support with automatic project detection.
+
+**Setup:**
+```bash
+# After running vc4pm-setup in your project
+claude mcp add vc4pm "vc4pm-server"
+```
+
+**Features:**
 - **Project awareness**: Automatically uses `.vc4pm/config.json` from current project directory
 - **Management**: Use `claude mcp list`, `claude mcp remove vc4pm`, etc.
+- **Working directory**: Automatically set to project root
 
 #### **Cursor**
-Add to your Cursor MCP configuration:
+Cursor supports MCP through extensions and configuration.
+
+**Setup:**
+1. Install the MCP extension for Cursor
+2. Add to your Cursor MCP configuration:
 ```json
 {
   "mcpServers": {
     "vc4pm": {
-      "command": "node",
-      "args": ["@vc4pm/mcp-server/dist/server.js"]
+      "command": "vc4pm-server"
     }
   }
 }
 ```
-Ensure Cursor runs from project directory containing `.vc4pm/config.json`.
 
-#### **Other MCP IDEs**
-Configure similarly, ensuring the working directory contains the project configuration.
+**Important:** Ensure Cursor runs from your project directory containing `.vc4pm/config.json`.
+
+#### **Visual Studio Code (with MCP extensions)**
+Some VS Code extensions support MCP protocol.
+
+**Configuration example:**
+```json
+{
+  "mcp.servers": {
+    "vc4pm": {
+      "command": "vc4pm-server",
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}
+```
+
+#### **Zed (with MCP support)**
+Zed editor has experimental MCP support.
+
+**Configuration example:**
+```json
+{
+  "assistant": {
+    "mcp_servers": {
+      "vc4pm": {
+        "command": "vc4pm-server"
+      }
+    }
+  }
+}
+```
+
+#### **Continue.dev**
+The Continue VS Code extension supports MCP.
+
+**Configuration in `continue_config.json`:**
+```json
+{
+  "mcpServers": {
+    "vc4pm": {
+      "command": "vc4pm-server"
+    }
+  }
+}
+```
+
+#### **Other MCP-Compatible Editors**
+For any editor with MCP support:
+
+**Basic configuration requirements:**
+- **Command**: `vc4pm-server` (assumes global installation via npm)
+- **Working directory**: Must be project root containing `.vc4pm/config.json`
+- **Node.js**: Requires Node.js 18+ to run the server
+
+**Alternative command formats:**
+```bash
+# If vc4pm-server is not in PATH
+node /path/to/node_modules/@vc4pm/mcp-server/dist/server.js
+
+# For local project installation
+npx @vc4pm/mcp-server
+```
+
+#### **Manual MCP Server Testing**
+Test the MCP server independently:
+
+```bash
+# Navigate to your project
+cd your-project
+
+# Ensure config exists
+ls .vc4pm/config.json
+
+# Test server startup
+vc4pm-server
+# Should start without errors and show MCP server ready message
+```
 
 ## Technical Architecture
 

@@ -17,26 +17,24 @@ Transform your AI-powered IDE into an autonomous development project manager. De
 
 ## Quick Start
 
-### 1. Install the MCP Server
+### 1. Install and Setup
 
 ```bash
+# Install globally
 npm install -g @vc4pm/mcp-server
-```
 
-### 2. Initialize Your Project
-
-Run the interactive setup in your project directory:
-
-```bash
+# Initialize your project
+cd your-project
 vc4pm-setup
 ```
 
-This will:
+The interactive setup will:
 - Create `.vc4pm/config.json` with your provider configuration
 - Copy templates to `.vc4pm/templates/` for local customization
-- Guide you through provider setup (currently Notion)
+- Guide you through IDE and provider setup
+- Show IDE-specific configuration instructions
 
-### 3. Setup Your Task Management System
+### 2. Setup Your Task Management Provider
 
 **Currently Supported: Notion** (Linear, GitHub, Jira coming soon)
 
@@ -47,15 +45,11 @@ This will:
    - **Status** (Select): `Not Started`, `In Progress`, `Test`, `Done`
    - **Type** (Select): `Feature`, `Bug`, `Refactoring`
 4. Share your database with the integration
+5. Update your `.vc4pm/config.json` with the API key and database ID
 
-### 3. Configure Your Project
+### 3. Configuration Structure
 
-Run the setup utility:
-```bash
-vc4pm-setup
-```
-
-This creates `.vc4pm/config.json` with the following structure:
+Your `.vc4pm/config.json` will have this structure:
 
 ```json
 {
@@ -95,59 +89,7 @@ This creates `.vc4pm/config.json` with the following structure:
 }
 ```
 
-Replace the apiKey and databaseId with your actual provider credentials.
-
-### 4. Configure Your AI IDE
-
-Choose your IDE and follow the setup instructions:
-
-#### **Claude Code**
-
-1. Install the MCP server globally:
-   ```bash
-   npm install -g @vc4pm/mcp-server
-   ```
-
-2. Initialize your project:
-   ```bash
-   cd your-project
-   vc4pm-setup
-   ```
-
-3. Add the MCP server to Claude Code:
-   ```bash
-   claude mcp add vc4pm "vc4pm-server"
-   ```
-
-3. Open your project in Claude Code (ensure `.vc4pm/config.json` exists)
-4. ✅ **Ready to use!** Start with *"Create a task for adding user authentication"*
-
-#### **Cursor**
-
-1. Install the MCP extension for Cursor
-2. Add to your Cursor MCP configuration:
-```json
-{
-  "mcpServers": {
-    "vc4pm": {
-      "command": "vc4pm-server"
-    }
-  }
-}
-```
-3. Initialize your project (if not done already):
-   ```bash
-   cd your-project  
-   vc4pm-setup
-   ```
-
-4. Make sure to run Cursor from your project directory containing `.vc4pm/config.json`
-
-#### **Other MCP-Compatible IDEs**
-
-Configure similarly to Cursor, ensuring the MCP server runs with the project directory as working directory.
-
-### 5. Start Using
+### 4. Start Using
 
 ```
 You: "Add user authentication to this React app"
@@ -161,6 +103,8 @@ AI Assistant:
 
 You: Review and mark as "Done" when satisfied
 ```
+
+> **💡 Note**: The setup process (`vc4pm-setup`) includes configuration for Claude Code, Cursor, VS Code, Zed, and Continue.dev. For advanced MCP configuration or other editors, see the [manual setup instructions](docs/advanced-usage.md#development-environment-integration).
 
 The MCP server provides tools that your AI assistant uses seamlessly through natural language.
 

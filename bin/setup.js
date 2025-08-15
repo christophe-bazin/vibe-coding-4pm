@@ -39,6 +39,9 @@ class VC4PMSetup {
         console.log('✅ Created .vc4pm directory');
       }
 
+      // Get IDE configuration
+      const ideChoice = await this.getIDEConfiguration();
+
       // Get provider configuration
       const config = await this.getProviderConfig();
 
@@ -51,9 +54,18 @@ class VC4PMSetup {
 
       console.log('\n🎉 Setup complete!');
       console.log('\nNext steps:');
-      console.log('1. Add your API keys to .vc4pm/config.json');
-      console.log('2. Customize templates in .vc4pm/templates/ (optional)');
-      console.log('3. Start using VC4PM with your AI assistant');
+      if (!fs.readFileSync(configFile, 'utf8').includes('your_notion_integration_token_here')) {
+        console.log('1. ✅ Notion credentials configured');
+        console.log('2. Customize status mapping in .vc4pm/config.json (optional)');
+        console.log('3. Customize templates in .vc4pm/templates/ (optional)');
+      } else {
+        console.log('1. Add your Notion credentials to .vc4pm/config.json');
+        console.log('2. Customize status mapping in .vc4pm/config.json (optional)');
+        console.log('3. Customize templates in .vc4pm/templates/ (optional)');
+      }
+      
+      // Show IDE-specific instructions
+      this.showIDEInstructions(ideChoice);
 
       this.rl.close();
     } catch (error) {
@@ -64,15 +76,8 @@ class VC4PMSetup {
   }
 
   async getProviderConfig() {
-    console.log('📋 Provider Configuration');
+    console.log('📋 Task Management Provider');
     console.log('Currently supported: Notion\n');
-
-    const provider = await this.askQuestion('Select provider (notion): ');
-    const selectedProvider = provider.toLowerCase() || 'notion';
-
-    if (selectedProvider !== 'notion') {
-      console.log('⚠️  Only Notion is currently supported. Using Notion...');
-    }
 
     // Load config from example file and copy only Notion
     const exampleConfigPath = path.join(__dirname, '..', '.vc4pm', 'config.example.json');
@@ -130,22 +135,32 @@ class VC4PMSetup {
       };
     }
 
-    const customizeStatusMapping = await this.askQuestion(
-      'Customize status mapping? (y/N): '
+    // Optional API credentials setup
+    const setupCredentials = await this.askQuestion(
+      'Configure API credentials now? (optional, you can add them later in .vc4pm/config.json) (y/N): '
     );
 
-    if (customizeStatusMapping.toLowerCase() === 'y') {
-      console.log('\nCustomizing status mapping...');
-      const notStarted = await this.askQuestion('Status for "notStarted" (Not Started): ');
-      const inProgress = await this.askQuestion('Status for "inProgress" (In Progress): ');
-      const test = await this.askQuestion('Status for "test" (Test): ');
-      const done = await this.askQuestion('Status for "done" (Done): ');
+    if (setupCredentials.toLowerCase() === 'y') {
+      console.log('\n🔑 Notion Configuration');
+      const apiKey = await this.askQuestion('Notion Integration Token (optional, you may add this later in config.json): ');
+      const databaseId = await this.askQuestion('Notion Database ID (optional, you may add this later in config.json): ');
 
-      if (notStarted) config.workflow.statusMapping.notStarted = notStarted;
-      if (inProgress) config.workflow.statusMapping.inProgress = inProgress;
-      if (test) config.workflow.statusMapping.test = test;
-      if (done) config.workflow.statusMapping.done = done;
+      if (apiKey) {
+        config.providers.available.notion.config.apiKey = apiKey;
+      }
+      if (databaseId) {
+        config.providers.available.notion.config.databaseId = databaseId;
+      }
+
+      if (apiKey && databaseId) {
+        console.log('✅ API credentials configured');
+      } else {
+        console.log('⚠️  You can add missing credentials later in .vc4pm/config.json');
+      }
+    } else {
+      console.log('⚠️  Remember to add your API credentials to .vc4pm/config.json');
     }
+
 
     return config;
   }
@@ -194,6 +209,118 @@ class VC4PMSetup {
         fs.copyFileSync(sourcePath, destPath);
       }
     }
+  }
+
+  async getIDEConfiguration() {
+    console.log('🛠️  Development Environment');
+    console.log('Which AI-powered editor will you use with VC4PM?\n');
+    console.log('1. Claude Code');
+    console.log('2. Cursor');
+    console.log('3. VS Code (with MCP extension)');
+    console.log('4. Zed (experimental MCP)');
+    console.log('5. Continue.dev');
+    console.log('6. Manual MCP configuration\n');
+
+    const choice = await this.askQuestion('Select option (1-6): ');
+    
+    switch (choice) {
+      case '1':
+        return 'claude-code';
+      case '2':
+        return 'cursor';
+      case '3':
+        return 'vscode';
+      case '4':
+        return 'zed';
+      case '5':
+        return 'continue';
+      case '6':
+      default:
+        return 'manual';
+    }
+  }
+
+  showIDEInstructions(ideChoice) {
+    console.log('\n📖 Setup Instructions:');
+    console.log('=======================');
+
+    switch (ideChoice) {
+      case 'claude-code':
+        console.log('\n🔵 Claude Code:');
+        console.log('1. Add the MCP server:');
+        console.log('   claude mcp add vc4pm "vc4pm-server"');
+        console.log('2. Open your project in Claude Code');
+        console.log('3. ✅ Ready! Try: "Create a task for adding user authentication"');
+        break;
+
+      case 'cursor':
+        console.log('\n🟡 Cursor:');
+        console.log('1. Install the MCP extension for Cursor');
+        console.log('2. Add to your Cursor MCP configuration:');
+        console.log('   {');
+        console.log('     "mcpServers": {');
+        console.log('       "vc4pm": {');
+        console.log('         "command": "vc4pm-server"');
+        console.log('       }');
+        console.log('     }');
+        console.log('   }');
+        console.log('3. Run Cursor from your project directory');
+        break;
+
+      case 'vscode':
+        console.log('\n🔵 VS Code (with MCP extension):');
+        console.log('1. Install an MCP extension for VS Code');
+        console.log('2. Add to your MCP configuration:');
+        console.log('   {');
+        console.log('     "mcp.servers": {');
+        console.log('       "vc4pm": {');
+        console.log('         "command": "vc4pm-server",');
+        console.log('         "cwd": "${workspaceFolder}"');
+        console.log('       }');
+        console.log('     }');
+        console.log('   }');
+        break;
+
+      case 'zed':
+        console.log('\n🟢 Zed (experimental MCP support):');
+        console.log('1. Update to latest Zed version with MCP support');
+        console.log('2. Add to your Zed configuration:');
+        console.log('   {');
+        console.log('     "assistant": {');
+        console.log('       "mcp_servers": {');
+        console.log('         "vc4pm": {');
+        console.log('           "command": "vc4pm-server"');
+        console.log('         }');
+        console.log('       }');
+        console.log('     }');
+        console.log('   }');
+        break;
+
+      case 'continue':
+        console.log('\n🟣 Continue.dev:');
+        console.log('1. Install Continue VS Code extension');
+        console.log('2. Add to your continue_config.json:');
+        console.log('   {');
+        console.log('     "mcpServers": {');
+        console.log('       "vc4pm": {');
+        console.log('         "command": "vc4pm-server"');
+        console.log('       }');
+        console.log('     }');
+        console.log('   }');
+        break;
+
+      case 'manual':
+      default:
+        console.log('\n🔧 Manual MCP Configuration:');
+        console.log('Basic configuration for any MCP-compatible editor:');
+        console.log('- Command: "vc4pm-server"');
+        console.log('- Working directory: project root with .vc4pm/config.json');
+        console.log('- See complete documentation for your editor');
+        break;
+    }
+    
+    console.log('\n📚 For detailed setup instructions, see:');
+    console.log('https://github.com/christophe-bazin/vibe-coding-4pm/blob/master/docs/advanced-usage.md#development-environment-integration');
   }
 
   askQuestion(question) {
