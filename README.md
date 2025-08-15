@@ -127,7 +127,7 @@ The server provides these tools to AI coding assistants:
 - **Development Summary**: `generate_summary`, `get_summary_template`, `append_summary`  
 - **Content Management**: `read_notion_page` for page operations
 
-### 🔧 **IDE Context Required**
+### 🔧 **Development Environment Requirements**
 
 These tools work best when the AI assistant has access to:
 - **File System**: Read/write project files and configurations
@@ -144,10 +144,10 @@ These tools work best when the AI assistant has access to:
 
 ## ⚠️ **Requirements & Limitations**
 
-### **✅ Works With**
-- **Claude Code** - Full integration with auto-detection
-- **Cursor** - Via MCP configuration  
-- **AI coding assistants** with file system access and terminal capabilities
+### **✅ Compatible Environments**
+- **Claude Code** - Full integration with auto-setup via `vc4pm-setup`
+- **Cursor (and others)** - Via MCP configuration and setup utility
+- **AI-powered editors** with file system access and terminal capabilities
 - **Development workflows** requiring task creation, code implementation, and testing
 
 ### **❌ Not Compatible With**
