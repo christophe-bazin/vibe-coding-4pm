@@ -82,20 +82,29 @@ git push origin master
 ### 5. Create GitHub Release (AUTOMATED NPM PUBLISH)
 **Important: GitHub Release triggers automatic NPM publish via GitHub Actions**
 
+#### Option A: GitHub CLI (Recommended)
 ```bash
 # Create and push tag
 git tag -a v1.x.x -m "Release v1.x.x"
 git push origin v1.x.x
 
-# Then create GitHub Release
+# Create GitHub Release with changelog
 gh release create v1.x.x --title "v1.x.x" --notes-file CHANGELOG.md --latest
 ```
 
-**Alternative: Use GitHub web interface**
+**For specific version section only:**
+```bash
+# Extract only current version from CHANGELOG.md for release notes
+sed -n '/## \[1\.x\.x\]/,/## \[/p' CHANGELOG.md | head -n -1 > release-notes.tmp
+gh release create v1.x.x --title "v1.x.x" --notes-file release-notes.tmp --latest
+rm release-notes.tmp
+```
+
+#### Option B: GitHub Web Interface
 - Go to https://github.com/christophe-bazin/vibe-coding-4pm/releases/new
 - Choose tag: v1.x.x (will be created)
 - Release title: v1.x.x  
-- Description: Copy from CHANGELOG.md for this version
+- Description: Copy relevant section from CHANGELOG.md for this version
 - Check "Set as the latest release"
 - Click "Publish release"
 
@@ -210,6 +219,27 @@ git tag -a v1.x.y -m "Emergency rollback"
 - Review feedback
 - Prioritize next features
 - Update roadmap
+
+## GitHub CLI Installation
+
+Install GitHub CLI for streamlined release management:
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt update
+sudo apt install gh -y
+
+# Authenticate
+gh auth login
+
+# Verify installation
+gh --version
+gh auth status
+```
+
+**Other platforms:**
+- macOS: `brew install gh`
+- Windows: `winget install --id GitHub.cli`
 
 ## Automated NPM Publishing
 
