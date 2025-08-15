@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.4] - 2025-01-15
+
 ### Added
 - GitHub Actions workflow for automatic NPM publishing on releases
 - Enhanced vc4pm-setup with multi-editor support (Claude Code, Cursor, VS Code, Zed, Continue.dev)
@@ -15,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Improved setup flow with consolidated quick start section in README
-- Simplified provider selection (Notion only, ready for future expansion)
+- Simplified provider selection (Notion only, ready for future expansion)  
 - Removed status mapping customization from interactive setup (config-file only)
 - Enhanced messaging with clear "optional" indicators and config file references
 
