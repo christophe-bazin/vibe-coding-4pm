@@ -35,7 +35,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           
-      - name: Create deployment comment
+      - name: Add deployment comment to release
         uses: actions/github-script@v7
         with:
           script: |
@@ -55,9 +55,10 @@ jobs:
             \`\`\`
             `;
             
-            await github.rest.issues.createComment({
+            // Update release description with deployment info
+            await github.rest.repos.updateRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.payload.release.id,
-              body: comment
+              release_id: context.payload.release.id,
+              body: release.body + '\n\n---\n\n' + comment
             });
