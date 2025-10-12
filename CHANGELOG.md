@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2025-10-12
+
+### Added
+- HTTP server mode for improved API accessibility
+- API manifest endpoint for tool discoverability
+- Enhanced setup manifest with request format documentation
+
+### Changed
+- Refactored server architecture to support HTTP alongside stdio transport
+- Improved tool documentation in manifest for better developer experience
+
+### Fixed
+- Configuration example corrections
+- GitHub Actions workflow release comment formatting
+- Removed unused json5 dependency
+
 ## [3.0.5] - 2025-08-15
 
 ### Added
