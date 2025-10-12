@@ -1,8 +1,8 @@
 {
   "workflow": {
     "statusMapping": {
-      "notStarted": "Not Started",
-      "inProgress": "In Progress",
+      "notStarted": "Not started",
+      "inProgress": "In progress",
       "test": "Test",
       "done": "Done"
     },
