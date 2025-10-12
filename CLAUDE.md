@@ -98,6 +98,7 @@ Service-oriented architecture with clean separation:
 - **Environment**: SCREAMING_CASE variables, camelCase config
 - **Status transitions**: Flexible by default, configurable constraints
 - **Never mention AI assistance in commits** (handled automatically by MCP tools)
+- **IMPORTANT**: When adding or modifying a tool in `src/server.ts`, you must also update the `tools` array in the `createManifestFile` function within `bin/setup.js` to keep the API manifest synchronized.
 
 **→ Complete development workflow in [docs/development.md](docs/development.md#testing-strategy)**
 
