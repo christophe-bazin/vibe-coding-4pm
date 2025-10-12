@@ -49,6 +49,9 @@ class VC4PMSetup {
       fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
       console.log('✅ Created configuration file');
 
+      // Create manifest file
+      this.createManifestFile(configDir);
+
       // Copy templates
       await this.copyTemplates(configDir);
 
@@ -333,6 +336,31 @@ class VC4PMSetup {
     
     console.log('\n📚 For detailed setup instructions, see:');
     console.log('https://github.com/christophe-bazin/vibe-coding-4pm/blob/master/docs/advanced-usage.md#development-environment-integration');
+  }
+
+  createManifestFile(configDir) {
+    const manifestPath = path.join(configDir, 'manifest.json');
+    const manifest = {
+      spec_version: '1.0',
+      type: 'mcp-server',
+      connection: {
+        type: 'http',
+        url: `http://localhost:${process.env.VC4PM_PORT || 65432}/mcp`
+      },
+      protocol: {
+        type: 'json-rpc-2.0',
+        methods: {
+          call_tool: 'tools/call',
+          list_tools: 'tools/list'
+        },
+        headers: {
+          Accept: 'application/json, text/event-stream'
+        }
+      }
+    };
+
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+    console.log('✅ Created API manifest file (.vc4pm/manifest.json)');
   }
 
   askQuestion(question) {
