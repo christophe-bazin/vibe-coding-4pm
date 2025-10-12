@@ -104,8 +104,8 @@ class VC4PMSetup {
       config = {
         "workflow": {
           "statusMapping": {
-            "notStarted": "Not Started",
-            "inProgress": "In Progress",
+            "notStarted": "Not started",
+            "inProgress": "In progress",
             "test": "Test",
             "done": "Done"
           },
@@ -116,7 +116,13 @@ class VC4PMSetup {
             "done": ["test"]
           },
           "taskTypes": ["Feature", "Bug", "Refactoring"],
-          "defaultStatus": "notStarted"
+          "defaultStatus": "notStarted",
+          "requiresValidation": ["done"],
+          "templates": {
+            "override": false,
+            "taskPath": ".vc4pm/templates/task/",
+            "summaryPath": ".vc4pm/templates/summary/"
+          }
         },
         "providers": {
           "default": "notion",
