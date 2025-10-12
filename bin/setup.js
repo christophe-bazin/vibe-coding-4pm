@@ -350,7 +350,15 @@ class VC4PMSetup {
       protocol: {
         type: 'json-rpc-2.0',
         methods: {
-          call_tool: 'tools/call',
+          call_tool: {
+            name: 'tools/call',
+            request_format: {
+              params: {
+                name: '{tool_name}',
+                arguments: '${tool_arguments_object}'
+              }
+            }
+          },
           list_tools: 'tools/list'
         },
         headers: {
