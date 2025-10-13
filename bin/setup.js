@@ -20,200 +20,165 @@ class VC4PMSetup {
       const projectDir = process.cwd();
       const configDir = path.join(projectDir, '.vc4pm');
       const configFile = path.join(configDir, 'config.json');
+      const templatesDir = path.join(configDir, 'templates');
+      
+      let configChoice = 'overwrite';
+      let templateChoice = 'overwrite';
+      let existingConfig = null;
 
-      // Check if already configured
       if (fs.existsSync(configFile)) {
-        const overwrite = await this.askQuestion(
-          '⚠️  VC4PM is already configured in this project. Overwrite? (y/N): '
-        );
-        if (overwrite.toLowerCase() !== 'y') {
-          console.log('Setup cancelled.');
-          this.rl.close();
-          return;
-        }
+        console.log('\nAn existing VC4PM configuration was found.');
+        existingConfig = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+
+        const configQuestion = `A config.json file already exists. What would you like to do?\n  [1] Merge new settings (preserve API keys) (Default)\n  [2] Overwrite completely (your keys will be lost)\n  [3] Skip\n> `;
+        const cChoice = await this.askQuestion(configQuestion);
+        if (cChoice === '2') configChoice = 'overwrite';
+        else if (cChoice === '3') configChoice = 'skip';
+        else configChoice = 'merge';
       }
 
-      // Create .vc4pm directory
+      if (fs.existsSync(templatesDir)) {
+        const templateQuestion = `\nCustom task templates already exist. What would you like to do?\n  [1] Merge (add new templates, keep existing) (Default)\n  [2] Replace all templates\n  [3] Skip\n> `;
+        const tChoice = await this.askQuestion(templateQuestion);
+        if (tChoice === '2') templateChoice = 'overwrite';
+        else if (tChoice === '3') templateChoice = 'skip';
+        else templateChoice = 'merge';
+      }
+
+      if (configChoice === 'skip' && templateChoice === 'skip') {
+        console.log('\nSkipping all setup steps. Exiting.');
+        this.rl.close();
+        return;
+      }
+
       if (!fs.existsSync(configDir)) {
         fs.mkdirSync(configDir, { recursive: true });
-        console.log('✅ Created .vc4pm directory');
+        console.log('\n✅ Created .vc4pm directory');
       }
 
-      // Get IDE configuration
       const ideChoice = await this.getIDEConfiguration();
 
-      // Get provider configuration
-      const config = await this.getProviderConfig();
+      if (configChoice !== 'skip') {
+        const config = await this.getProviderConfig(configChoice, existingConfig);
+        fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
+        console.log('✅ Wrote configuration file');
+      } else {
+        console.log('\nSkipping configuration file setup.');
+      }
 
-      // Write configuration
-      fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
-      console.log('✅ Created configuration file');
-
-      // Create manifest file
       this.createManifestFile(configDir);
+      this.createReadmeFile(configDir);
 
-      // Copy templates
-      await this.copyTemplates(configDir);
+      if (templateChoice !== 'skip') {
+        await this.copyTemplates(configDir, templateChoice);
+      } else {
+        console.log('\nSkipping template synchronization.');
+      }
 
       console.log('\n🎉 Setup complete!');
       console.log('\nNext steps:');
-      if (!fs.readFileSync(configFile, 'utf8').includes('your_notion_integration_token_here')) {
-        console.log('1. ✅ Notion credentials configured');
-        console.log('2. Customize status mapping in .vc4pm/config.json (optional)');
-        console.log('3. Customize templates in .vc4pm/templates/ (optional)');
-      } else {
-        console.log('1. Add your Notion credentials to .vc4pm/config.json');
-        console.log('2. Customize status mapping in .vc4pm/config.json (optional)');
-        console.log('3. Customize templates in .vc4pm/templates/ (optional)');
-      }
+      console.log('1. Start the server with `npx vc4pm-server` in your project root.');
+      console.log('2. Ensure your Notion credentials are correct in .vc4pm/config.json.');
+      console.log('3. Customize templates and workflow in .vc4pm/ (optional).');
       
-      // Show IDE-specific instructions
       this.showIDEInstructions(ideChoice);
 
       this.rl.close();
     } catch (error) {
-      console.error('❌ Setup failed:', error.message);
+      console.error('\n❌ Setup failed:', error.message);
       this.rl.close();
       process.exit(1);
     }
   }
 
-  async getProviderConfig() {
-    console.log('📋 Task Management Provider');
-    console.log('Currently supported: Notion\n');
-
-    // Load config from example file and copy only Notion
+  async getProviderConfig(choice, existingConfig) {
+    console.log('\n📋 Task Management Provider Setup...');
     const exampleConfigPath = path.join(__dirname, '..', '.vc4pm', 'config.example.json');
     let config;
-    
     if (fs.existsSync(exampleConfigPath)) {
       const exampleContent = fs.readFileSync(exampleConfigPath, 'utf8');
       const fullConfig = JSON.parse(exampleContent);
-      
-      // Create config with only Notion provider
-      config = {
-        "workflow": fullConfig.workflow,
-        "providers": {
-          "default": "notion",
-          "available": {
-            "notion": fullConfig.providers.available.notion
-          }
-        }
-      };
-      
+      config = { "workflow": fullConfig.workflow, "providers": { "default": "notion", "available": { "notion": fullConfig.providers.available.notion } } };
       console.log('✅ Loaded configuration template');
     } else {
       console.log('⚠️  Config example not found, using fallback configuration');
-      config = {
-        "workflow": {
-          "statusMapping": {
-            "notStarted": "Not started",
-            "inProgress": "In progress",
-            "test": "Test",
-            "done": "Done"
-          },
-          "transitions": {
-            "notStarted": ["inProgress"],
-            "inProgress": ["test"],
-            "test": ["done", "inProgress"],
-            "done": ["test"]
-          },
-          "taskTypes": ["Feature", "Bug", "Refactoring"],
-          "defaultStatus": "notStarted",
-          "requiresValidation": ["done"],
-          "templates": {
-            "override": false,
-            "taskPath": ".vc4pm/templates/task/",
-            "summaryPath": ".vc4pm/templates/summary/"
+    }
+
+    if (choice === 'merge' && existingConfig) {
+      const existingApiKey = existingConfig?.providers?.available?.notion?.config?.apiKey;
+      const existingDbId = existingConfig?.providers?.available?.notion?.config?.databaseId;
+      if (existingApiKey && existingApiKey !== 'your_notion_integration_token_here') {
+        config.providers.available.notion.config.apiKey = existingApiKey;
+        console.log('✅ Preserved existing Notion API key.');
+      }
+      if (existingDbId && existingDbId !== 'your_notion_database_id_here') {
+        config.providers.available.notion.config.databaseId = existingDbId;
+        console.log('✅ Preserved existing Notion Database ID.');
+      }
+    }
+
+    const needsApiCredentials = !config.providers.available.notion.config.apiKey || config.providers.available.notion.config.apiKey === 'your_notion_integration_token_here';
+    const needsDbId = !config.providers.available.notion.config.databaseId || config.providers.available.notion.config.databaseId === 'your_notion_database_id_here';
+
+    if (needsApiCredentials || needsDbId) {
+        const setupCredentials = await this.askQuestion('\nConfigure missing API credentials now? (optional) (y/N): ');
+        if (setupCredentials.toLowerCase() === 'y') {
+          console.log('\n🔑 Notion Configuration');
+          if (needsApiCredentials) {
+            const apiKey = await this.askQuestion('Notion Integration Token: ');
+            if (apiKey) config.providers.available.notion.config.apiKey = apiKey;
           }
-        },
-        "providers": {
-          "default": "notion",
-          "available": {
-            "notion": {
-              "name": "Notion",
-              "type": "core",
-              "enabled": true,
-              "config": {
-                "apiKey": "your_notion_integration_token_here",
-                "databaseId": "your_notion_database_id_here"
-              }
-            }
+          if (needsDbId) {
+            const databaseId = await this.askQuestion('Notion Database ID: ');
+            if (databaseId) config.providers.available.notion.config.databaseId = databaseId;
           }
+        } else {
+          console.log('⚠️  Remember to add missing credentials to .vc4pm/config.json');
         }
-      };
     }
-
-    // Optional API credentials setup
-    const setupCredentials = await this.askQuestion(
-      'Configure API credentials now? (optional, you can add them later in .vc4pm/config.json) (y/N): '
-    );
-
-    if (setupCredentials.toLowerCase() === 'y') {
-      console.log('\n🔑 Notion Configuration');
-      const apiKey = await this.askQuestion('Notion Integration Token (optional, you may add this later in config.json): ');
-      const databaseId = await this.askQuestion('Notion Database ID (optional, you may add this later in config.json): ');
-
-      if (apiKey) {
-        config.providers.available.notion.config.apiKey = apiKey;
-      }
-      if (databaseId) {
-        config.providers.available.notion.config.databaseId = databaseId;
-      }
-
-      if (apiKey && databaseId) {
-        console.log('✅ API credentials configured');
-      } else {
-        console.log('⚠️  You can add missing credentials later in .vc4pm/config.json');
-      }
-    } else {
-      console.log('⚠️  Remember to add your API credentials to .vc4pm/config.json');
-    }
-
-
     return config;
   }
 
-  async copyTemplates(configDir) {
+  async copyTemplates(configDir, choice) {
     const templatesDir = path.join(configDir, 'templates');
     const sourceTemplatesDir = path.join(__dirname, '..', 'templates');
-
     if (!fs.existsSync(sourceTemplatesDir)) {
-      console.log('⚠️  Source templates not found, skipping template copy');
+      console.log('⚠️  Source templates not found, skipping.');
       return;
     }
-
-    // Create templates directory
+    if (choice === 'merge') {
+        console.log('\n🔄 Merging templates (new files will be added, existing files will be kept)...');
+    } else { // Overwrite
+        console.log('\n✨ Copying all default templates...');
+    }
     if (!fs.existsSync(templatesDir)) {
       fs.mkdirSync(templatesDir, { recursive: true });
     }
-
-    // Copy templates recursively
-    this.copyDirectory(sourceTemplatesDir, templatesDir);
-    console.log('✅ Copied templates for local customization');
+    this.copyDirectory(sourceTemplatesDir, templatesDir, choice === 'merge');
+    console.log('✅ Template sync complete.');
   }
 
-  copyDirectory(source, destination) {
+  copyDirectory(source, destination, merge) {
     if (!fs.existsSync(destination)) {
       fs.mkdirSync(destination, { recursive: true });
     }
-
     const items = fs.readdirSync(source);
-    
     for (const item of items) {
       const sourcePath = path.join(source, item);
       const destPath = path.join(destination, item);
-      
       if (fs.statSync(sourcePath).isDirectory()) {
-        this.copyDirectory(sourcePath, destPath);
+        this.copyDirectory(sourcePath, destPath, merge);
       } else {
-        fs.copyFileSync(sourcePath, destPath);
+        if (merge && fs.existsSync(destPath)) {
+        } else {
+          fs.copyFileSync(sourcePath, destPath);
+        }
       }
     }
   }
 
   async getIDEConfiguration() {
-    console.log('🛠️  Development Environment');
+    console.log('\n🛠️  Development Environment');
     console.log('Which AI-powered editor will you use with VC4PM?\n');
     console.log('1. Claude Code');
     console.log('2. Cursor');
@@ -221,30 +186,21 @@ class VC4PMSetup {
     console.log('4. Zed (experimental MCP)');
     console.log('5. Continue.dev');
     console.log('6. Manual MCP configuration\n');
-
     const choice = await this.askQuestion('Select option (1-6): ');
-    
     switch (choice) {
-      case '1':
-        return 'claude-code';
-      case '2':
-        return 'cursor';
-      case '3':
-        return 'vscode';
-      case '4':
-        return 'zed';
-      case '5':
-        return 'continue';
+      case '1': return 'claude-code';
+      case '2': return 'cursor';
+      case '3': return 'vscode';
+      case '4': return 'zed';
+      case '5': return 'continue';
       case '6':
-      default:
-        return 'manual';
+      default: return 'manual';
     }
   }
 
   showIDEInstructions(ideChoice) {
-    console.log('\n📖 Setup Instructions:');
-    console.log('=======================');
-
+    console.log('\n📖 IDE-Specific Instructions:');
+    console.log('============================');
     switch (ideChoice) {
       case 'claude-code':
         console.log('\n🔵 Claude Code:');
@@ -257,139 +213,76 @@ class VC4PMSetup {
           console.log('⚠️  Could not automatically add MCP server. Please run manually:');
           console.log('   claude mcp add vc4pm "vc4pm-server"');
         }
-        console.log('✅ Ready! Try: "Create a task for adding user authentication"');
         break;
-
       case 'cursor':
         console.log('\n🟡 Cursor:');
         console.log('1. Install the MCP extension for Cursor');
         console.log('2. Add to your Cursor MCP configuration:');
-        console.log('   {');
-        console.log('     "mcpServers": {');
-        console.log('       "vc4pm": {');
-        console.log('         "command": "vc4pm-server"');
-        console.log('       }');
-        console.log('     }');
-        console.log('   }');
+        console.log('   {\n     "mcpServers": {\n       "vc4pm": {\n         "command": "vc4pm-server"\n       }\n     }\n   }');
         console.log('3. Run Cursor from your project directory');
         break;
-
       case 'vscode':
         console.log('\n🔵 VS Code (with MCP extension):');
         console.log('1. Install an MCP extension for VS Code');
         console.log('2. Add to your MCP configuration:');
-        console.log('   {');
-        console.log('     "mcp.servers": {');
-        console.log('       "vc4pm": {');
-        console.log('         "command": "vc4pm-server",');
-        console.log('         "cwd": "${workspaceFolder}"');
-        console.log('       }');
-        console.log('     }');
-        console.log('   }');
+        console.log('   {\n     "mcp.servers": {\n       "vc4pm": {\n         "command": "vc4pm-server",\n         "cwd": "${workspaceFolder}"\n       }\n     }\n   }');
         break;
-
       case 'zed':
         console.log('\n🟢 Zed (experimental MCP support):');
         console.log('1. Update to latest Zed version with MCP support');
         console.log('2. Add to your Zed configuration:');
-        console.log('   {');
-        console.log('     "assistant": {');
-        console.log('       "mcp_servers": {');
-        console.log('         "vc4pm": {');
-        console.log('           "command": "vc4pm-server"');
-        console.log('         }');
-        console.log('       }');
-        console.log('     }');
-        console.log('   }');
+        console.log('   {\n     "assistant": {\n       "mcp_servers": {\n         "vc4pm": {\n           "command": "vc4pm-server"\n         }\n       }\n     }\n   }');
         break;
-
       case 'continue':
         console.log('\n🟣 Continue.dev:');
         console.log('1. Install Continue VS Code extension');
         console.log('2. Add to your continue_config.json:');
-        console.log('   {');
-        console.log('     "mcpServers": {');
-        console.log('       "vc4pm": {');
-        console.log('         "command": "vc4pm-server"');
-        console.log('       }');
-        console.log('     }');
-        console.log('   }');
+        console.log('   {\n     "mcpServers": {\n       "vc4pm": {\n         "command": "vc4pm-server"\n       }\n     }\n   }');
         break;
-
       case 'manual':
       default:
         console.log('\n🔧 Manual MCP Configuration:');
         console.log('Basic configuration for any MCP-compatible editor:');
         console.log('- Command: "vc4pm-server"');
         console.log('- Working directory: project root with .vc4pm/config.json');
-        console.log('- See complete documentation for your editor');
         break;
     }
-    
-    console.log('\n📚 For detailed setup instructions, see:');
-    console.log('https://github.com/christophe-bazin/vibe-coding-4pm/blob/master/docs/advanced-usage.md#development-environment-integration');
+    console.log('\n📚 For detailed setup instructions, see:\nhttps://github.com/christophe-bazin/vibe-coding-4pm/blob/master/docs/advanced-usage.md#development-environment-integration');
   }
 
   createManifestFile(configDir) {
     const manifestPath = path.join(configDir, 'manifest.json');
-    const manifest = {
-      spec_version: '1.0',
-      type: 'mcp-server',
-      connection: {
-        type: 'http',
-        url: `http://localhost:${process.env.VC4PM_PORT || 65432}/mcp`
-      },
-      protocol: {
-        type: 'json-rpc-2.0',
-        methods: {
-          call_tool: {
-            name: 'tools/call',
-            request_format: {
-              params: {
-                name: '{tool_name}',
-                arguments: '${tool_arguments_object}'
-              }
-            }
-          },
-          list_tools: 'tools/list'
-        },
-        headers: {
-          Accept: 'application/json, text/event-stream'
-        }
-      },
-      tools: [
-        { name: 'execute_task', description: 'Execute task', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
-        { name: 'create_task', description: 'Create new task using appropriate workflow template', inputSchema: { type: 'object', properties: { title: { type: 'string' }, taskType: { type: 'string' }, description: { type: 'string' }, adaptedWorkflow: { type: 'string', description: 'Optional: custom workflow template' }, provider: { type: 'string', description: 'Optional: provider to use (notion, linear, github)' } }, required: ['title', 'taskType', 'description'] } },
-        { name: 'get_task', description: 'Get task info', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, provider: { type: 'string', description: 'Optional: provider to use' } }, required: ['taskId'] } },
-        { name: 'update_task', description: 'Update task title, type and/or status', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, title: { type: 'string' }, taskType: { type: 'string' }, status: { type: 'string' }, provider: { type: 'string', description: 'Optional: provider to use' } }, required: ['taskId'] } },
-        { name: 'get_task_template', description: 'Get task template for adaptation', inputSchema: { type: 'object', properties: { taskType: { type: 'string' } }, required: ['taskType'] } },
-        { name: 'analyze_todos', description: 'Analyze todos', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, includeHierarchy: { type: 'boolean' } }, required: ['taskId'] } },
-        { name: 'update_todos', description: 'Batch update todos.', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, updates: { type: 'array' } }, required: ['taskId', 'updates'] } },
-        { name: 'generate_summary', description: 'Generate summary', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
-        { name: 'get_summary_template', description: 'Get summary template', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
-        { name: 'append_summary', description: 'Append AI-adapted summary to task.', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, adaptedSummary: { type: 'string' } }, required: ['taskId', 'adaptedSummary'] } },
-        { name: 'read_notion_page', description: 'Read a Notion page and its directly linked pages', inputSchema: { type: 'object', properties: { pageId: { type: 'string' }, includeLinkedPages: { type: 'boolean', default: true }, provider: { type: 'string', description: 'Optional: provider to use' } }, required: ['pageId'] } },
-      ]
-    };
-
-    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+    const templatePath = path.join(__dirname, 'setup/assets/manifest.json');
+    let manifestContent = fs.readFileSync(templatePath, 'utf8');
+    const port = process.env.VC4PM_PORT || 65432;
+    manifestContent = manifestContent.replace(/%%PORT%%/g, port);
+    fs.writeFileSync(manifestPath, manifestContent);
     console.log('✅ Created API manifest file (.vc4pm/manifest.json)');
+  }
+
+  createReadmeFile(configDir) {
+    const readmePath = path.join(configDir, 'README.md');
+    const templatePath = path.join(__dirname, 'setup/assets/README.md');
+    let readmeContent = fs.readFileSync(templatePath, 'utf8');
+    const port = process.env.VC4PM_PORT || 65432;
+    readmeContent = readmeContent.replace(/%%PORT%%/g, port);
+    fs.writeFileSync(readmePath, readmeContent);
+    console.log('✅ Created usage guide (.vc4pm/README.md)');
   }
 
   askQuestion(question) {
     return new Promise((resolve) => {
       this.rl.question(question, (answer) => {
-        resolve(answer.trim());
+        resolve(answer.trim() || '1'); // Default to 1 (Merge)
       });
     });
   }
 }
 
-// Run setup if called directly
 if (require.main === module) {
   const setup = new VC4PMSetup();
   setup.setup().catch((error) => {
-    console.error('❌ Setup failed:', error);
+    console.error('\n❌ Setup failed:', error);
     process.exit(1);
   });
 }
