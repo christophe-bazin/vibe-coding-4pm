@@ -177,14 +177,6 @@ class VC4PMSetup {
   async copyTemplates(configDir) {
     const templatesDir = path.join(configDir, 'templates');
     const sourceTemplatesDir = path.join(__dirname, '..', 'templates');
-    const exampleConfigPath = path.join(__dirname, '..', '.vc4pm', 'config.example.json');
-
-    // Copy config example if it exists
-    if (fs.existsSync(exampleConfigPath)) {
-      const exampleDestPath = path.join(configDir, 'config.example.json');
-      fs.copyFileSync(exampleConfigPath, exampleDestPath);
-      console.log('✅ Copied config.example.json for reference');
-    }
 
     if (!fs.existsSync(sourceTemplatesDir)) {
       console.log('⚠️  Source templates not found, skipping template copy');
