@@ -21,66 +21,75 @@ class VC4PMSetup {
       const configDir = path.join(projectDir, '.vc4pm');
       const configFile = path.join(configDir, 'config.json');
       const templatesDir = path.join(configDir, 'templates');
-      
-      let configChoice = 'overwrite';
-      let templateChoice = 'overwrite';
+
+      let mode = 'install';
       let existingConfig = null;
 
+      // Detect existing installation
       if (fs.existsSync(configFile)) {
-        console.log('\nAn existing VC4PM configuration was found.');
-        existingConfig = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+        console.log('✓ Existing VC4PM installation detected\n');
+        const modeQuestion = `Choose installation mode:\n  [1] Update (refresh docs, keep config & templates) (Default)\n  [2] Reinstall (reset everything, lose API keys)\n> `;
+        const mChoice = await this.askQuestion(modeQuestion);
 
-        const configQuestion = `A config.json file already exists. What would you like to do?\n  [1] Keep existing (no changes) (Default)\n  [2] Merge new settings (preserve API keys)\n  [3] Overwrite completely (your keys will be lost)\n> `;
-        const cChoice = await this.askQuestion(configQuestion);
-        if (cChoice === '2') configChoice = 'merge';
-        else if (cChoice === '3') configChoice = 'overwrite';
-        else configChoice = 'skip';
+        if (mChoice === '2') {
+          mode = 'reinstall';
+          console.log('\n⚠️  WARNING: This will delete your existing configuration and templates!');
+          const confirm = await this.askQuestion('Are you sure? Type "yes" to confirm: ');
+          if (confirm.toLowerCase() !== 'yes') {
+            console.log('\nReinstall cancelled. Exiting.');
+            this.rl.close();
+            return;
+          }
+        } else {
+          mode = 'update';
+          existingConfig = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+        }
       }
 
-      if (fs.existsSync(templatesDir)) {
-        const templateQuestion = `\nCustom task templates already exist. What would you like to do?\n  [1] Keep existing (no changes) (Default)\n  [2] Merge (add new templates, keep existing)\n  [3] Replace all templates\n> `;
-        const tChoice = await this.askQuestion(templateQuestion);
-        if (tChoice === '2') templateChoice = 'merge';
-        else if (tChoice === '3') templateChoice = 'overwrite';
-        else templateChoice = 'skip';
-      }
-
-      if (configChoice === 'skip' && templateChoice === 'skip') {
-        console.log('\nSkipping all setup steps. Exiting.');
-        this.rl.close();
-        return;
-      }
-
+      // Create directory if needed
       if (!fs.existsSync(configDir)) {
         fs.mkdirSync(configDir, { recursive: true });
         console.log('\n✅ Created .vc4pm directory');
       }
 
-      const ideChoice = await this.getIDEConfiguration();
-
-      if (configChoice !== 'skip') {
-        const config = await this.getProviderConfig(configChoice, existingConfig);
-        fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
-        console.log('✅ Wrote configuration file');
-      } else {
-        console.log('\nSkipping configuration file setup.');
+      // Get IDE configuration (only for new installs)
+      let ideChoice = 'manual';
+      if (mode === 'install' || mode === 'reinstall') {
+        ideChoice = await this.getIDEConfiguration();
       }
 
+      // Handle config.json
+      if (mode === 'update') {
+        console.log('\n✅ Keeping existing configuration');
+      } else {
+        const config = await this.getProviderConfig(existingConfig);
+        fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
+        console.log('✅ Created configuration file');
+      }
+
+      // Always update README (reflects current version)
       this.createReadmeFile(configDir);
 
-      if (templateChoice !== 'skip') {
-        await this.copyTemplates(configDir, templateChoice);
+      // Handle templates
+      if (mode === 'update') {
+        console.log('✅ Keeping existing templates');
       } else {
-        console.log('\nSkipping template synchronization.');
+        await this.copyTemplates(configDir);
       }
 
       console.log('\n🎉 Setup complete!');
-      console.log('\nNext steps:');
-      console.log('1. Configure your provider credentials in .vc4pm/config.json');
-      console.log('2. The MCP server is ready to use with your AI editor');
-      console.log('3. Customize templates and workflow in .vc4pm/ (optional)');
-      
-      this.showIDEInstructions(ideChoice);
+
+      if (mode === 'update') {
+        console.log('\n✓ Documentation updated to latest version');
+        console.log('✓ Your configuration and templates remain unchanged');
+      } else {
+        console.log('\nNext steps:');
+        console.log('1. Configure your provider credentials in .vc4pm/config.json');
+        console.log('2. The MCP server is ready to use with your AI editor');
+        console.log('3. Customize templates and workflow in .vc4pm/ (optional)');
+
+        this.showIDEInstructions(ideChoice);
+      }
 
       this.rl.close();
     } catch (error) {
@@ -90,7 +99,7 @@ class VC4PMSetup {
     }
   }
 
-  async getProviderConfig(choice, existingConfig) {
+  async getProviderConfig(existingConfig) {
     console.log('\n📋 Task Management Provider Setup...');
     const config = {
       "workflow": {
@@ -131,58 +140,34 @@ class VC4PMSetup {
       }
     };
 
-    if (choice === 'merge' && existingConfig) {
-      const existingApiKey = existingConfig?.providers?.available?.notion?.config?.apiKey;
-      const existingDbId = existingConfig?.providers?.available?.notion?.config?.databaseId;
-      if (existingApiKey && existingApiKey !== 'your_notion_integration_token_here') {
-        config.providers.available.notion.config.apiKey = existingApiKey;
-        console.log('✅ Preserved existing Notion API key.');
-      }
-      if (existingDbId && existingDbId !== 'your_notion_database_id_here') {
-        config.providers.available.notion.config.databaseId = existingDbId;
-        console.log('✅ Preserved existing Notion Database ID.');
-      }
+    const setupCredentials = await this.askQuestion('\nConfigure Notion API credentials now? (optional) (y/N): ');
+    if (setupCredentials.toLowerCase() === 'y') {
+      console.log('\n🔑 Notion Configuration');
+      const apiKey = await this.askQuestion('Notion Integration Token: ');
+      if (apiKey) config.providers.available.notion.config.apiKey = apiKey;
+
+      const databaseId = await this.askQuestion('Notion Database ID: ');
+      if (databaseId) config.providers.available.notion.config.databaseId = databaseId;
+    } else {
+      console.log('⚠️  Remember to add credentials to .vc4pm/config.json later');
     }
 
-    const needsApiCredentials = !config.providers.available.notion.config.apiKey || config.providers.available.notion.config.apiKey === 'your_notion_integration_token_here';
-    const needsDbId = !config.providers.available.notion.config.databaseId || config.providers.available.notion.config.databaseId === 'your_notion_database_id_here';
-
-    if (needsApiCredentials || needsDbId) {
-        const setupCredentials = await this.askQuestion('\nConfigure missing API credentials now? (optional) (y/N): ');
-        if (setupCredentials.toLowerCase() === 'y') {
-          console.log('\n🔑 Notion Configuration');
-          if (needsApiCredentials) {
-            const apiKey = await this.askQuestion('Notion Integration Token: ');
-            if (apiKey) config.providers.available.notion.config.apiKey = apiKey;
-          }
-          if (needsDbId) {
-            const databaseId = await this.askQuestion('Notion Database ID: ');
-            if (databaseId) config.providers.available.notion.config.databaseId = databaseId;
-          }
-        } else {
-          console.log('⚠️  Remember to add missing credentials to .vc4pm/config.json');
-        }
-    }
     return config;
   }
 
-  async copyTemplates(configDir, choice) {
+  async copyTemplates(configDir) {
     const templatesDir = path.join(configDir, 'templates');
     const sourceTemplatesDir = path.join(__dirname, '..', 'templates');
     if (!fs.existsSync(sourceTemplatesDir)) {
       console.log('⚠️  Source templates not found, skipping.');
       return;
     }
-    if (choice === 'merge') {
-        console.log('\n🔄 Merging templates (new files will be added, existing files will be kept)...');
-    } else {
-        console.log('\n✨ Copying all default templates...');
-    }
+    console.log('\n✨ Copying default templates...');
     if (!fs.existsSync(templatesDir)) {
       fs.mkdirSync(templatesDir, { recursive: true });
     }
-    this.copyDirectory(sourceTemplatesDir, templatesDir, choice === 'merge');
-    console.log('✅ Template sync complete.');
+    this.copyDirectory(sourceTemplatesDir, templatesDir, false);
+    console.log('✅ Templates installed');
   }
 
   copyDirectory(source, destination, merge) {
