@@ -34,31 +34,3 @@ jobs:
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          
-      - name: Add deployment comment to release
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { data: release } = await github.rest.repos.getRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: context.payload.release.id
-            });
-            
-            const comment = `🚀 **Released to NPM**
-            
-            Version \`${release.tag_name}\` has been successfully published to NPM.
-            
-            Install with:
-            \`\`\`bash
-            npm install -g @vc4pm/mcp-server@${release.tag_name.replace('v', '')}
-            \`\`\`
-            `;
-            
-            // Update release description with deployment info
-            await github.rest.repos.updateRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: context.payload.release.id,
-              body: release.body + '\n\n---\n\n' + comment
-            });
