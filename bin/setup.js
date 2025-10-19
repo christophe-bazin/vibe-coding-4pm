@@ -93,16 +93,44 @@ class VC4PMSetup {
 
   async getProviderConfig(choice, existingConfig) {
     console.log('\n📋 Task Management Provider Setup...');
-    const baseConfigPath = path.join(__dirname, '..', '.vc4pm', 'config.base.json');
-    let config;
-    if (fs.existsSync(baseConfigPath)) {
-      const baseContent = fs.readFileSync(baseConfigPath, 'utf8');
-      const fullConfig = JSON.parse(baseContent);
-      config = { "workflow": fullConfig.workflow, "providers": { "default": "notion", "available": { "notion": fullConfig.providers.available.notion } } };
-      console.log('✅ Loaded configuration template');
-    } else {
-      console.log('⚠️  Base config not found, using fallback configuration');
-    }
+    const config = {
+      "workflow": {
+        "statusMapping": {
+          "notStarted": "Not started",
+          "inProgress": "In progress",
+          "test": "Test",
+          "done": "Done"
+        },
+        "transitions": {
+          "notStarted": ["inProgress"],
+          "inProgress": ["test"],
+          "test": ["done", "inProgress"],
+          "done": ["test"]
+        },
+        "taskTypes": ["Feature", "Bug", "Refactoring"],
+        "defaultStatus": "notStarted",
+        "requiresValidation": ["done"],
+        "templates": {
+          "override": false,
+          "taskPath": ".vc4pm/templates/task/",
+          "summaryPath": ".vc4pm/templates/summary/"
+        }
+      },
+      "providers": {
+        "default": "notion",
+        "available": {
+          "notion": {
+            "name": "Notion",
+            "type": "core",
+            "enabled": true,
+            "config": {
+              "apiKey": "your_notion_integration_token_here",
+              "databaseId": "your_notion_database_id_here"
+            }
+          }
+        }
+      }
+    };
 
     if (choice === 'merge' && existingConfig) {
       const existingApiKey = existingConfig?.providers?.available?.notion?.config?.apiKey;
