@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] - 2025-10-19
+
+### Added
+- **create_notion_page**: New MCP tool to create pages in any Notion database with markdown content support
+- **update_notion_page**: New MCP tool to update existing Notion pages with three modes:
+  - `append`: Add content at the end (default)
+  - `replace`: Replace all page content
+  - `insert`: Insert content after a specific text block
+- URL extraction support: Both tools accept full Notion URLs or raw IDs
+- Dynamic property detection: Automatically finds title property name in databases
+- Comprehensive markdown support: headings, lists, todos, code blocks, quotes
+
+### Changed
+- Enhanced TaskProvider interface with new Notion page manipulation methods
+- Improved documentation with detailed usage examples for new tools
+
+### Technical Notes
+- Insert mode uses Notion API workaround (appends as children due to API limitations)
+- Proper handling of API edge cases (synced blocks, unsupported operations)
+- Input validation with clear error messages
+
 ## [3.2.0] - 2025-10-13
 
 ### Added
