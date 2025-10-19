@@ -30,19 +30,19 @@ class VC4PMSetup {
         console.log('\nAn existing VC4PM configuration was found.');
         existingConfig = JSON.parse(fs.readFileSync(configFile, 'utf8'));
 
-        const configQuestion = `A config.json file already exists. What would you like to do?\n  [1] Merge new settings (preserve API keys) (Default)\n  [2] Overwrite completely (your keys will be lost)\n  [3] Skip\n> `;
+        const configQuestion = `A config.json file already exists. What would you like to do?\n  [1] Keep existing (no changes) (Default)\n  [2] Merge new settings (preserve API keys)\n  [3] Overwrite completely (your keys will be lost)\n> `;
         const cChoice = await this.askQuestion(configQuestion);
-        if (cChoice === '2') configChoice = 'overwrite';
-        else if (cChoice === '3') configChoice = 'skip';
-        else configChoice = 'merge';
+        if (cChoice === '2') configChoice = 'merge';
+        else if (cChoice === '3') configChoice = 'overwrite';
+        else configChoice = 'skip';
       }
 
       if (fs.existsSync(templatesDir)) {
-        const templateQuestion = `\nCustom task templates already exist. What would you like to do?\n  [1] Merge (add new templates, keep existing) (Default)\n  [2] Replace all templates\n  [3] Skip\n> `;
+        const templateQuestion = `\nCustom task templates already exist. What would you like to do?\n  [1] Keep existing (no changes) (Default)\n  [2] Merge (add new templates, keep existing)\n  [3] Replace all templates\n> `;
         const tChoice = await this.askQuestion(templateQuestion);
-        if (tChoice === '2') templateChoice = 'overwrite';
-        else if (tChoice === '3') templateChoice = 'skip';
-        else templateChoice = 'merge';
+        if (tChoice === '2') templateChoice = 'merge';
+        else if (tChoice === '3') templateChoice = 'overwrite';
+        else templateChoice = 'skip';
       }
 
       if (configChoice === 'skip' && templateChoice === 'skip') {
@@ -96,8 +96,8 @@ class VC4PMSetup {
     const config = {
       "workflow": {
         "statusMapping": {
-          "notStarted": "Not started",
-          "inProgress": "In progress",
+          "notStarted": "Not Started",
+          "inProgress": "In Progress",
           "test": "Test",
           "done": "Done"
         },
@@ -176,7 +176,7 @@ class VC4PMSetup {
     }
     if (choice === 'merge') {
         console.log('\n🔄 Merging templates (new files will be added, existing files will be kept)...');
-    } else { // Overwrite
+    } else {
         console.log('\n✨ Copying all default templates...');
     }
     if (!fs.existsSync(templatesDir)) {
@@ -301,7 +301,7 @@ class VC4PMSetup {
   askQuestion(question) {
     return new Promise((resolve) => {
       this.rl.question(question, (answer) => {
-        resolve(answer.trim() || '1'); // Default to 1 (Merge)
+        resolve(answer.trim() || '1');
       });
     });
   }
