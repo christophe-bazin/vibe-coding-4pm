@@ -74,14 +74,14 @@ export class NotionProvider implements TaskProvider {
   private markdownToNotionBlocks(markdown: string): any[] {
     const blocks: any[] = [];
     const lines = markdown.split('\n');
-    
+
     for (const line of lines) {
       const trimmed = line.trim();
-      
+
       if (!trimmed) {
         continue;
       }
-      
+
       if (trimmed === '---') {
         blocks.push({
           object: 'block',
@@ -90,25 +90,25 @@ export class NotionProvider implements TaskProvider {
         });
         continue;
       }
-      
+
       if (trimmed.startsWith('# ')) {
         blocks.push({
           object: 'block',
           type: 'heading_1',
-          heading_1: { rich_text: [{ type: 'text', text: { content: trimmed.slice(2) } }] }
+          heading_1: { rich_text: this.parseRichText(trimmed.slice(2)) }
         });
       } else if (trimmed.startsWith('## ')) {
         blocks.push({
           object: 'block',
           type: 'heading_2',
-          heading_2: { rich_text: [{ type: 'text', text: { content: trimmed.slice(3) } }] }
+          heading_2: { rich_text: this.parseRichText(trimmed.slice(3)) }
         });
       } else if (trimmed.startsWith('- [ ] ')) {
         blocks.push({
           object: 'block',
           type: 'to_do',
           to_do: {
-            rich_text: [{ type: 'text', text: { content: trimmed.slice(6) } }],
+            rich_text: this.parseRichText(trimmed.slice(6)),
             checked: false
           }
         });
@@ -117,7 +117,7 @@ export class NotionProvider implements TaskProvider {
           object: 'block',
           type: 'to_do',
           to_do: {
-            rich_text: [{ type: 'text', text: { content: trimmed.slice(4) } }],
+            rich_text: this.parseRichText(trimmed.slice(4)),
             checked: true
           }
         });
@@ -125,29 +125,17 @@ export class NotionProvider implements TaskProvider {
         blocks.push({
           object: 'block',
           type: 'bulleted_list_item',
-          bulleted_list_item: { rich_text: [{ type: 'text', text: { content: trimmed.slice(2) } }] }
-        });
-      } else if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
-        blocks.push({
-          object: 'block',
-          type: 'paragraph',
-          paragraph: {
-            rich_text: [{ 
-              type: 'text', 
-              text: { content: trimmed.slice(2, -2) },
-              annotations: { bold: true }
-            }]
-          }
+          bulleted_list_item: { rich_text: this.parseRichText(trimmed.slice(2)) }
         });
       } else {
         blocks.push({
           object: 'block',
           type: 'paragraph',
-          paragraph: { rich_text: [{ type: 'text', text: { content: trimmed } }] }
+          paragraph: { rich_text: this.parseRichText(trimmed) }
         });
       }
     }
-    
+
     return blocks;
   }
 
@@ -896,9 +884,8 @@ export class NotionProvider implements TaskProvider {
       for (const child of children.results) {
         if ('type' in child && child.type === 'child_page' && 'child_page' in child) {
           try {
-            const childPageData = await this.notion.pages.retrieve({ page_id: child.id });
             const childContent = await this.getPageContentSummary(child.id);
-            
+
             childPages.push({
               id: child.id,
               title: child.child_page.title,
