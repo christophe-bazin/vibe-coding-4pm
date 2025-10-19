@@ -44,8 +44,9 @@ export class ConfigLoader {
 
 - **Never hardcode values** - use config files
 - **Explicit configuration** - fail fast on missing required config
-- **Environment separation** - use .env for secrets, JSON for structure
+- **Per-project config** - each project has `.vc4pm/config.json` with credentials
 - **Validation** - validate config on startup
+- **MCP stdio transport** - server uses stdio (not HTTP) for MCP communication
 
 ```typescript
 // Good
@@ -107,13 +108,13 @@ async doUpdate(id: string, status: string): Promise<any> {
 
 ### Secret Management
 - **Never log tokens** or sensitive data
-- **Use environment variables** for API keys
-- **Validate permissions** before API calls
+- **Store API keys in config.json** (per-project configuration)
+- **Validate credentials** on server startup
 
 ```typescript
 // Good
-if (!process.env.NOTION_API_KEY) {
-  throw new Error('NOTION_API_KEY environment variable is required');
+if (!config.providers.available.notion.config.apiKey) {
+  throw new Error('Notion API key is required in .vc4pm/config.json');
 }
 
 // Bad

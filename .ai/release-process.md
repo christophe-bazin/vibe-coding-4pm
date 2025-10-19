@@ -159,7 +159,7 @@ For critical bugs in production:
 
 ### 1. Create Hotfix Branch
 ```bash
-git checkout main
+git checkout master
 git checkout -b hotfix/critical-fix
 ```
 
