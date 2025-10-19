@@ -93,15 +93,15 @@ class VC4PMSetup {
 
   async getProviderConfig(choice, existingConfig) {
     console.log('\n📋 Task Management Provider Setup...');
-    const exampleConfigPath = path.join(__dirname, '..', '.vc4pm', 'config.example.json');
+    const baseConfigPath = path.join(__dirname, '..', '.vc4pm', 'config.base.json');
     let config;
-    if (fs.existsSync(exampleConfigPath)) {
-      const exampleContent = fs.readFileSync(exampleConfigPath, 'utf8');
-      const fullConfig = JSON.parse(exampleContent);
+    if (fs.existsSync(baseConfigPath)) {
+      const baseContent = fs.readFileSync(baseConfigPath, 'utf8');
+      const fullConfig = JSON.parse(baseContent);
       config = { "workflow": fullConfig.workflow, "providers": { "default": "notion", "available": { "notion": fullConfig.providers.available.notion } } };
       console.log('✅ Loaded configuration template');
     } else {
-      console.log('⚠️  Config example not found, using fallback configuration');
+      console.log('⚠️  Base config not found, using fallback configuration');
     }
 
     if (choice === 'merge' && existingConfig) {
