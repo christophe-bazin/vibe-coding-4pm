@@ -97,6 +97,12 @@ async function routeCall(name: string, args: any, services: any): Promise<string
     case 'read_notion_page':
       const pageContent = await update.readNotionPage(args.pageId, args.includeLinkedPages, args.provider);
       return formatter.formatPageContent(pageContent);
+    case 'create_notion_page':
+      const createdPage = await update.createNotionPage(args.databaseId, args.title, args.content, args.properties, args.provider);
+      return formatter.formatPageContent(createdPage);
+    case 'update_notion_page':
+      await update.updateNotionPage(args.pageId, args.title, args.content, args.properties, args.mode, args.insertAfter, args.provider);
+      return `Notion page ${args.pageId} updated successfully.`;
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
@@ -120,6 +126,8 @@ async function main() {
         { name: 'get_summary_template', description: 'Get summary template', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
         { name: 'append_summary', description: 'Append AI-adapted summary to task.', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, adaptedSummary: { type: 'string' } }, required: ['taskId', 'adaptedSummary'] } },
         { name: 'read_notion_page', description: 'Read a Notion page and its directly linked pages', inputSchema: { type: 'object', properties: { pageId: { type: 'string' }, includeLinkedPages: { type: 'boolean', default: true }, provider: { type: 'string', description: 'Optional: provider to use' } }, required: ['pageId'] } },
+        { name: 'create_notion_page', description: 'Create a new page in a Notion database', inputSchema: { type: 'object', properties: { databaseId: { type: 'string', description: 'Database ID or full Notion URL' }, title: { type: 'string', description: 'Page title' }, content: { type: 'string', description: 'Optional: markdown content to add to the page' }, properties: { type: 'object', description: 'Optional: additional properties to set' }, provider: { type: 'string', description: 'Optional: provider to use' } }, required: ['databaseId', 'title'] } },
+        { name: 'update_notion_page', description: 'Update an existing Notion page', inputSchema: { type: 'object', properties: { pageId: { type: 'string', description: 'Page ID or full Notion URL' }, title: { type: 'string', description: 'Optional: new page title' }, content: { type: 'string', description: 'Optional: markdown content to add or replace' }, properties: { type: 'object', description: 'Optional: properties to update' }, mode: { type: 'string', enum: ['append', 'replace', 'insert'], default: 'append', description: 'Optional: append (default), replace, or insert with insertAfter' }, insertAfter: { type: 'string', description: 'Optional: text to search for; inserts content after matching block (requires mode: insert)' }, provider: { type: 'string', description: 'Optional: provider to use' } }, required: ['pageId'] } },
     ];
 
     mcpServer.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }));

@@ -195,4 +195,14 @@ export class UpdateService {
     const taskProvider = this.providerManager.getProvider(provider);
     return await taskProvider.readPage(pageId, includeLinkedPages);
   }
+
+  async createNotionPage(databaseId: string, title: string, content?: string, properties?: Record<string, any>, provider?: string): Promise<PageContent> {
+    const taskProvider = this.providerManager.getProvider(provider);
+    return await taskProvider.createNotionPage(databaseId, title, content, properties);
+  }
+
+  async updateNotionPage(pageId: string, title?: string, content?: string, properties?: Record<string, any>, mode: 'append' | 'replace' | 'insert' = 'append', insertAfter?: string, provider?: string): Promise<void> {
+    const taskProvider = this.providerManager.getProvider(provider);
+    await taskProvider.updateNotionPage(pageId, title, content, properties, mode, insertAfter);
+  }
 }

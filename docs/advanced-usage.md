@@ -301,6 +301,8 @@ AI assistants use these tools through natural language. Here are the underlying 
 
 **Content Management:**
 - `read_notion_page` - Read Notion page and its linked/child pages
+- `create_notion_page` - Create a new page in a Notion database
+- `update_notion_page` - Update an existing Notion page
 
 ### Task Management Tools
 
@@ -343,16 +345,66 @@ Execute task with automated workflow progression.
 Read Notion page content with linked pages.
 
 **Parameters:**
-- `pageId` (string): Notion page ID
+- `pageId` (string): Notion page ID or full URL
 - `includeLinkedPages` (boolean, default: true): Include child/linked pages
 - `provider` (optional): Provider to use
 
+**Returns:**
+- Page title, content, URL, and linked pages
+
+#### create_notion_page
+Create a new page in a Notion database.
+
+**Parameters:**
+- `databaseId` (string, required): Database ID or full Notion URL (e.g., `https://www.notion.so/2910da7a7a078095a53bc90f3026b212?v=...`)
+- `title` (string, required): Page title
+- `content` (string, optional): Markdown content to add to the page
+- `properties` (object, optional): Additional properties to set (status, type, etc.)
+- `provider` (optional): Provider to use
+
+**Returns:**
+- Created page content with ID, title, URL, and content
+
+**Example:**
+```
+AI: "Create a page in database https://www.notion.so/2910da7a7a078095a53bc90f3026b212 with title 'Project Notes'"
+```
+
+#### update_notion_page
+Update an existing Notion page's title, content, or properties.
+
+**Parameters:**
+- `pageId` (string, required): Page ID or full Notion URL
+- `title` (string, optional): New page title
+- `content` (string, optional): Markdown content to add or replace
+- `properties` (object, optional): Properties to update
+- `mode` (string, optional): `append` (default), `replace`, or `insert` with `insertAfter`
+- `insertAfter` (string, optional): Text to search for; inserts content after matching block (requires `mode: 'insert'`)
+- `provider` (optional): Provider to use
+
+**Returns:**
+- Success message
+
+**Example:**
+```
+AI: "Update page <pageId> and append this content: ## New Section\n- Item 1\n- Item 2"
+AI: "Update page <pageId> with new title 'Updated Title' and replace all content"
+AI: "Update page <pageId> insert '- Fourth item' after 'Troisième élément' using mode insert"
+```
+
+**Supported Markdown:**
+- Headings (`# H1`, `## H2`, `### H3`)
+- Paragraphs
+- Bullet lists (`- item`)
+- Numbered lists (`1. item`)
+- Todos (`- [ ]` and `- [x]`)
+- Code blocks (` ```language ` )
 - Quotes (`> text`)
 
 **Update Modes:**
+- `append` (default): Add content at end of page
 - `replace`: Replace all page content
-- `append`: Add content at end
-- `prepend`: Add content at beginning
+- `insert`: Insert content after a specific block (requires `insertAfter` parameter)
 
 ### Todo Management Tools
 

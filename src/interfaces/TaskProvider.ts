@@ -15,5 +15,9 @@ export interface TaskProvider {
 
   getProviderName(): string;
   getProviderType(): string;
+
+  // Page operations
   readPage(pageId: string, includeLinkedPages?: boolean): Promise<PageContent>;
+  createNotionPage(databaseId: string, title: string, content?: string, properties?: Record<string, any>): Promise<PageContent>;
+  updateNotionPage(pageId: string, title?: string, content?: string, properties?: Record<string, any>, mode?: 'append' | 'replace' | 'insert', insertAfter?: string): Promise<void>;
 }

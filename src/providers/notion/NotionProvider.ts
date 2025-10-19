@@ -928,16 +928,230 @@ export class NotionProvider implements TaskProvider {
 
   private async getPageContentSummary(pageId: string): Promise<string> {
     try {
-      const blocks = await this.notion.blocks.children.list({ 
+      const blocks = await this.notion.blocks.children.list({
         block_id: pageId,
         page_size: 20
       });
-      
+
       const content = this.convertBlocksToMarkdown(blocks.results);
       // Return first 300 chars as summary
       return content.substring(0, 300) + (content.length > 300 ? '...' : '');
     } catch (error) {
       return '';
     }
+  }
+
+  /**
+   * Create a new page in a Notion database
+   * @param databaseId - Database ID or full Notion URL
+   * @param title - Page title (required)
+   * @param content - Optional markdown content to add to the page
+   * @param properties - Optional additional properties to set
+   * @returns Promise resolving to the created page content
+   * @throws Error if database not found or creation fails
+   */
+  async createNotionPage(databaseId: string, title: string, content?: string, properties?: Record<string, any>): Promise<PageContent> {
+    if (!databaseId || databaseId.trim().length === 0) {
+      throw new Error('Database ID is required and cannot be empty');
+    }
+    if (!title || title.trim().length === 0) {
+      throw new Error('Page title is required and cannot be empty');
+    }
+    if (title.length > 2000) {
+      throw new Error('Page title cannot exceed 2000 characters');
+    }
+
+    try {
+      const cleanDatabaseId = this.extractNotionId(databaseId);
+
+      const children = [];
+      if (content) {
+        children.push(...this.parseMarkdownToNotionBlocks(content));
+      }
+
+      // Fetch database schema to find the title property name dynamically
+      // Different databases can name their title property differently (Name, Title, etc.)
+      const database = await this.notion.databases.retrieve({ database_id: cleanDatabaseId });
+      let titlePropertyName = 'Name';
+
+      for (const [name, property] of Object.entries(database.properties)) {
+        if ((property as any).type === 'title') {
+          titlePropertyName = name;
+          break;
+        }
+      }
+
+      const pageProperties: any = {
+        [titlePropertyName]: { title: [{ text: { content: title } }] }
+      };
+
+      if (properties) {
+        Object.assign(pageProperties, properties);
+      }
+
+      const page = await this.notion.pages.create({
+        parent: { database_id: cleanDatabaseId },
+        properties: pageProperties,
+        children: children.length > 0 ? children : undefined
+      });
+
+      return await this.readPage(page.id, false);
+    } catch (error) {
+      throw new Error(`Failed to create Notion page in database ${databaseId}: ${error}`);
+    }
+  }
+
+  /**
+   * Update an existing Notion page
+   * @param pageId - Page ID or full Notion URL
+   * @param title - Optional new title
+   * @param content - Optional markdown content to add or replace
+   * @param properties - Optional properties to update
+   * @param mode - 'append' (default), 'replace', or 'insert' with insertAfter parameter
+   * @param insertAfter - Text to search for; inserts content after the matching block
+   * @returns Promise resolving when update is complete
+   * @throws Error if page not found or update fails
+   */
+  async updateNotionPage(pageId: string, title?: string, content?: string, properties?: Record<string, any>, mode: 'append' | 'replace' | 'insert' = 'append', insertAfter?: string): Promise<void> {
+    if (!pageId || pageId.trim().length === 0) {
+      throw new Error('Page ID is required and cannot be empty');
+    }
+    if (title && title.length > 2000) {
+      throw new Error('Page title cannot exceed 2000 characters');
+    }
+
+    try {
+      const cleanPageId = this.extractNotionId(pageId);
+
+      if (title || properties) {
+        const updateProperties: any = {};
+
+        if (title) {
+          // Fetch page to find the title property name dynamically
+          const page = await this.notion.pages.retrieve({ page_id: cleanPageId });
+          let titlePropertyName = 'Name';
+
+          for (const [name, property] of Object.entries((page as any).properties || {})) {
+            if ((property as any).type === 'title') {
+              titlePropertyName = name;
+              break;
+            }
+          }
+
+          updateProperties[titlePropertyName] = { title: [{ text: { content: title } }] };
+        }
+
+        if (properties) {
+          Object.assign(updateProperties, properties);
+        }
+
+        await this.notion.pages.update({
+          page_id: cleanPageId,
+          properties: updateProperties
+        });
+      }
+
+      if (content) {
+        const newBlocks = this.parseMarkdownToNotionBlocks(content);
+
+        if (mode === 'replace') {
+          const blocks = await this.notion.blocks.children.list({ block_id: cleanPageId });
+
+          for (const block of blocks.results) {
+            try {
+              await this.notion.blocks.delete({ block_id: block.id });
+            } catch (error) {
+              // Some blocks (synced blocks) cannot be deleted
+            }
+          }
+
+          if (newBlocks.length > 0) {
+            await this.notion.blocks.children.append({
+              block_id: cleanPageId,
+              children: newBlocks
+            });
+          }
+        } else if (mode === 'insert' && insertAfter) {
+          const targetBlock = await this.findBlockByText(cleanPageId, insertAfter);
+
+          if (!targetBlock) {
+            throw new Error(`Could not find block containing text: "${insertAfter}"`);
+          }
+
+          // Notion API limitation: can't insert at same level after a block
+          // Workaround: append as children (creates indentation) or fallback to page level
+          if (newBlocks.length > 0) {
+            try {
+              await this.notion.blocks.children.append({
+                block_id: targetBlock.id,
+                children: newBlocks
+              });
+            } catch (error) {
+              // Fallback if target block doesn't support children
+              await this.notion.blocks.children.append({
+                block_id: cleanPageId,
+                children: newBlocks
+              });
+            }
+          }
+        } else {
+          if (newBlocks.length > 0) {
+            await this.notion.blocks.children.append({
+              block_id: cleanPageId,
+              children: newBlocks
+            });
+          }
+        }
+      }
+    } catch (error) {
+      throw new Error(`Failed to update Notion page ${pageId}: ${error}`);
+    }
+  }
+
+  /**
+   * Find a block containing specific text for insert operations
+   * @param pageId - Page ID to search in
+   * @param searchText - Text to search for in blocks
+   * @returns The block containing the text, or null if not found
+   */
+  private async findBlockByText(pageId: string, searchText: string): Promise<any | null> {
+    try {
+      const blocks = await this.notion.blocks.children.list({
+        block_id: pageId,
+        page_size: 100
+      });
+
+      for (const block of blocks.results) {
+        const blockText = this.extractRichText(this.getRichTextFromBlock(block) || []);
+        if (blockText.toLowerCase().includes(searchText.toLowerCase())) {
+          return block;
+        }
+      }
+
+      return null;
+    } catch (error) {
+      throw new Error(`Failed to search for block containing "${searchText}": ${error}`);
+    }
+  }
+
+  /**
+   * Extract and normalize Notion ID from URL or raw ID to UUID format (8-4-4-4-12)
+   * @param urlOrId - Notion URL or ID
+   * @returns Formatted Notion ID
+   */
+  private extractNotionId(urlOrId: string): string {
+    const cleanId = urlOrId.replace(/-/g, '');
+    if (cleanId.length === 32 && /^[a-f0-9]+$/i.test(cleanId)) {
+      return `${cleanId.slice(0, 8)}-${cleanId.slice(8, 12)}-${cleanId.slice(12, 16)}-${cleanId.slice(16, 20)}-${cleanId.slice(20)}`;
+    }
+
+    // Extract 32-char hex ID from Notion URLs
+    const urlMatch = urlOrId.match(/([a-f0-9]{32})/i);
+    if (urlMatch && urlMatch[1]) {
+      const id = urlMatch[1];
+      return `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`;
+    }
+
+    return urlOrId;
   }
 }

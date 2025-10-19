@@ -121,11 +121,11 @@ The MCP server provides tools that your AI assistant uses seamlessly through nat
 
 The server provides these tools to AI coding assistants:
 
-- **Task Management**: `create_task`, `get_task`, `update_task`, `execute_task` 
+- **Task Management**: `create_task`, `get_task`, `update_task`, `execute_task`
 - **Template System**: `get_task_template` for AI adaptation
 - **Todo Management**: `analyze_todos`, `update_todos` with batch operations
-- **Development Summary**: `generate_summary`, `get_summary_template`, `append_summary`  
-- **Content Management**: `read_notion_page` for page operations
+- **Development Summary**: `generate_summary`, `get_summary_template`, `append_summary`
+- **Content Management**: `read_notion_page`, `create_notion_page`, `update_notion_page` for Notion page operations
 
 ### 🔧 **Development Environment Requirements**
 

@@ -51,4 +51,12 @@ export class LinearProvider implements TaskProvider {
   async readPage(pageId: string, includeLinkedPages?: boolean): Promise<PageContent> {
     throw new Error('Linear page reading not implemented yet');
   }
+
+  async createNotionPage(databaseId: string, title: string, content?: string, properties?: Record<string, any>): Promise<PageContent> {
+    throw new Error('createNotionPage is only available for Notion provider');
+  }
+
+  async updateNotionPage(pageId: string, title?: string, content?: string, properties?: Record<string, any>, mode?: 'append' | 'replace' | 'insert', insertAfter?: string): Promise<void> {
+    throw new Error('updateNotionPage is only available for Notion provider');
+  }
 }
