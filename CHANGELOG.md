@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.2] - 2025-10-19
+
+### Fixed
+- Markdown formatting (bold, italic, code) now properly renders in Notion when appending content
+- `markdownToNotionBlocks` now uses `parseRichText` for consistent inline formatting support
+- Removed code duplication in markdown parsing logic
+
+### Technical Notes
+- Inline markdown now supported in all block types: headings, paragraphs, lists, todos
+- Format support: `**bold**`, `*italic*`, `` `code` ``, `***bold+italic***`
+
 ## [3.3.1] - 2025-10-19
 
 ### Fixed
