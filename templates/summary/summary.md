@@ -10,4 +10,4 @@
 - [Specific change 3 with impact description]
 
 ## 🧪 Testing Checklist
-[Generate relevant testing todos based on what was actually implemented. Adjust quantity and specificity based on task complexity - could be 1 simple check or 10+ comprehensive tests.]
+[Generate relevant testing todos based on what was actually implemented. Adjust quantity and specificity based on task complexity - could be 1 simple check or 10+ comprehensive tests. IMPORTANT: Use unchecked format - [ ] for all items, never use checked format - [x].]
