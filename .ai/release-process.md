@@ -51,6 +51,7 @@ git pull origin master
 ### 2. Update Version and Documentation
 ```bash
 # Update package.json version (choose appropriate type)
+# ⚠️ IMPORTANT: This command updates BOTH package.json AND package-lock.json
 npm version [major|minor|patch] --no-git-tag-version
 
 # Update CHANGELOG.md with new version entry
@@ -69,15 +70,24 @@ npm pack --dry-run
 
 ### 4. Commit and Push
 ```bash
-git add .
+# ⚠️ CRITICAL: Stage ALL files including package-lock.json
+git add package.json package-lock.json CHANGELOG.md
+
+# Verify all version files are staged
+git status
+
 git commit -m "chore: prepare release v1.x.x
 
-- Updated package.json version
+- Updated package.json and package-lock.json to v1.x.x
 - Updated CHANGELOG.md with release notes
 - [Any other changes made]"
 
 git push origin master
 ```
+
+**Common mistake to avoid:**
+- ❌ Forgetting to commit `package-lock.json` (npm version updates both files)
+- ✅ Always check `git status` before committing to ensure package-lock.json is staged
 
 ### 5. Create GitHub Release (AUTOMATED NPM PUBLISH)
 **Important: GitHub Release triggers automatic NPM publish via GitHub Actions**
