@@ -1,116 +1,97 @@
 # VC4PM Usage Guide
 
-This directory contains the configuration for VC4PM (Vibe-Coding for PM), a tool that connects your AI assistant to your project management system (e.g., Notion).
+This directory contains the configuration for VC4PM (Vibe-Coding for PM), an MCP server that connects your AI assistant to your project management system (e.g., Notion).
 
-The `vc4pm-server` command starts a local MCP (Model-driven Communication Protocol) server. Your AI assistant will call this server to create, update, and manage tasks on your behalf.
+## What is VC4PM?
 
-## 1. Start the Server
+VC4PM is a Model Context Protocol (MCP) server that enables AI assistants to create, update, and manage tasks on your behalf. It works seamlessly with AI-powered editors like Claude Code, Cursor, and others.
 
-Before using the tools, you must start the VC4PM server from the root of your project.
+## Configuration Files
 
-Run the following command in your terminal:
+- **config.json**: Contains your workflow configuration and provider credentials (Notion, Linear, GitHub)
+- **templates/**: Custom task and summary templates for your workflow
 
-```bash
-npx vc4pm-server
+## Getting Started
+
+### 1. Configure Your Provider
+
+Edit `.vc4pm/config.json` and add your provider credentials:
+
+```json
+{
+  "providers": {
+    "available": {
+      "notion": {
+        "enabled": true,
+        "config": {
+          "apiKey": "your_notion_integration_token_here",
+          "databaseId": "your_notion_database_id_here"
+        }
+      }
+    }
+  }
+}
 ```
 
-The server will run in the foreground. Keep this terminal open while you work.
+### 2. Add MCP Server to Your Editor
 
-## 2. API Usage
+The setup script should have configured this automatically. If not:
 
-The server exposes an API endpoint at http://localhost:%%PORT%%/mcp. To use a tool, send a `POST` request to this endpoint with a JSON-RPC payload.
-
-### Generic `curl` Template
-
-Here is the basic structure for calling any tool. Replace `"THE_TOOL_NAME"` and the `tool_input` object with the specific details from the tool reference below.
-
+**Claude Code:**
 ```bash
-curl -X POST http://localhost:%%PORT%%/mcp \
-     -H "Content-Type: application/json" \
-     -d '{
-           "jsonrpc": "2.0",
-           "method": "tools/call",
-           "params": {
-               "tool_name": "THE_TOOL_NAME",
-               "tool_input": {
-                   "parameter_1": "value_1",
-                   "parameter_2": "value_2"
-               }
-           },
-           "id": "1"
-         }'
+claude mcp add vc4pm "vc4pm-server"
 ```
 
-### Tool Reference
+**Cursor / VS Code / Other editors:**
+Add to your MCP configuration:
+```json
+{
+  "mcpServers": {
+    "vc4pm": {
+      "command": "vc4pm-server"
+    }
+  }
+}
+```
 
-Here is the list of all available tools and their specific `tool_input` parameters.
+### 3. Use AI Tools Naturally
 
-*   **`create_task`**
-    *   Description: Creates a new task using the appropriate workflow template.
-    *   Parameters (`tool_input`):
-        *   `title` (string, required)
-        *   `taskType` (string, required)
-        *   `description` (string, required)
-        *   `provider` (string, optional)
+Once configured, your AI assistant will have access to task management tools:
 
-*   **`get_task`**
-    *   Description: Retrieves task information.
-    *   Parameters (`tool_input`):
-        *   `taskId` (string, required)
-        *   `provider` (string, optional)
+- **create_task**: Create new tasks with workflow templates
+- **get_task**: Retrieve task information
+- **update_task**: Update task status, title, or type
+- **execute_task**: Execute task workflow
+- **read_notion_page**: Read Notion pages and linked content
+- **analyze_todos**: Analyze task todos
+- **update_todos**: Batch update todos
+- **generate_summary**: Generate task summaries
+- **get_task_template**: Get workflow templates
+- **append_summary**: Add summaries to tasks
 
-*   **`update_task`**
-    *   Description: Updates a task's title, type, and/or status.
-    *   Parameters (`tool_input`):
-        *   `taskId` (string, required)
-        *   `title` (string, optional)
-        *   `taskType` (string, optional)
-        *   `status` (string, optional)
-        *   `provider` (string, optional)
+Simply ask your AI assistant to create or manage tasks using natural language!
 
-*   **`get_task_template`**
-    *   Description: Gets a task template for adaptation.
-    *   Parameters (`tool_input`):
-        *   `taskType` (string, required)
+## Troubleshooting
 
-*   **`read_notion_page`**
-    *   Description: Reads a Notion page and its directly linked pages.
-    *   Parameters (`tool_input`):
-        *   `pageId` (string, required)
-        *   `includeLinkedPages` (boolean, optional)
+**Server not connecting:**
+```bash
+# Check if server is configured
+claude mcp list
 
-*   **`analyze_todos`**
-    *   Description: Analyzes todos within a task.
-    *   Parameters (`tool_input`):
-        *   `taskId` (string, required)
-        *   `includeHierarchy` (boolean, optional)
+# The vc4pm server should show as "Connected"
+```
 
-*   **`update_todos`**
-    *   Description: Batch updates todos.
-    *   Parameters (`tool_input`):
-        *   `taskId` (string, required)
-        *   `updates` (array, required)
+**Tools not available:**
+- Ensure you're in a project directory with `.vc4pm/config.json`
+- Verify your provider credentials are correct
+- Restart your AI editor
 
-*   **`generate_summary`**
-    *   Description: Generates a summary for a task.
-    *   Parameters (`tool_input`):
-        *   `taskId` (string, required)
+## Documentation
 
-*   **`get_summary_template`**
-    *   Description: Gets the summary template.
-    *   Parameters (`tool_input`):
-        *   `taskId` (string, required)
-
-*   **`append_summary`**
-    *   Description: Appends an AI-adapted summary to a task.
-    *   Parameters (`tool_input`):
-        *   `taskId` (string, required)
-        *   `adaptedSummary` (string, required)
-
-*   **`execute_task`**
-    *   Description: Executes a task.
-    *   Parameters (`tool_input`):
-        *   `taskId` (string, required)
+For complete documentation, see:
+- [Configuration Guide](https://github.com/christophe-bazin/vibe-coding-4pm/blob/master/docs/configuration.md)
+- [Advanced Usage](https://github.com/christophe-bazin/vibe-coding-4pm/blob/master/docs/advanced-usage.md)
+- [Development Guide](https://github.com/christophe-bazin/vibe-coding-4pm/blob/master/docs/development.md)
 
 ---
 *This file was generated by `vc4pm-setup`.*

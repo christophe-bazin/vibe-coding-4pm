@@ -66,7 +66,6 @@ class VC4PMSetup {
         console.log('\nSkipping configuration file setup.');
       }
 
-      this.createManifestFile(configDir);
       this.createReadmeFile(configDir);
 
       if (templateChoice !== 'skip') {
@@ -77,9 +76,9 @@ class VC4PMSetup {
 
       console.log('\n🎉 Setup complete!');
       console.log('\nNext steps:');
-      console.log('1. Start the server with `npx vc4pm-server` in your project root.');
-      console.log('2. Ensure your Notion credentials are correct in .vc4pm/config.json.');
-      console.log('3. Customize templates and workflow in .vc4pm/ (optional).');
+      console.log('1. Configure your provider credentials in .vc4pm/config.json');
+      console.log('2. The MCP server is ready to use with your AI editor');
+      console.log('3. Customize templates and workflow in .vc4pm/ (optional)');
       
       this.showIDEInstructions(ideChoice);
 
@@ -278,22 +277,10 @@ class VC4PMSetup {
     console.log('\n📚 For detailed setup instructions, see:\nhttps://github.com/christophe-bazin/vibe-coding-4pm/blob/master/docs/advanced-usage.md#development-environment-integration');
   }
 
-  createManifestFile(configDir) {
-    const manifestPath = path.join(configDir, 'manifest.json');
-    const templatePath = path.join(__dirname, 'setup/assets/manifest.json');
-    let manifestContent = fs.readFileSync(templatePath, 'utf8');
-    const port = process.env.VC4PM_PORT || 65432;
-    manifestContent = manifestContent.replace(/%%PORT%%/g, port);
-    fs.writeFileSync(manifestPath, manifestContent);
-    console.log('✅ Created API manifest file (.vc4pm/manifest.json)');
-  }
-
   createReadmeFile(configDir) {
     const readmePath = path.join(configDir, 'README.md');
     const templatePath = path.join(__dirname, 'setup/assets/README.md');
-    let readmeContent = fs.readFileSync(templatePath, 'utf8');
-    const port = process.env.VC4PM_PORT || 65432;
-    readmeContent = readmeContent.replace(/%%PORT%%/g, port);
+    const readmeContent = fs.readFileSync(templatePath, 'utf8');
     fs.writeFileSync(readmePath, readmeContent);
     console.log('✅ Created usage guide (.vc4pm/README.md)');
   }
