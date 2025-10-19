@@ -4,6 +4,12 @@ import { TodoItem, TodoAnalysisResult, TodoUpdateRequest } from '../../models/To
 import { PageContent, LinkedPage, NotionBlock } from '../../models/Page.js';
 import { Client } from '@notionhq/client';
 
+const TASK_TYPE_MAPPING: Record<string, string> = {
+  'bug': 'Bug',
+  'feature': 'Feature',
+  'refactoring': 'Refactoring'
+};
+
 export class NotionProvider implements TaskProvider {
   private notion: Client;
   private databaseId: string;
@@ -34,6 +40,20 @@ export class NotionProvider implements TaskProvider {
     } catch (error) {
       throw new Error(`Failed to get database schema: ${error}`);
     }
+  }
+
+  private normalizeTaskType(taskType: string): string {
+    const normalized = TASK_TYPE_MAPPING[taskType.toLowerCase()];
+    if (normalized) {
+      return normalized;
+    }
+
+    const knownTypes = Object.values(TASK_TYPE_MAPPING);
+    if (knownTypes.includes(taskType)) {
+      return taskType;
+    }
+
+    throw new Error(`Unknown task type "${taskType}". Valid types: ${knownTypes.join(', ')}`);
   }
 
   async appendToTask(taskId: string, content: string): Promise<void> {
@@ -174,16 +194,18 @@ export class NotionProvider implements TaskProvider {
       throw new Error('Title cannot exceed 200 characters');
     }
 
+    const normalizedTaskType = this.normalizeTaskType(taskType);
+
     try {
       const children = [];
-      
+
       if (description) {
         children.push(...this.parseMarkdownToNotionBlocks(description));
       }
-      
+
       const titlePropertyName = await this.getTitlePropertyName();
       const properties: any = {
-        Type: { select: { name: taskType } },
+        Type: { select: { name: normalizedTaskType } },
         Status: { status: { name: 'Not started' } }
       };
       properties[titlePropertyName] = { title: [{ text: { content: title } }] };

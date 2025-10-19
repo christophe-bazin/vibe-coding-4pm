@@ -311,7 +311,7 @@ Create tasks with intelligent template adaptation.
 
 **Parameters:**
 - `title` (string): Task title
-- `taskType` (string): "Feature", "Bug", or "Refactoring"  
+- `taskType` (string): "Feature", "Bug", or "Refactoring"
 - `description` (string): Task description
 - `adaptedWorkflow` (string): AI-adapted template content
 - `provider` (optional): Provider to use

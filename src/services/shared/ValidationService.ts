@@ -11,9 +11,18 @@ export class ValidationService {
     private statusService: StatusService
   ) {}
 
+  /**
+   * Validate and normalize task type (case-insensitive)
+   * @returns normalized task type or throws error
+   */
   validateTaskType(taskType: string): void {
-    if (!this.workflowConfig.taskTypes.includes(taskType)) {
-      throw new Error(`Invalid task type. Available: ${this.workflowConfig.taskTypes.join(', ')}`);
+    // Check if task type matches any configured type (case-insensitive)
+    const normalizedType = this.workflowConfig.taskTypes.find(
+      t => t.toLowerCase() === taskType.toLowerCase()
+    );
+
+    if (!normalizedType) {
+      throw new Error(`Invalid task type "${taskType}". Available: ${this.workflowConfig.taskTypes.join(', ')} (case-insensitive)`);
     }
   }
 
