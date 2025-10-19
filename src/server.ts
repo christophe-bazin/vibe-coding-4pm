@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
-import express from 'express';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
@@ -103,7 +102,7 @@ async function routeCall(name: string, args: any, services: any): Promise<string
   }
 }
 
-function main() {
+async function main() {
   try {
     const projectConfig = loadProjectConfig();
     const services = initServices(projectConfig);
@@ -135,20 +134,9 @@ function main() {
       }
     });
 
-    const app = express();
-    app.use(express.json());
-
-    app.post('/mcp', async (req, res) => {
-      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
-      res.on('close', () => transport.close());
-      await mcpServer.connect(transport);
-      await transport.handleRequest(req, res, req.body);
-    });
-
-    const port = process.env.VC4PM_PORT || 65432;
-    app.listen(port, () => {
-      console.log(`✅ VC4PM MCP Server running on http://localhost:${port}/mcp`);
-    });
+    const transport = new StdioServerTransport();
+    await mcpServer.connect(transport);
+    console.error('✅ VC4PM MCP Server running on stdio');
 
   } catch (error: any) {
     console.error(`❌ Failed to start server: ${error.message}`);
